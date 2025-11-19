@@ -12,6 +12,7 @@ import Signup from "./pages/Signup";
 import Courses from "./pages/Courses";
 import CourseDetail from "./pages/CourseDetail";
 import Enroll from "./pages/Enroll";
+import Enquiry from "./pages/Enquiry";
 import Payment from "./pages/Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import MyCourse from "./pages/student/MyCourse";
@@ -24,6 +25,11 @@ import Feedback from "./pages/student/Feedback";
 import Certificates from "./pages/student/Certificates";
 import Resume from "./pages/student/Resume";
 import Jobs from "./pages/student/Jobs";
+import Leads from "./pages/admin/Leads";
+import Students from "./pages/admin/Students";
+import AdminCourses from "./pages/admin/Courses";
+import Inventory from "./pages/admin/Inventory";
+import Attendance from "./pages/chef/Attendance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +47,7 @@ const App = () => (
           <Route path="/courses" element={<Courses />} />
           <Route path="/courses/:id" element={<CourseDetail />} />
           <Route path="/enroll/:id" element={<Enroll />} />
+          <Route path="/enquiry" element={<Enquiry />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/student" element={<StudentDashboard />} />
@@ -55,7 +62,12 @@ const App = () => (
           <Route path="/student/resume" element={<Resume />} />
           <Route path="/student/jobs" element={<Jobs />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/leads" element={<Leads />} />
+          <Route path="/admin/students" element={<Students />} />
+          <Route path="/admin/courses" element={<AdminCourses />} />
+          <Route path="/admin/inventory" element={<Inventory />} />
           <Route path="/chef" element={<ChefDashboard />} />
+          <Route path="/chef/attendance" element={<Attendance />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

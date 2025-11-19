@@ -27,9 +27,6 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
             <NavLink to="/courses" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Courses
             </NavLink>
-            <NavLink to="/about" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
-              About
-            </NavLink>
           </nav>
         )}
 
@@ -38,14 +35,17 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
             <NavLink to="/student" end className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Dashboard
             </NavLink>
-            <NavLink to="/student/courses" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
-              My Courses
+            <NavLink to="/student/my-course" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              My Course
             </NavLink>
-            <NavLink to="/student/bookings" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+            <NavLink to="/student/book-slot" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              Book Slot
+            </NavLink>
+            <NavLink to="/student/my-bookings" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Bookings
             </NavLink>
-            <NavLink to="/student/certificates" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
-              Certificates
+            <NavLink to="/student/jobs" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              Jobs
             </NavLink>
           </nav>
         )}

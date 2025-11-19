@@ -27,6 +27,9 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
             <NavLink to="/courses" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Courses
             </NavLink>
+            <NavLink to="/enquiry" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              Contact Us
+            </NavLink>
           </nav>
         )}
 

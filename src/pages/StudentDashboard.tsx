@@ -153,7 +153,6 @@ const StudentDashboard = () => {
                   duration="10 materials"
                   materials={10}
                   level="Prototyping"
-                  urgent={false}
                 />
                 <CourseCard
                   id="ui101"
@@ -163,7 +162,6 @@ const StudentDashboard = () => {
                   duration="8 materials"
                   materials={8}
                   level="Prototyping"
-                  urgent={false}
                 />
               </div>
             </div>

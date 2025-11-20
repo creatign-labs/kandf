@@ -13,7 +13,6 @@ interface CourseCardProps {
   materials: number;
   enrolled?: number;
   level: string;
-  urgent?: boolean;
 }
 
 export const CourseCard = ({
@@ -25,7 +24,6 @@ export const CourseCard = ({
   materials,
   enrolled,
   level,
-  urgent,
 }: CourseCardProps) => {
   return (
     <Card className="overflow-hidden transition-all hover:shadow-lg border-border/60">
@@ -64,10 +62,7 @@ export const CourseCard = ({
         </div>
         
         <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            <Badge variant="outline">{level}</Badge>
-            {!urgent && <Badge variant="outline" className="text-muted-foreground">Not Urgent</Badge>}
-          </div>
+          <Badge variant="outline">{level}</Badge>
           <Button size="sm" asChild>
             <Link to={`/courses/${id}`}>View Course</Link>
           </Button>

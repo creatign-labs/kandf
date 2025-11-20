@@ -4,42 +4,9 @@ import { Card } from "@/components/ui/card";
 import { CourseCard } from "@/components/CourseCard";
 import { Link } from "react-router-dom";
 import { ChefHat, Award, Users, Clock } from "lucide-react";
-
-const featuredCourses = [
-  {
-    id: "a",
-    title: "Professional Baking Fundamentals (Course A)",
-    description: "Master the essential techniques and foundations of professional baking",
-    image: "/placeholder.svg",
-    duration: "8 weeks",
-    materials: 12,
-    enrolled: 45,
-    level: "Beginner",
-    urgent: false,
-  },
-  {
-    id: "b",
-    title: "Advanced Pastry & Desserts (Course B)",
-    description: "Elevate your skills with advanced pastry techniques and elegant desserts",
-    image: "/placeholder.svg",
-    duration: "10 weeks",
-    materials: 15,
-    enrolled: 32,
-    level: "Intermediate",
-    urgent: false,
-  },
-  {
-    id: "c",
-    title: "Professional Cake Decoration (Course C)",
-    description: "Create stunning decorated cakes with professional techniques",
-    image: "/placeholder.svg",
-    duration: "6 weeks",
-    materials: 10,
-    enrolled: 28,
-    level: "Advanced",
-    urgent: false,
-  },
-];
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { getCourseImage } from "@/lib/courseImages";
 
 const stats = [
   { icon: Users, value: "500+", label: "Students Trained" },
@@ -49,6 +16,30 @@ const stats = [
 ];
 
 const Home = () => {
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadFeaturedCourses();
+  }, []);
+
+  const loadFeaturedCourses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .order('level', { ascending: true })
+        .limit(3);
+
+      if (error) throw error;
+      setCourses(data || []);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header role="public" />
@@ -109,9 +100,23 @@ const Home = () => {
         </div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {featuredCourses.map((course) => (
-            <CourseCard key={course.id} {...course} />
-          ))}
+          {loading ? (
+            <p className="col-span-3 text-center text-muted-foreground">Loading courses...</p>
+          ) : (
+            courses.map((course) => (
+              <CourseCard 
+                key={course.id} 
+                id={course.id}
+                title={course.title}
+                description={course.description}
+                image={getCourseImage(course.id, course.image_url || '')}
+                duration={course.duration}
+                materials={course.materials_count || 0}
+                enrolled={0}
+                level={course.level}
+              />
+            ))
+          )}
         </div>
         
         <div className="text-center">

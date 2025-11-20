@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getCourseImage } from "@/lib/courseImages";
 
 interface Course {
   id: string;
@@ -109,7 +110,7 @@ const Courses = () => {
                   id={course.id}
                   title={course.title}
                   description={course.description}
-                  image={course.image_url || ''}
+                  image={getCourseImage(course.id, course.image_url || '')}
                   duration={course.duration}
                   materials={course.materials_count || 0}
                   enrolled={0}

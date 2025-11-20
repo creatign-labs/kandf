@@ -14,16 +14,353 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      batches: {
+        Row: {
+          available_seats: number
+          batch_name: string
+          course_id: string
+          created_at: string
+          days: string
+          id: string
+          start_date: string | null
+          time_slot: string
+          total_seats: number
+          updated_at: string
+        }
+        Insert: {
+          available_seats?: number
+          batch_name: string
+          course_id: string
+          created_at?: string
+          days: string
+          id?: string
+          start_date?: string | null
+          time_slot: string
+          total_seats?: number
+          updated_at?: string
+        }
+        Update: {
+          available_seats?: number
+          batch_name?: string
+          course_id?: string
+          created_at?: string
+          days?: string
+          id?: string
+          start_date?: string | null
+          time_slot?: string
+          total_seats?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          booking_date: string
+          course_id: string
+          created_at: string
+          id: string
+          status: string
+          student_id: string
+          time_slot: string
+          updated_at: string
+        }
+        Insert: {
+          booking_date: string
+          course_id: string
+          created_at?: string
+          id?: string
+          status?: string
+          student_id: string
+          time_slot: string
+          updated_at?: string
+        }
+        Update: {
+          booking_date?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          status?: string
+          student_id?: string
+          time_slot?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          base_fee: number
+          created_at: string
+          description: string
+          duration: string
+          id: string
+          image_url: string | null
+          level: string
+          materials_count: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          base_fee: number
+          created_at?: string
+          description: string
+          duration: string
+          id?: string
+          image_url?: string | null
+          level: string
+          materials_count?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          base_fee?: number
+          created_at?: string
+          description?: string
+          duration?: string
+          id?: string
+          image_url?: string | null
+          level?: string
+          materials_count?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      enrollments: {
+        Row: {
+          batch_id: string
+          course_id: string
+          created_at: string
+          enrollment_date: string
+          id: string
+          progress: number | null
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id: string
+          course_id: string
+          created_at?: string
+          enrollment_date?: string
+          id?: string
+          progress?: number | null
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string
+          course_id?: string
+          created_at?: string
+          enrollment_date?: string
+          id?: string
+          progress?: number | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          enrollment_id: string
+          gst_amount: number
+          id: string
+          payment_date: string
+          payment_method: string
+          status: string
+          stripe_payment_id: string | null
+          student_id: string
+          total_amount: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          enrollment_id: string
+          gst_amount: number
+          id?: string
+          payment_date?: string
+          payment_method: string
+          status?: string
+          stripe_payment_id?: string | null
+          student_id: string
+          total_amount: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          enrollment_id?: string
+          gst_amount?: number
+          id?: string
+          payment_date?: string
+          payment_method?: string
+          status?: string
+          stripe_payment_id?: string | null
+          student_id?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          first_name: string
+          id: string
+          last_name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recipes: {
+        Row: {
+          cook_time: number | null
+          course_id: string
+          created_at: string
+          description: string | null
+          difficulty: string | null
+          id: string
+          ingredients: Json | null
+          instructions: string | null
+          prep_time: number | null
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          cook_time?: number | null
+          course_id: string
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          ingredients?: Json | null
+          instructions?: string | null
+          prep_time?: number | null
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          cook_time?: number | null
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          ingredients?: Json | null
+          instructions?: string | null
+          prep_time?: number | null
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "student" | "chef"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +487,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "student", "chef"],
+    },
   },
 } as const

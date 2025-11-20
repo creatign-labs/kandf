@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -109,12 +109,21 @@ const Enroll = () => {
     );
   }
 
+  // If course not found, redirect to courses page
   if (!course) {
     return (
       <div className="min-h-screen bg-background">
         <Header role="public" />
         <div className="container px-6 py-12">
-          <p className="text-center">Course not found</p>
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-3xl font-bold mb-4">Looking for a Course?</h1>
+            <p className="text-muted-foreground mb-8">
+              The course you're trying to enroll in might not be available. Browse our available courses below.
+            </p>
+            <Link to="/courses">
+              <Button size="lg">Browse All Courses</Button>
+            </Link>
+          </div>
         </div>
       </div>
     );

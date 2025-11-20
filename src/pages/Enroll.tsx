@@ -5,7 +5,9 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useParams, useNavigate } from "react-router-dom";
 import { Calendar, Clock, Users } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const courseData: Record<string, any> = {
   A: {
@@ -41,18 +43,68 @@ const Enroll = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selectedBatch, setSelectedBatch] = useState("");
+  const [user, setUser] = useState<any>(null);
+  const [realCourses, setRealCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const course = courseData[id?.toUpperCase() || "A"];
+
+  useEffect(() => {
+    // Check authentication
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in or sign up to enroll in a course.",
+          variant: "destructive",
+        });
+        navigate("/login");
+      } else {
+        setUser(session.user);
+      }
+    });
+
+    // Fetch real courses from database
+    const fetchCourses = async () => {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*');
+      
+      if (!error && data) {
+        setRealCourses(data);
+      }
+      setLoading(false);
+    };
+
+    fetchCourses();
+  }, [navigate]);
 
   const handleProceed = () => {
     if (!selectedBatch) {
       return;
     }
+
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to continue.",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
+    // Map the mock course ID to real course ID (you'll need to adjust this based on your data)
+    const courseId = id === 'a' ? realCourses[0]?.id : realCourses[0]?.id;
+    const batchId = selectedBatch; // You'll need to fetch actual batch IDs
+
     navigate("/payment", { 
       state: { 
         course: course.title, 
         batch: selectedBatch, 
-        fee: course.fee 
+        fee: course.fee,
+        courseId,
+        batchId,
       } 
     });
   };

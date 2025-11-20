@@ -9,6 +9,7 @@ import { Clock, Calendar, BookOpen, IndianRupee, CheckCircle2 } from "lucide-rea
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CourseCard } from "@/components/CourseCard";
+import { getCourseImage } from "@/lib/courseImages";
 
 const CourseDetail = () => {
   const { id } = useParams();
@@ -99,7 +100,7 @@ const CourseDetail = () => {
                     id={c.id}
                     title={c.title}
                     description={c.description}
-                    image={c.image_url || ''}
+                    image={getCourseImage(c.id, c.image_url || '')}
                     duration={c.duration}
                     materials={c.materials_count || 0}
                     enrolled={0}
@@ -134,7 +135,7 @@ const CourseDetail = () => {
       <div className="relative h-[400px] bg-gradient-to-br from-primary/10 to-accent/10">
         {course.image_url && (
           <img 
-            src={course.image_url} 
+            src={getCourseImage(course.id, course.image_url)} 
             alt={course.title}
             className="absolute inset-0 w-full h-full object-cover opacity-30"
           />

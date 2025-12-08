@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,106 +18,273 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Download, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, Download, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { toast } from "@/hooks/use-toast";
 
 const Attendance = () => {
-  const attendanceHistory = [
-    {
-      date: "2024-01-15",
-      course: "Course A",
-      module: "Module 3",
-      recipe: "Brownies",
-      batch: "Morning (9-12)",
-      students: [
-        { id: "A1", name: "Emma Wilson", status: "present" },
-        { id: "A2", name: "James Brown", status: "present" },
-        { id: "A3", name: "Lucy Davis", status: "absent" },
-        { id: "A4", name: "Tom Harris", status: "present" },
-      ],
-    },
-    {
-      date: "2024-01-14",
-      course: "Course B",
-      module: "Module 2",
-      recipe: "Macarons",
-      batch: "Evening (6-9)",
-      students: [
-        { id: "B1", name: "Olivia Martinez", status: "present" },
-        { id: "B2", name: "Noah Taylor", status: "present" },
-        { id: "B3", name: "Ava Johnson", status: "present" },
-      ],
-    },
-    {
-      date: "2024-01-13",
-      course: "Course A",
-      module: "Module 2",
-      recipe: "Pizza Dough",
-      batch: "Afternoon (2-5)",
-      students: [
-        { id: "A5", name: "Liam White", status: "present" },
-        { id: "A6", name: "Mia Thomas", status: "absent" },
-        { id: "A7", name: "Ethan Clark", status: "present" },
-        { id: "A8", name: "Isabella Lee", status: "present" },
-      ],
-    },
-  ];
+  const [courseFilter, setCourseFilter] = useState("all");
+  const queryClient = useQueryClient();
 
-  const getAttendanceRate = (students: any[]) => {
+  const { data: courses } = useQuery({
+    queryKey: ["courses"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("courses").select("id, title");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: batches } = useQuery({
+    queryKey: ["batches"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("batches")
+        .select(`
+          *,
+          courses (title)
+        `);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: attendance, isLoading } = useQuery({
+    queryKey: ["attendance"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance")
+        .select(`
+          *,
+          batches (
+            batch_name,
+            time_slot,
+            courses (title)
+          ),
+          profiles:student_id (first_name, last_name)
+        `)
+        .order("class_date", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: enrollments } = useQuery({
+    queryKey: ["all-enrollments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("enrollments")
+        .select(`
+          *,
+          profiles:student_id (first_name, last_name),
+          batches (batch_name, time_slot, courses (title))
+        `)
+        .eq("status", "active");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const markAttendanceMutation = useMutation({
+    mutationFn: async ({ 
+      studentId, 
+      batchId, 
+      classDate, 
+      status 
+    }: { 
+      studentId: string; 
+      batchId: string; 
+      classDate: string; 
+      status: string;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from("attendance")
+        .upsert({
+          student_id: studentId,
+          batch_id: batchId,
+          class_date: classDate,
+          status,
+          marked_by: user?.id,
+        }, {
+          onConflict: "student_id,batch_id,class_date",
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      toast({ title: "Attendance marked" });
+    },
+  });
+
+  // Group attendance by date and batch
+  const attendanceByDateBatch = attendance?.reduce((acc, record) => {
+    const key = `${record.class_date}-${record.batch_id}`;
+    if (!acc[key]) {
+      acc[key] = {
+        date: record.class_date,
+        batch: record.batches,
+        students: [],
+      };
+    }
+    acc[key].students.push({
+      id: record.student_id,
+      name: record.profiles ? `${record.profiles.first_name} ${record.profiles.last_name}` : "Unknown",
+      status: record.status,
+    });
+    return acc;
+  }, {} as Record<string, { date: string; batch: any; students: any[] }>) || {};
+
+  const attendanceRecords = Object.values(attendanceByDateBatch);
+
+  const filteredRecords = courseFilter === "all" 
+    ? attendanceRecords
+    : attendanceRecords.filter(r => r.batch?.courses?.title === courseFilter);
+
+  // Calculate stats
+  const totalClasses = attendanceRecords.length;
+  const allStudents = attendance?.filter(a => a.status === "present").length || 0;
+  const totalStudents = attendance?.length || 0;
+  const avgAttendance = totalStudents > 0 ? Math.round((allStudents / totalStudents) * 100) : 0;
+
+  const getAttendanceRate = (students: { status: string }[]) => {
     const present = students.filter(s => s.status === "present").length;
     return Math.round((present / students.length) * 100);
   };
 
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
   return (
     <div className="min-h-screen bg-background">
-      <Header role="chef" userName="Chef Marco" />
+      <Header role="chef" userName="Chef" />
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Attendance History</h1>
-          <p className="text-muted-foreground">View past class attendance records and student participation</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Attendance Management</h1>
+          <p className="text-muted-foreground">Mark and view attendance records</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card className="p-4">
             <div className="text-sm text-muted-foreground mb-1">Total Classes</div>
-            <div className="text-3xl font-bold text-foreground">45</div>
+            <div className="text-3xl font-bold text-foreground">{totalClasses}</div>
           </Card>
           <Card className="p-4">
             <div className="text-sm text-muted-foreground mb-1">Average Attendance</div>
-            <div className="text-3xl font-bold text-green-500">92%</div>
+            <div className="text-3xl font-bold text-green-500">{avgAttendance}%</div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">Completed This Month</div>
-            <div className="text-3xl font-bold text-blue-500">12</div>
+            <div className="text-sm text-muted-foreground mb-1">Active Batches</div>
+            <div className="text-3xl font-bold text-blue-500">{batches?.length || 0}</div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">Students Trained</div>
-            <div className="text-3xl font-bold text-purple-500">67</div>
+            <div className="text-sm text-muted-foreground mb-1">Students Enrolled</div>
+            <div className="text-3xl font-bold text-purple-500">{enrollments?.length || 0}</div>
           </Card>
         </div>
 
+        {/* Mark Today's Attendance */}
+        {enrollments && enrollments.length > 0 && (
+          <Card className="p-6 mb-6">
+            <h2 className="text-xl font-bold mb-4">Mark Today's Attendance</h2>
+            <div className="space-y-4">
+              {batches?.map(batch => {
+                const batchEnrollments = enrollments.filter(e => e.batch_id === batch.id);
+                if (batchEnrollments.length === 0) return null;
+
+                return (
+                  <Card key={batch.id} className="p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold">{batch.batch_name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {batch.courses?.title} • {batch.time_slot}
+                        </p>
+                      </div>
+                      <Badge>{format(new Date(), "MMM d, yyyy")}</Badge>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Student</TableHead>
+                          <TableHead className="text-right">Mark Attendance</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {batchEnrollments.map(enrollment => {
+                          const existingAttendance = attendance?.find(
+                            a => a.student_id === enrollment.student_id && 
+                                 a.batch_id === batch.id && 
+                                 a.class_date === todayStr
+                          );
+                          const profile = (enrollment as any).profiles;
+                          
+                          return (
+                            <TableRow key={enrollment.id}>
+                              <TableCell>
+                                {profile?.first_name} {profile?.last_name}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant={existingAttendance?.status === "present" ? "default" : "outline"}
+                                    className={existingAttendance?.status === "present" ? "bg-green-500 hover:bg-green-600" : ""}
+                                    onClick={() => markAttendanceMutation.mutate({
+                                      studentId: enrollment.student_id,
+                                      batchId: batch.id,
+                                      classDate: todayStr,
+                                      status: "present",
+                                    })}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Present
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={existingAttendance?.status === "absent" ? "default" : "outline"}
+                                    className={existingAttendance?.status === "absent" ? "bg-red-500 hover:bg-red-600" : ""}
+                                    onClick={() => markAttendanceMutation.mutate({
+                                      studentId: enrollment.student_id,
+                                      batchId: batch.id,
+                                      classDate: todayStr,
+                                      status: "absent",
+                                    })}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Absent
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
         <Card className="p-6 mb-6">
           <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <Select defaultValue="all-courses">
+            <Select value={courseFilter} onValueChange={setCourseFilter}>
               <SelectTrigger className="w-full md:w-48">
                 <SelectValue placeholder="Filter by course" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all-courses">All Courses</SelectItem>
-                <SelectItem value="course-a">Course A</SelectItem>
-                <SelectItem value="course-b">Course B</SelectItem>
-                <SelectItem value="course-c">Course C</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select defaultValue="all-months">
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by month" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all-months">All Months</SelectItem>
-                <SelectItem value="january">January 2024</SelectItem>
-                <SelectItem value="december">December 2023</SelectItem>
-                <SelectItem value="november">November 2023</SelectItem>
+                <SelectItem value="all">All Courses</SelectItem>
+                {courses?.map(course => (
+                  <SelectItem key={course.id} value={course.title}>{course.title}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Button variant="outline" className="gap-2 ml-auto">
@@ -125,65 +293,79 @@ const Attendance = () => {
             </Button>
           </div>
 
-          <div className="space-y-4">
-            {attendanceHistory.map((record, index) => (
-              <Card key={index} className="p-4">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <Calendar className="h-5 w-5 text-muted-foreground" />
-                      <span className="font-semibold text-lg">{record.date}</span>
-                      <Badge>{record.batch}</Badge>
-                    </div>
-                    <div className="text-muted-foreground">
-                      {record.course} • {record.module} • {record.recipe}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-green-500">
-                      {getAttendanceRate(record.students)}%
-                    </div>
-                    <div className="text-sm text-muted-foreground">Attendance Rate</div>
-                  </div>
-                </div>
+          <h2 className="text-xl font-bold mb-4">Attendance History</h2>
 
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Student ID</TableHead>
-                        <TableHead>Student Name</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {record.students.map((student) => (
-                        <TableRow key={student.id}>
-                          <TableCell className="font-medium">{student.id}</TableCell>
-                          <TableCell>{student.name}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {student.status === "present" ? (
-                                <>
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
-                                  <Badge className="bg-green-500">Present</Badge>
-                                </>
-                              ) : (
-                                <>
-                                  <XCircle className="h-4 w-4 text-red-500" />
-                                  <Badge className="bg-red-500">Absent</Badge>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredRecords.length > 0 ? (
+            <div className="space-y-4">
+              {filteredRecords.map((record, index) => (
+                <Card key={index} className="p-4">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <Calendar className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-semibold text-lg">
+                          {format(new Date(record.date), "MMM d, yyyy")}
+                        </span>
+                        <Badge>{record.batch?.time_slot}</Badge>
+                      </div>
+                      <div className="text-muted-foreground">
+                        {record.batch?.courses?.title} • {record.batch?.batch_name}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-green-500">
+                        {getAttendanceRate(record.students)}%
+                      </div>
+                      <div className="text-sm text-muted-foreground">Attendance Rate</div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Student Name</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </Card>
-            ))}
-          </div>
+                      </TableHeader>
+                      <TableBody>
+                        {record.students.map((student, sIndex) => (
+                          <TableRow key={sIndex}>
+                            <TableCell>{student.name}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {student.status === "present" ? (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <Badge className="bg-green-500">Present</Badge>
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="h-4 w-4 text-red-500" />
+                                    <Badge className="bg-red-500">Absent</Badge>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-8 text-center">
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No attendance records</h3>
+              <p className="text-muted-foreground">Start marking attendance for your classes.</p>
+            </Card>
+          )}
         </Card>
       </main>
     </div>

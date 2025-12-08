@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          batch_id: string
+          class_date: string
+          created_at: string
+          id: string
+          marked_by: string | null
+          status: string
+          student_id: string
+        }
+        Insert: {
+          batch_id: string
+          class_date: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          status?: string
+          student_id: string
+        }
+        Update: {
+          batch_id?: string
+          class_date?: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batches: {
         Row: {
           available_seats: number
@@ -95,6 +133,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "bookings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certificates: {
+        Row: {
+          certificate_number: string
+          course_id: string
+          created_at: string
+          id: string
+          issue_date: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          certificate_number: string
+          course_id: string
+          created_at?: string
+          id?: string
+          issue_date?: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          certificate_number?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          issue_date?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificates_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
@@ -191,6 +267,256 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inventory: {
+        Row: {
+          category: string
+          cost_per_unit: number | null
+          created_at: string
+          current_stock: number
+          id: string
+          name: string
+          reorder_level: number
+          required_stock: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          cost_per_unit?: number | null
+          created_at?: string
+          current_stock?: number
+          id?: string
+          name: string
+          reorder_level?: number
+          required_stock?: number
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cost_per_unit?: number | null
+          created_at?: string
+          current_stock?: number
+          id?: string
+          name?: string
+          reorder_level?: number
+          required_stock?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_usage: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          id: string
+          inventory_id: string
+          notes: string | null
+          quantity_used: number
+          usage_date: string
+          used_by: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          inventory_id: string
+          notes?: string | null
+          quantity_used: number
+          usage_date?: string
+          used_by: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          inventory_id?: string
+          notes?: string | null
+          quantity_used?: number
+          usage_date?: string
+          used_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_usage_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_usage_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_applications: {
+        Row: {
+          cover_letter: string | null
+          created_at: string
+          id: string
+          job_id: string
+          resume_url: string | null
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          cover_letter?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          resume_url?: string | null
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          cover_letter?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          resume_url?: string | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          company: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          location: string
+          posted_at: string
+          requirements: string[] | null
+          salary_range: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          company: string
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          location: string
+          posted_at?: string
+          requirements?: string[] | null
+          salary_range?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          location?: string
+          posted_at?: string
+          requirements?: string[] | null
+          salary_range?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          email: string
+          id: string
+          message: string | null
+          name: string
+          phone: string | null
+          source: string | null
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          message?: string | null
+          name: string
+          phone?: string | null
+          source?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string | null
+          name?: string
+          phone?: string | null
+          source?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       payments: {
         Row: {

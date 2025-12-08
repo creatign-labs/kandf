@@ -3,43 +3,132 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Link } from "react-router-dom";
-import { FileText, Clock, CheckCircle, Lock } from "lucide-react";
-
-const assessments = [
-  {
-    id: 1,
-    module: "Module 1: Baking Fundamentals",
-    title: "Foundation Knowledge Test",
-    status: "completed",
-    score: 92,
-    questions: 20,
-    duration: "30 mins",
-    completedDate: "Jan 15, 2025",
-  },
-  {
-    id: 2,
-    module: "Module 2: Pastry Techniques",
-    title: "Pastry Skills Assessment",
-    status: "available",
-    score: null,
-    questions: 25,
-    duration: "45 mins",
-    completedDate: null,
-  },
-  {
-    id: 3,
-    module: "Module 3: Cake Decoration",
-    title: "Decoration Mastery Exam",
-    status: "locked",
-    score: null,
-    questions: 30,
-    duration: "60 mins",
-    completedDate: null,
-  },
-];
+import { FileText, Clock, CheckCircle, Lock, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const Assessments = () => {
+  const queryClient = useQueryClient();
+
+  // Fetch user's active enrollment
+  const { data: enrollment } = useQuery({
+    queryKey: ['my-enrollment-assessment'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select('*, courses(*)')
+        .eq('student_id', user.id)
+        .eq('status', 'active')
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    }
+  });
+
+  // Fetch assessments for the course
+  const { data: assessmentsData, isLoading } = useQuery({
+    queryKey: ['course-assessments', enrollment?.course_id],
+    queryFn: async () => {
+      if (!enrollment?.course_id) return { assessments: [], studentAssessments: [] };
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: assessments, error: assessmentsError } = await supabase
+        .from('assessments')
+        .select('*')
+        .eq('course_id', enrollment.course_id)
+        .order('created_at');
+      
+      if (assessmentsError) throw assessmentsError;
+
+      const { data: studentAssessments, error: studentError } = await supabase
+        .from('student_assessments')
+        .select('*')
+        .eq('student_id', user.id);
+      
+      if (studentError) throw studentError;
+
+      return { assessments: assessments || [], studentAssessments: studentAssessments || [] };
+    },
+    enabled: !!enrollment?.course_id
+  });
+
+  const startAssessmentMutation = useMutation({
+    mutationFn: async (assessmentId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('student_assessments')
+        .insert({
+          student_id: user.id,
+          assessment_id: assessmentId,
+          status: 'in_progress',
+          started_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Assessment Started",
+        description: "Good luck! Complete all questions within the time limit.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['course-assessments'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const getAssessmentStatus = (assessmentId: string, index: number) => {
+    const studentAssessment = assessmentsData?.studentAssessments?.find(
+      sa => sa.assessment_id === assessmentId
+    );
+    
+    if (studentAssessment?.status === 'completed') return 'completed';
+    if (studentAssessment?.status === 'in_progress') return 'in_progress';
+    
+    // First assessment is always available
+    if (index === 0) return 'available';
+    
+    // Check if previous assessment is completed
+    const prevAssessment = assessmentsData?.assessments?.[index - 1];
+    if (prevAssessment) {
+      const prevStudentAssessment = assessmentsData?.studentAssessments?.find(
+        sa => sa.assessment_id === prevAssessment.id
+      );
+      if (prevStudentAssessment?.status === 'completed') return 'available';
+    }
+    
+    return 'locked';
+  };
+
+  const completedCount = assessmentsData?.studentAssessments?.filter(sa => sa.status === 'completed').length || 0;
+  const totalCount = assessmentsData?.assessments?.length || 0;
+  const overallProgress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header role="student" />
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header role="student" />
@@ -56,91 +145,122 @@ const Assessments = () => {
             <div className="space-y-3">
               <div className="flex justify-between text-sm mb-2">
                 <span>Overall Course Completion</span>
-                <span className="font-semibold">53%</span>
+                <span className="font-semibold">{enrollment?.progress || 0}%</span>
               </div>
-              <Progress value={53} className="h-2" />
+              <Progress value={enrollment?.progress || 0} className="h-2" />
               <p className="text-sm text-muted-foreground">
-                1 of 3 assessments completed • Keep learning to unlock more!
+                {completedCount} of {totalCount} assessments completed • Keep learning to unlock more!
               </p>
             </div>
           </Card>
 
           <div className="space-y-4">
-            {assessments.map((assessment) => (
-              <Card key={assessment.id} className="p-6 border-border/60">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {assessment.module}
-                    </p>
-                    <h3 className="text-xl font-semibold mb-2">{assessment.title}</h3>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <FileText className="h-4 w-4" />
-                        {assessment.questions} questions
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {assessment.duration}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    {assessment.status === "completed" && (
-                      <Badge variant="default" className="gap-1">
-                        <CheckCircle className="h-3 w-3" />
-                        Completed
-                      </Badge>
-                    )}
-                    {assessment.status === "available" && (
-                      <Badge variant="secondary">Available</Badge>
-                    )}
-                    {assessment.status === "locked" && (
-                      <Badge variant="outline" className="gap-1">
-                        <Lock className="h-3 w-3" />
-                        Locked
-                      </Badge>
-                    )}
-                  </div>
-                </div>
+            {assessmentsData?.assessments?.map((assessment, index) => {
+              const status = getAssessmentStatus(assessment.id, index);
+              const studentAssessment = assessmentsData.studentAssessments?.find(
+                sa => sa.assessment_id === assessment.id
+              );
 
-                {assessment.status === "completed" && (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-green-900">
-                          Your Score: {assessment.score}%
-                        </p>
-                        <p className="text-xs text-green-700">
-                          Completed on {assessment.completedDate}
-                        </p>
+              return (
+                <Card key={assessment.id} className="p-6 border-border/60">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {enrollment?.courses?.title}
+                      </p>
+                      <h3 className="text-xl font-semibold mb-2">{assessment.title}</h3>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-4 w-4" />
+                          {assessment.questions_count} questions
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {assessment.duration_minutes} mins
+                        </span>
                       </div>
-                      <CheckCircle className="h-8 w-8 text-green-600" />
+                    </div>
+                    <div>
+                      {status === "completed" && (
+                        <Badge variant="default" className="gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          Completed
+                        </Badge>
+                      )}
+                      {status === "in_progress" && (
+                        <Badge variant="secondary">In Progress</Badge>
+                      )}
+                      {status === "available" && (
+                        <Badge variant="secondary">Available</Badge>
+                      )}
+                      {status === "locked" && (
+                        <Badge variant="outline" className="gap-1">
+                          <Lock className="h-3 w-3" />
+                          Locked
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                )}
 
-                {assessment.status === "available" && (
-                  <Button size="lg" className="w-full">
-                    Start Assessment
-                  </Button>
-                )}
+                  {status === "completed" && studentAssessment && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-green-900">
+                            Your Score: {studentAssessment.score}%
+                          </p>
+                          <p className="text-xs text-green-700">
+                            Completed on {studentAssessment.completed_at ? new Date(studentAssessment.completed_at).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </div>
+                        <CheckCircle className="h-8 w-8 text-green-600" />
+                      </div>
+                    </div>
+                  )}
 
-                {assessment.status === "locked" && (
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground text-center">
-                      Complete previous modules to unlock this assessment
-                    </p>
-                  </div>
-                )}
+                  {status === "available" && (
+                    <Button 
+                      size="lg" 
+                      className="w-full"
+                      onClick={() => startAssessmentMutation.mutate(assessment.id)}
+                      disabled={startAssessmentMutation.isPending}
+                    >
+                      {startAssessmentMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Starting...</>
+                      ) : (
+                        'Start Assessment'
+                      )}
+                    </Button>
+                  )}
 
-                {assessment.status === "completed" && (
-                  <Button variant="outline" className="w-full mt-2">
-                    View Results
-                  </Button>
-                )}
+                  {status === "in_progress" && (
+                    <Button size="lg" className="w-full">
+                      Continue Assessment
+                    </Button>
+                  )}
+
+                  {status === "locked" && (
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <p className="text-sm text-muted-foreground text-center">
+                        Complete previous assessments to unlock this one
+                      </p>
+                    </div>
+                  )}
+
+                  {status === "completed" && (
+                    <Button variant="outline" className="w-full mt-2">
+                      View Results
+                    </Button>
+                  )}
+                </Card>
+              );
+            })}
+
+            {(!assessmentsData?.assessments || assessmentsData.assessments.length === 0) && (
+              <Card className="p-8 text-center border-border/60">
+                <p className="text-muted-foreground">No assessments available for this course yet.</p>
               </Card>
-            ))}
+            )}
           </div>
         </div>
       </div>

@@ -1,52 +1,45 @@
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bell, AlertCircle, CheckCircle, Info } from "lucide-react";
-
-const notifications = [
-  {
-    id: 1,
-    type: "alert",
-    title: "Class Reminder",
-    message: "Your class 'Danish Pastries' is scheduled for tomorrow at 9:00 AM",
-    time: "2 hours ago",
-    read: false,
-  },
-  {
-    id: 2,
-    type: "success",
-    title: "Booking Confirmed",
-    message: "Your slot for 'Croissants' on Jan 25 has been confirmed",
-    time: "1 day ago",
-    read: false,
-  },
-  {
-    id: 3,
-    type: "info",
-    title: "New Recipe Available",
-    message: "Module 3: Cake Decoration is now unlocked. Start learning new techniques!",
-    time: "2 days ago",
-    read: true,
-  },
-  {
-    id: 4,
-    type: "alert",
-    title: "Cancellation Deadline",
-    message: "Last chance to cancel your booking for Jan 22. Deadline: 11:59 PM tonight",
-    time: "3 days ago",
-    read: true,
-  },
-  {
-    id: 5,
-    type: "success",
-    title: "Assessment Completed",
-    message: "Great job! You scored 92% on your Module 1 assessment",
-    time: "1 week ago",
-    read: true,
-  },
-];
+import { Bell, AlertCircle, CheckCircle, Info, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { formatDistanceToNow } from "date-fns";
 
 const Notifications = () => {
+  const queryClient = useQueryClient();
+
+  const { data: notifications, isLoading } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("id", notificationId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
   const getIcon = (type: string) => {
     switch (type) {
       case "alert":
@@ -57,6 +50,12 @@ const Notifications = () => {
         return <Info className="h-5 w-5 text-blue-600" />;
       default:
         return <Bell className="h-5 w-5" />;
+    }
+  };
+
+  const handleNotificationClick = (notification: { id: string; read: boolean }) => {
+    if (!notification.read) {
+      markAsReadMutation.mutate(notification.id);
     }
   };
 
@@ -71,32 +70,49 @@ const Notifications = () => {
             <p className="text-muted-foreground">Stay updated with your classes and progress</p>
           </div>
 
-          <div className="space-y-3">
-            {notifications.map((notification) => (
-              <Card
-                key={notification.id}
-                className={`p-5 border-border/60 transition-all hover:shadow-md ${
-                  !notification.read ? "bg-accent/20 border-primary/20" : ""
-                }`}
-              >
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 mt-1">{getIcon(notification.type)}</div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold">{notification.title}</h3>
-                      {!notification.read && (
-                        <Badge variant="default" className="ml-2">New</Badge>
-                      )}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : notifications && notifications.length > 0 ? (
+            <div className="space-y-3">
+              {notifications.map((notification) => (
+                <Card
+                  key={notification.id}
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`p-5 border-border/60 transition-all hover:shadow-md cursor-pointer ${
+                    !notification.read ? "bg-accent/20 border-primary/20" : ""
+                  }`}
+                >
+                  <div className="flex gap-4">
+                    <div className="flex-shrink-0 mt-1">{getIcon(notification.type)}</div>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold">{notification.title}</h3>
+                        {!notification.read && (
+                          <Badge variant="default" className="ml-2">New</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{notification.time}</p>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-8 text-center">
+              <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No notifications yet</h3>
+              <p className="text-muted-foreground">
+                You'll receive notifications about classes, bookings, and updates here.
+              </p>
+            </Card>
+          )}
         </div>
       </div>
     </div>

@@ -4,21 +4,108 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { MessageSquare, Star } from "lucide-react";
+import { MessageSquare, Star, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Feedback = () => {
   const [rating, setRating] = useState("5");
   const [category, setCategory] = useState("course");
+  const [feedbackText, setFeedbackText] = useState("");
+  const [suggestions, setSuggestions] = useState("");
+  const queryClient = useQueryClient();
+
+  const { data: recentFeedback, isLoading } = useQuery({
+    queryKey: ['my-feedback'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('feedback')
+        .select('*')
+        .eq('student_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('feedback')
+        .insert({
+          student_id: user.id,
+          category,
+          rating: parseInt(rating),
+          feedback_text: feedbackText,
+          suggestions: suggestions || null
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Feedback submitted!",
+        description: "Thank you for helping us improve. Your feedback is valuable to us.",
+      });
+      setFeedbackText("");
+      setSuggestions("");
+      setRating("5");
+      setCategory("course");
+      queryClient.invalidateQueries({ queryKey: ['my-feedback'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Submission failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Feedback submitted!",
-      description: "Thank you for helping us improve. Your feedback is valuable to us.",
-    });
+    if (!feedbackText.trim()) {
+      toast({
+        title: "Feedback required",
+        description: "Please enter your feedback before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    submitMutation.mutate();
   };
+
+  const getCategoryLabel = (cat: string) => {
+    const labels: Record<string, string> = {
+      course: "Course Content",
+      instructor: "Instructor",
+      facilities: "Facilities",
+      platform: "Platform",
+      other: "Other"
+    };
+    return labels[cat] || cat;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header role="student" />
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -135,6 +222,8 @@ const Feedback = () => {
                     placeholder="Please share your detailed feedback here. What did you like? What can we improve?"
                     rows={6}
                     required
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
                   />
                 </div>
 
@@ -144,15 +233,51 @@ const Feedback = () => {
                     id="suggestions"
                     placeholder="Any specific suggestions or recommendations?"
                     rows={4}
+                    value={suggestions}
+                    onChange={(e) => setSuggestions(e.target.value)}
                   />
                 </div>
               </div>
             </Card>
 
-            <Button type="submit" size="lg" className="w-full">
-              Submit Feedback
+            <Button 
+              type="submit" 
+              size="lg" 
+              className="w-full"
+              disabled={submitMutation.isPending}
+            >
+              {submitMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</>
+              ) : (
+                'Submit Feedback'
+              )}
             </Button>
           </form>
+
+          {recentFeedback && recentFeedback.length > 0 && (
+            <Card className="p-6 border-border/60 mt-8">
+              <h3 className="font-semibold mb-4">Your Recent Feedback</h3>
+              <div className="space-y-4">
+                {recentFeedback.map((fb) => (
+                  <div key={fb.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">{getCategoryLabel(fb.category)}</span>
+                      <div className="flex items-center gap-1">
+                        {[...Array(fb.rating)].map((_, i) => (
+                          <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{fb.feedback_text}</p>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                      Submitted {new Date(fb.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>

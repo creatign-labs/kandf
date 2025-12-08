@@ -3,21 +3,129 @@ import { StatsCard } from "@/components/StatsCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, TrendingUp, Calendar, Package, AlertCircle } from "lucide-react";
+import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 const AdminDashboard = () => {
-  const leads = [
-    { id: "L001", name: "Emily Parker", course: "Course A", stage: "New", date: "2024-01-15" },
-    { id: "L002", name: "Michael Chen", course: "Course B", stage: "Contacted", date: "2024-01-14" },
-    { id: "L003", name: "Sarah Williams", course: "Course A", stage: "Visited", date: "2024-01-13" },
-    { id: "L004", name: "James Brown", course: "Course C", stage: "Converted", date: "2024-01-12" },
-  ];
+  // Fetch active students count
+  const { data: studentsCount } = useQuery({
+    queryKey: ['admin-students-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      
+      if (error) throw error;
+      return count || 0;
+    }
+  });
 
-  const todaysClasses = [
-    { time: "09:00 AM", course: "Course A - Bread Basics", chef: "Chef Marie", students: 8, capacity: 10 },
-    { time: "11:00 AM", course: "Course B - Pastry Fundamentals", chef: "Chef Pierre", students: 10, capacity: 10 },
-    { time: "02:00 PM", course: "Course C - Cake Decoration", chef: "Chef Sophie", students: 6, capacity: 8 },
-  ];
+  // Fetch new leads this week
+  const { data: leadsData, isLoading: leadsLoading } = useQuery({
+    queryKey: ['admin-leads-recent'],
+    queryFn: async () => {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*, courses(title)')
+        .gte('created_at', oneWeekAgo.toISOString())
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch all recent leads for display
+  const { data: recentLeads } = useQuery({
+    queryKey: ['admin-leads-display'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*, courses(title)')
+        .order('created_at', { ascending: false })
+        .limit(4);
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch today's batches
+  const { data: batchesData, isLoading: batchesLoading } = useQuery({
+    queryKey: ['admin-todays-batches'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('batches')
+        .select('*, courses(title)')
+        .order('time_slot')
+        .limit(5);
+      
+      if (error) throw error;
+
+      // Get enrollment counts for each batch
+      const batchesWithCounts = await Promise.all(
+        (data || []).map(async (batch) => {
+          const { count } = await supabase
+            .from('enrollments')
+            .select('*', { count: 'exact', head: true })
+            .eq('batch_id', batch.id)
+            .eq('status', 'active');
+          
+          return {
+            ...batch,
+            studentCount: count || 0
+          };
+        })
+      );
+
+      return batchesWithCounts;
+    }
+  });
+
+  // Fetch low stock inventory items
+  const { data: lowStockItems } = useQuery({
+    queryKey: ['admin-low-stock'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('*')
+        .lt('current_stock', 10)
+        .order('current_stock')
+        .limit(3);
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const isLoading = leadsLoading || batchesLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header role="admin" userName="Admin" />
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  const getStageVariant = (stage: string) => {
+    switch (stage) {
+      case "new": return "default";
+      case "contacted": return "secondary";
+      case "visited": return "outline";
+      case "converted": return "default";
+      default: return "outline";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,29 +142,26 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="Active Students"
-            value="148"
+            value={String(studentsCount || 0)}
             icon={Users}
             variant="primary"
-            trend="up"
-            trendValue="+12%"
           />
           <StatsCard
             title="New Leads"
-            value="23"
+            value={String(leadsData?.length || 0)}
             icon={TrendingUp}
             variant="success"
             description="This week"
           />
           <StatsCard
-            title="Today's Classes"
-            value="12"
+            title="Active Batches"
+            value={String(batchesData?.length || 0)}
             icon={Calendar}
             variant="warning"
-            description="8 ongoing, 4 upcoming"
           />
           <StatsCard
             title="Inventory Alerts"
-            value="5"
+            value={String(lowStockItems?.length || 0)}
             icon={AlertCircle}
             variant="default"
             description="Low stock items"
@@ -73,13 +178,13 @@ const AdminDashboard = () => {
                   <h2 className="text-xl font-semibold mb-1">Recent Leads</h2>
                   <p className="text-sm text-muted-foreground">Manage your sales pipeline</p>
                 </div>
-                <Button variant="outline" size="sm">
-                  View All
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/admin/leads">View All</Link>
                 </Button>
               </div>
 
               <div className="space-y-3">
-                {leads.map((lead) => (
+                {recentLeads?.map((lead) => (
                   <div key={lead.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -87,22 +192,22 @@ const AdminDashboard = () => {
                       </div>
                       <div>
                         <div className="font-medium">{lead.name}</div>
-                        <div className="text-sm text-muted-foreground">{lead.course}</div>
+                        <div className="text-sm text-muted-foreground">{lead.courses?.title || 'No course'}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <Badge variant={
-                        lead.stage === "New" ? "default" :
-                        lead.stage === "Contacted" ? "secondary" :
-                        lead.stage === "Visited" ? "outline" :
-                        "default"
-                      }>
-                        {lead.stage}
+                      <Badge variant={getStageVariant(lead.stage)}>
+                        {lead.stage.charAt(0).toUpperCase() + lead.stage.slice(1)}
                       </Badge>
-                      <span className="text-sm text-muted-foreground">{lead.date}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(lead.created_at).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                 ))}
+                {(!recentLeads || recentLeads.length === 0) && (
+                  <p className="text-center text-muted-foreground py-4">No recent leads</p>
+                )}
               </div>
             </Card>
 
@@ -110,33 +215,33 @@ const AdminDashboard = () => {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-xl font-semibold mb-1">Today's Schedule</h2>
-                  <p className="text-sm text-muted-foreground">All classes for today</p>
+                  <h2 className="text-xl font-semibold mb-1">Active Batches</h2>
+                  <p className="text-sm text-muted-foreground">All running batches</p>
                 </div>
-                <Button variant="outline" size="sm">
-                  Full Calendar
-                </Button>
               </div>
 
               <div className="space-y-3">
-                {todaysClasses.map((cls, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                {batchesData?.map((batch) => (
+                  <div key={batch.id} className="flex items-center justify-between p-4 rounded-lg border bg-card">
                     <div className="flex items-center gap-4">
                       <div className="text-center min-w-[80px]">
-                        <div className="text-sm font-medium text-primary">{cls.time}</div>
+                        <div className="text-sm font-medium text-primary">{batch.time_slot}</div>
                       </div>
                       <div>
-                        <div className="font-medium">{cls.course}</div>
-                        <div className="text-sm text-muted-foreground">{cls.chef}</div>
+                        <div className="font-medium">{batch.courses?.title}</div>
+                        <div className="text-sm text-muted-foreground">{batch.batch_name} • {batch.days}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Badge variant={cls.students === cls.capacity ? "default" : "outline"}>
-                        {cls.students}/{cls.capacity} students
+                      <Badge variant={batch.studentCount === batch.total_seats ? "default" : "outline"}>
+                        {batch.studentCount}/{batch.total_seats} students
                       </Badge>
                     </div>
                   </div>
                 ))}
+                {(!batchesData || batchesData.length === 0) && (
+                  <p className="text-center text-muted-foreground py-4">No active batches</p>
+                )}
               </div>
             </Card>
           </div>
@@ -147,17 +252,23 @@ const AdminDashboard = () => {
             <Card className="p-6">
               <h3 className="font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
-                  <Users className="h-4 w-4 mr-2" />
-                  Add New Student
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/students">
+                    <Users className="h-4 w-4 mr-2" />
+                    View Students
+                  </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Schedule Class
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/leads">
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Manage Leads
+                  </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Package className="h-4 w-4 mr-2" />
-                  Update Inventory
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/inventory">
+                    <Package className="h-4 w-4 mr-2" />
+                    Update Inventory
+                  </Link>
                 </Button>
               </div>
             </Card>
@@ -168,19 +279,23 @@ const AdminDashboard = () => {
                 <AlertCircle className="h-5 w-5 text-warning" />
                 <h3 className="font-semibold">Inventory Alerts</h3>
               </div>
-              <div className="space-y-3">
-                <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
-                  <div className="font-medium text-sm">All-purpose flour</div>
-                  <div className="text-sm text-muted-foreground">Low stock: 5kg remaining</div>
+              {lowStockItems && lowStockItems.length > 0 ? (
+                <div className="space-y-3">
+                  {lowStockItems.map((item) => (
+                    <div key={item.id} className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                      <div className="font-medium text-sm">{item.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Low stock: {item.current_stock} {item.unit} remaining
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="link" size="sm" className="w-full" asChild>
+                    <Link to="/admin/inventory">View All Alerts</Link>
+                  </Button>
                 </div>
-                <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
-                  <div className="font-medium text-sm">Butter (unsalted)</div>
-                  <div className="text-sm text-muted-foreground">Order needed for tomorrow</div>
-                </div>
-                <Button variant="link" size="sm" className="w-full">
-                  View All Alerts
-                </Button>
-              </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No inventory alerts</p>
+              )}
             </Card>
           </div>
         </div>

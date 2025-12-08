@@ -4,64 +4,176 @@ import { CourseCard } from "@/components/CourseCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Award, Clock, Target, Calendar, Bell } from "lucide-react";
+import { BookOpen, Award, Clock, Target, Bell, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { getCourseImage } from "@/lib/courseImages";
 
 const StudentDashboard = () => {
+  // Fetch user profile
+  const { data: profile } = useQuery({
+    queryKey: ['my-profile'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch user's enrollments with courses
+  const { data: enrollments, isLoading: enrollmentsLoading } = useQuery({
+    queryKey: ['my-enrollments'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select('*, courses(*)')
+        .eq('student_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch available courses for new enrollment
+  const { data: courses } = useQuery({
+    queryKey: ['available-courses'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .limit(4);
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch notifications count
+  const { data: notificationsCount } = useQuery({
+    queryKey: ['unread-notifications-count'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return 0;
+      
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
+      
+      if (error) return 0;
+      return count || 0;
+    }
+  });
+
+  // Fetch certificates count
+  const { data: certificatesCount } = useQuery({
+    queryKey: ['certificates-count'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return 0;
+      
+      const { count, error } = await supabase
+        .from('certificates')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', user.id);
+      
+      if (error) return 0;
+      return count || 0;
+    }
+  });
+
+  const activeEnrollments = enrollments?.filter(e => e.status === 'active') || [];
+  const completedEnrollments = enrollments?.filter(e => e.status === 'completed') || [];
+  const averageProgress = activeEnrollments.length > 0
+    ? Math.round(activeEnrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / activeEnrollments.length)
+    : 0;
+
+  const firstName = profile?.first_name || 'Student';
+  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
+
+  if (enrollmentsLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header role="student" userName={firstName} />
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <Header role="student" userName="Sarah Johnson" />
+      <Header role="student" userName={firstName} />
       
       <div className="container px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Good morning, Sarah 👋</h1>
+          <h1 className="text-3xl font-bold mb-2">{greeting}, {firstName} 👋</h1>
           <p className="text-muted-foreground">Welcome to Knead & Frost, check your priority learning.</p>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
-            title="Points"
-            value="100"
+            title="Average Progress"
+            value={`${averageProgress}%`}
             icon={Target}
             variant="primary"
           />
           <StatsCard
-            title="Badges"
-            value="32"
+            title="Certificates"
+            value={String(certificatesCount || 0)}
             icon={Award}
             variant="success"
           />
           <StatsCard
-            title="Learning Content"
-            value="120"
+            title="Active Courses"
+            value={String(activeEnrollments.length)}
             icon={BookOpen}
             variant="default"
           />
           <StatsCard
-            title="Learning Time"
-            value="44h"
+            title="Completed"
+            value={String(completedEnrollments.length)}
             icon={Clock}
             variant="warning"
           />
         </div>
 
         {/* Feature Discussion Banner */}
-        <Card className="p-6 mb-8 bg-gradient-to-r from-success/10 via-background to-background border-success/20">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <Badge className="mb-3 bg-success text-success-foreground">New</Badge>
-              <h3 className="font-semibold text-lg mb-2">Feature Discussion</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                The learning content are a new feature in "Feature Discussion" can be explain the material problem chat.
-              </p>
-              <Button size="sm" variant="outline">
-                Go to detail →
-              </Button>
+        {notificationsCount && notificationsCount > 0 && (
+          <Card className="p-6 mb-8 bg-gradient-to-r from-success/10 via-background to-background border-success/20">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <Badge className="mb-3 bg-success text-success-foreground">
+                  {notificationsCount} New
+                </Badge>
+                <h3 className="font-semibold text-lg mb-2">You have unread notifications</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Check your notifications for important updates about your courses and bookings.
+                </p>
+                <Button size="sm" variant="outline" asChild>
+                  <Link to="/student/notifications">View Notifications →</Link>
+                </Button>
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -74,95 +186,82 @@ const StudentDashboard = () => {
                   <p className="text-sm text-muted-foreground">Continue where you left off</p>
                 </div>
                 <Button variant="link" asChild>
-                  <Link to="/student/courses">View all</Link>
+                  <Link to="/student/my-course">View all</Link>
                 </Button>
               </div>
 
-              <div className="space-y-4">
-                <Card className="p-6">
-                  <div className="flex gap-4">
-                    <div className="h-20 w-32 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
-                      <BookOpen className="h-8 w-8 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Badge variant="secondary" className="mb-2">
-                        <BookOpen className="h-3 w-3 mr-1" />
-                        Course
-                      </Badge>
-                      <h3 className="font-semibold mb-1">Mastering UI/UX Design: A Guide...</h3>
-                      <div className="flex items-center gap-6 text-sm text-muted-foreground mt-3">
-                        <span className="flex items-center gap-1">
-                          <BookOpen className="h-4 w-4" />
-                          5 Material
-                        </span>
-                        <span>Completion: -</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          1 Day
-                        </span>
+              {activeEnrollments.length > 0 ? (
+                <div className="space-y-4">
+                  {activeEnrollments.slice(0, 2).map((enrollment) => (
+                    <Card key={enrollment.id} className="p-6">
+                      <div className="flex gap-4">
+                        <div 
+                          className="h-20 w-32 rounded-lg bg-cover bg-center flex-shrink-0"
+                          style={{ 
+                            backgroundImage: `url(${getCourseImage(enrollment.courses?.title || '')})`
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <Badge variant="secondary" className="mb-2">
+                            <BookOpen className="h-3 w-3 mr-1" />
+                            Course
+                          </Badge>
+                          <h3 className="font-semibold mb-1">{enrollment.courses?.title}</h3>
+                          <div className="flex items-center gap-6 text-sm text-muted-foreground mt-3">
+                            <span className="flex items-center gap-1">
+                              <BookOpen className="h-4 w-4" />
+                              {enrollment.courses?.materials_count || 0} Materials
+                            </span>
+                            <span className={enrollment.progress && enrollment.progress > 50 ? "text-success" : ""}>
+                              Completion: {enrollment.progress || 0}%
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {enrollment.courses?.duration}
+                            </span>
+                          </div>
+                        </div>
+                        <Button asChild>
+                          <Link to="/student/my-course">
+                            {enrollment.progress && enrollment.progress > 0 ? 'Continue' : 'Start'}
+                          </Link>
+                        </Button>
                       </div>
-                    </div>
-                    <Button>Start</Button>
-                  </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="p-8 text-center">
+                  <p className="text-muted-foreground mb-4">You haven't enrolled in any courses yet.</p>
+                  <Button asChild>
+                    <Link to="/courses">Browse Courses</Link>
+                  </Button>
                 </Card>
-
-                <Card className="p-6">
-                  <div className="flex gap-4">
-                    <div className="h-20 w-32 rounded-lg bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center flex-shrink-0">
-                      <BookOpen className="h-8 w-8 text-accent" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Badge variant="secondary" className="mb-2">
-                        <BookOpen className="h-3 w-3 mr-1" />
-                        Course
-                      </Badge>
-                      <h3 className="font-semibold mb-1">Creating Engaging Learning Jour...</h3>
-                      <div className="flex items-center gap-6 text-sm text-muted-foreground mt-3">
-                        <span className="flex items-center gap-1">
-                          <BookOpen className="h-4 w-4" />
-                          12 Material
-                        </span>
-                        <span className="text-success">Completion: 64%</span>
-                        <span className="flex items-center gap-1 text-destructive">
-                          <Clock className="h-4 w-4" />
-                          12 hrs
-                        </span>
-                      </div>
-                    </div>
-                    <Button>Continue</Button>
-                  </div>
-                </Card>
-              </div>
+              )}
             </div>
 
-            {/* New Enrollment */}
+            {/* Available Courses */}
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">New enrollment</h2>
+                <h2 className="text-xl font-semibold">Explore more courses</h2>
                 <Button variant="link" asChild>
                   <Link to="/courses">View all</Link>
                 </Button>
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
-                <CourseCard
-                  id="engage"
-                  title="Enhancing Learning Engagement Through Thoughtful UI/UX"
-                  description="Learn to create engaging learning experiences"
-                  image="/placeholder.svg"
-                  duration="10 materials"
-                  materials={10}
-                  level="Prototyping"
-                />
-                <CourseCard
-                  id="ui101"
-                  title="UI/UX 101 - For Beginner to be great and good Designer"
-                  description="Master the fundamentals of UI/UX design"
-                  image="/placeholder.svg"
-                  duration="8 materials"
-                  materials={8}
-                  level="Prototyping"
-                />
+                {courses?.slice(0, 2).map((course) => (
+                  <CourseCard
+                    key={course.id}
+                    id={course.id}
+                    title={course.title}
+                    description={course.description}
+                    image={getCourseImage(course.title)}
+                    duration={course.duration}
+                    materials={course.materials_count || 0}
+                    level={course.level}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -173,8 +272,10 @@ const StudentDashboard = () => {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold">Goals</h3>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Bell className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <Link to="/student/notifications">
+                    <Bell className="h-4 w-4" />
+                  </Link>
                 </Button>
               </div>
               
@@ -198,43 +299,56 @@ const StudentDashboard = () => {
                         stroke="currentColor"
                         strokeWidth="8"
                         fill="none"
-                        strokeDasharray={`${(6/30) * 2 * Math.PI * 56} ${2 * Math.PI * 56}`}
+                        strokeDasharray={`${(averageProgress/100) * 2 * Math.PI * 56} ${2 * Math.PI * 56}`}
                         className="text-success"
                       />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center">
-                        <div className="text-2xl font-bold">6/30</div>
-                        <div className="text-xs text-muted-foreground">learning</div>
+                        <div className="text-2xl font-bold">{averageProgress}%</div>
+                        <div className="text-xs text-muted-foreground">progress</div>
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="text-sm font-medium">Daily Goal: 6/30 learning</div>
-                    <div className="text-sm text-muted-foreground">
-                      Your Longest streak: 1 Day<br />
-                      <span className="text-xs">(28 Sep 23 - 4 Okt 23)</span>
+                    <div className="text-sm font-medium">
+                      {activeEnrollments.length} Active Course{activeEnrollments.length !== 1 ? 's' : ''}
                     </div>
-                    <Button variant="link" size="sm" className="text-primary">
-                      See Detail
+                    <div className="text-sm text-muted-foreground">
+                      {completedEnrollments.length} Completed
+                    </div>
+                    <Button variant="link" size="sm" className="text-primary" asChild>
+                      <Link to="/student/my-course">See Detail</Link>
                     </Button>
                   </div>
                 </div>
               </div>
             </Card>
 
-            {/* Leaderboard */}
+            {/* Quick Actions */}
             <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Leaderboard</h3>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Bell className="h-4 w-4" />
+              <h3 className="font-semibold mb-4">Quick Actions</h3>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/student/book-slot">
+                    <Clock className="h-4 w-4 mr-2" />
+                    Book a Class
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/student/my-bookings">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    My Bookings
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/student/certificates">
+                    <Award className="h-4 w-4 mr-2" />
+                    Certificates
+                  </Link>
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                View your ranking and compete with other students
-              </p>
             </Card>
           </div>
         </div>

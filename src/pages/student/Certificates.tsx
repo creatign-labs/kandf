@@ -2,7 +2,7 @@ import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Award, Lock, Loader2 } from "lucide-react";
+import { Download, Award, Lock, Loader2, Share2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,23 @@ const Certificates = () => {
     },
   });
 
+  const { data: profile } = useQuery({
+    queryKey: ["my-profile"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: enrollments } = useQuery({
     queryKey: ["enrollments-progress"],
     queryFn: async () => {
@@ -49,11 +66,136 @@ const Certificates = () => {
     },
   });
 
-  const handleDownload = (title: string) => {
-    toast({
-      title: "Downloading certificate...",
-      description: `${title} will be downloaded shortly.`,
-    });
+  const generatePDF = (cert: any) => {
+    const studentName = `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() || "Student";
+    const courseTitle = cert.courses?.title || "Course";
+    const issueDate = format(new Date(cert.issueDate), "MMMM d, yyyy");
+
+    // Create PDF content using canvas
+    const canvas = document.createElement("canvas");
+    canvas.width = 1056;
+    canvas.height = 816;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      toast({ title: "Error generating PDF", variant: "destructive" });
+      return;
+    }
+
+    // Background
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, "#fef9f3");
+    gradient.addColorStop(1, "#fdf2e9");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Border
+    ctx.strokeStyle = "#c4a574";
+    ctx.lineWidth = 12;
+    ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
+
+    // Inner border
+    ctx.strokeStyle = "#d4b896";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
+
+    // Title
+    ctx.fillStyle = "#8b4513";
+    ctx.font = "bold 56px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Certificate of Completion", canvas.width / 2, 150);
+
+    // Decorative line
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2 - 200, 180);
+    ctx.lineTo(canvas.width / 2 + 200, 180);
+    ctx.strokeStyle = "#c4a574";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // "This is to certify that"
+    ctx.fillStyle = "#5c4033";
+    ctx.font = "italic 24px Georgia, serif";
+    ctx.fillText("This is to certify that", canvas.width / 2, 260);
+
+    // Student name
+    ctx.fillStyle = "#2d1810";
+    ctx.font = "bold 48px Georgia, serif";
+    ctx.fillText(studentName, canvas.width / 2, 340);
+
+    // "has successfully completed"
+    ctx.fillStyle = "#5c4033";
+    ctx.font = "italic 24px Georgia, serif";
+    ctx.fillText("has successfully completed the course", canvas.width / 2, 410);
+
+    // Course title
+    ctx.fillStyle = "#8b4513";
+    ctx.font = "bold 36px Georgia, serif";
+    ctx.fillText(courseTitle, canvas.width / 2, 480);
+
+    // Institution
+    ctx.fillStyle = "#5c4033";
+    ctx.font = "italic 22px Georgia, serif";
+    ctx.fillText("at Knead & Frost Baking Academy", canvas.width / 2, 530);
+
+    // Date
+    ctx.fillStyle = "#5c4033";
+    ctx.font = "20px Georgia, serif";
+    ctx.fillText(`Issued on ${issueDate}`, canvas.width / 2, 610);
+
+    // Certificate number
+    ctx.fillStyle = "#8b7355";
+    ctx.font = "16px Georgia, serif";
+    ctx.fillText(`Certificate #: ${cert.certificateNumber}`, canvas.width / 2, 650);
+
+    // Signature line
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2 - 100, 720);
+    ctx.lineTo(canvas.width / 2 + 100, 720);
+    ctx.strokeStyle = "#5c4033";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = "#5c4033";
+    ctx.font = "16px Georgia, serif";
+    ctx.fillText("Director, Knead & Frost Academy", canvas.width / 2, 750);
+
+    // Convert to blob and download
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${courseTitle.replace(/\s+/g, "_")}_Certificate.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast({ title: "Certificate downloaded!" });
+      }
+    }, "image/png");
+  };
+
+  const handleShare = async (cert: any) => {
+    const courseTitle = cert.courses?.title || "Course";
+    const shareData = {
+      title: `${courseTitle} Certificate`,
+      text: `I just completed ${courseTitle} at Knead & Frost Baking Academy!`,
+      url: window.location.origin,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        // User cancelled
+      }
+    } else {
+      await navigator.clipboard.writeText(
+        `I just completed ${courseTitle} at Knead & Frost Baking Academy! ${window.location.origin}`
+      );
+      toast({ title: "Link copied to clipboard!" });
+    }
   };
 
   // Combine certificates with in-progress enrollments
@@ -65,6 +207,7 @@ const Certificates = () => {
       status: "available" as const,
       progress: 100,
       certificateNumber: cert.certificate_number,
+      courses: cert.courses,
     })),
     ...(enrollments || [])
       .filter(enr => !certificates?.some(c => c.course_id === enr.course_id))
@@ -75,6 +218,7 @@ const Certificates = () => {
         status: (enr.progress || 0) > 0 ? "in-progress" : "locked" as const,
         progress: enr.progress || 0,
         certificateNumber: null,
+        courses: enr.courses,
       })),
   ];
 
@@ -150,13 +294,14 @@ const Certificates = () => {
                           </div>
                           <div className="flex gap-2">
                             <Button 
-                              onClick={() => handleDownload(cert.title)}
+                              onClick={() => generatePDF(cert)}
                               className="flex-1"
                             >
-                              <Download className="h-4 w-4" />
-                              Download PDF
+                              <Download className="h-4 w-4 mr-2" />
+                              Download Certificate
                             </Button>
-                            <Button variant="outline">
+                            <Button variant="outline" onClick={() => handleShare(cert)}>
+                              <Share2 className="h-4 w-4 mr-2" />
                               Share
                             </Button>
                           </div>
@@ -203,7 +348,7 @@ const Certificates = () => {
               <li>• Certificates are issued upon successful completion of module assessments</li>
               <li>• All certificates are digitally signed and verifiable</li>
               <li>• Share your certificates on LinkedIn and other professional networks</li>
-              <li>• Certificates can be downloaded in PDF format</li>
+              <li>• Certificates can be downloaded as high-quality images</li>
             </ul>
           </Card>
         </div>

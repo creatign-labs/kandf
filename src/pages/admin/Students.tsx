@@ -49,11 +49,11 @@ const Students = () => {
             .from('profiles')
             .select('id, first_name, last_name, phone')
             .eq('id', enrollment.student_id)
-            .single();
+            .maybeSingle();
           return { ...enrollment, profile };
         })
       );
-      return data;
+      return enrollmentsWithProfiles;
     }
   });
 
@@ -75,8 +75,8 @@ const Students = () => {
     if (!enrollments) return [];
     
     return enrollments.filter((enrollment) => {
-      const fullName = `${enrollment.profiles?.first_name || ''} ${enrollment.profiles?.last_name || ''}`.toLowerCase();
-      const phone = enrollment.profiles?.phone?.toLowerCase() || '';
+      const fullName = `${enrollment.profile?.first_name || ''} ${enrollment.profile?.last_name || ''}`.toLowerCase();
+      const phone = enrollment.profile?.phone?.toLowerCase() || '';
       const matchesSearch = searchQuery === "" || 
         fullName.includes(searchQuery.toLowerCase()) ||
         phone.includes(searchQuery.toLowerCase());
@@ -211,13 +211,13 @@ const Students = () => {
                       <div className="flex items-center gap-2">
                         <UserCircle className="h-8 w-8 text-muted-foreground" />
                         <span className="font-medium">
-                          {enrollment.profiles?.first_name} {enrollment.profiles?.last_name}
+                          {enrollment.profile?.first_name} {enrollment.profile?.last_name}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <span className="text-muted-foreground">
-                        {enrollment.profiles?.phone || 'N/A'}
+                        {enrollment.profile?.phone || 'N/A'}
                       </span>
                     </TableCell>
                     <TableCell>{enrollment.courses?.title}</TableCell>

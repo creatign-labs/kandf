@@ -19,7 +19,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Phone, Mail, Calendar, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Search, Phone, Mail, Calendar, Loader2, MoreHorizontal, MessageSquare, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -28,6 +40,7 @@ import { toast } from "@/hooks/use-toast";
 const Leads = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
+  const [selectedLead, setSelectedLead] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const { data: leads, isLoading } = useQuery({
@@ -59,6 +72,23 @@ const Leads = () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       toast({ title: "Lead updated successfully" });
     },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteLeadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("leads").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast({ title: "Lead deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
   });
 
   const getStageColor = (stage: string) => {
@@ -76,6 +106,17 @@ const Leads = () => {
       default:
         return "bg-gray-500";
     }
+  };
+
+  const getNextStages = (currentStage: string) => {
+    const stageFlow: Record<string, string[]> = {
+      new: ["contacted", "lost"],
+      contacted: ["follow-up", "converted", "lost"],
+      "follow-up": ["contacted", "converted", "lost"],
+      converted: [],
+      lost: ["new"],
+    };
+    return stageFlow[currentStage] || [];
   };
 
   const filteredLeads = leads?.filter(lead => {
@@ -168,7 +209,7 @@ const Leads = () => {
                       <TableCell>{lead.courses?.title || "Not specified"}</TableCell>
                       <TableCell>
                         <Badge className={getStageColor(lead.stage)}>
-                          {lead.stage.charAt(0).toUpperCase() + lead.stage.slice(1)}
+                          {lead.stage.charAt(0).toUpperCase() + lead.stage.slice(1).replace("-", " ")}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -179,35 +220,81 @@ const Leads = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {lead.stage === "new" && (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => updateStageMutation.mutate({ id: lead.id, stage: "contacted" })}
-                            >
-                              Contact
-                            </Button>
+                          {getNextStages(lead.stage).length > 0 && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  Move to
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {getNextStages(lead.stage).map((stage) => (
+                                  <DropdownMenuItem
+                                    key={stage}
+                                    onClick={() => updateStageMutation.mutate({ id: lead.id, stage })}
+                                  >
+                                    {stage.charAt(0).toUpperCase() + stage.slice(1).replace("-", " ")}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
-                          {(lead.stage === "contacted" || lead.stage === "follow-up") && (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => updateStageMutation.mutate({ id: lead.id, stage: "converted" })}
-                            >
-                              Convert
-                            </Button>
-                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setSelectedLead(lead)}>
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                View Message
+                              </DropdownMenuItem>
+                              {lead.phone && (
+                                <DropdownMenuItem asChild>
+                                  <a href={`tel:${lead.phone}`}>
+                                    <Phone className="h-4 w-4 mr-2" />
+                                    Call
+                                  </a>
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem asChild>
+                                <a href={`mailto:${lead.email}`}>
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Email
+                                </a>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => {
+                                  if (confirm("Are you sure you want to delete this lead?")) {
+                                    deleteLeadMutation.mutate(lead.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
+                  {filteredLeads?.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No leads found
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
           )}
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-blue-500">{stageCounts["new"] || 0}</div>
             <div className="text-sm text-muted-foreground">New</div>
@@ -230,6 +317,46 @@ const Leads = () => {
           </Card>
         </div>
       </main>
+
+      <Dialog open={!!selectedLead} onOpenChange={() => setSelectedLead(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Lead Details - {selectedLead?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Email</p>
+              <p className="font-medium">{selectedLead?.email}</p>
+            </div>
+            {selectedLead?.phone && (
+              <div>
+                <p className="text-sm text-muted-foreground">Phone</p>
+                <p className="font-medium">{selectedLead?.phone}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm text-muted-foreground">Interested In</p>
+              <p className="font-medium">{selectedLead?.courses?.title || "Not specified"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Source</p>
+              <p className="font-medium capitalize">{selectedLead?.source || "Website"}</p>
+            </div>
+            {selectedLead?.message && (
+              <div>
+                <p className="text-sm text-muted-foreground">Message</p>
+                <p className="p-3 bg-muted rounded-lg">{selectedLead?.message}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm text-muted-foreground">Created</p>
+              <p className="font-medium">
+                {selectedLead?.created_at && format(new Date(selectedLead.created_at), "MMMM d, yyyy 'at' h:mm a")}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

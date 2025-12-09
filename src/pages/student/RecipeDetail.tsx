@@ -3,84 +3,145 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useParams, Link } from "react-router-dom";
-import { Clock, Users, ChefHat, ArrowLeft, Calendar } from "lucide-react";
-
-const recipes: Record<string, any> = {
-  "1": {
-    name: "Basic White Bread",
-    image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&h=600&fit=crop",
-    prepTime: "20 mins",
-    cookTime: "35 mins",
-    difficulty: "Beginner",
-    servings: "1 loaf",
-    description: "Learn the fundamentals of bread making with this classic white bread recipe. Perfect for beginners to understand yeast activation, kneading, and proofing.",
-    ingredients: [
-      { name: "All-purpose flour", amount: "500g", perStudent: true },
-      { name: "Active dry yeast", amount: "7g", perStudent: true },
-      { name: "Sugar", amount: "30g", perStudent: true },
-      { name: "Salt", amount: "10g", perStudent: true },
-      { name: "Warm water", amount: "300ml", perStudent: true },
-      { name: "Butter", amount: "30g", perStudent: true },
-    ],
-    steps: [
-      "Activate yeast in warm water with sugar for 5-10 minutes until foamy",
-      "Mix flour and salt in a large bowl",
-      "Add yeast mixture and melted butter to flour",
-      "Knead dough for 10 minutes until smooth and elastic",
-      "First proof: Let rise in a warm place for 1 hour until doubled",
-      "Punch down dough and shape into a loaf",
-      "Second proof: Let rise for 30 minutes",
-      "Bake at 190°C (375°F) for 35 minutes until golden brown",
-    ],
-    techniques: [
-      "Yeast activation and fermentation",
-      "Proper kneading technique",
-      "Understanding gluten development",
-      "Shaping a traditional loaf",
-    ],
-  },
-  "5": {
-    name: "Danish Pastries",
-    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop",
-    prepTime: "3 hours",
-    cookTime: "25 mins",
-    difficulty: "Advanced",
-    servings: "12 pastries",
-    description: "Master the art of laminated dough with these flaky, buttery Danish pastries. This recipe teaches precise folding techniques and temperature control.",
-    ingredients: [
-      { name: "Bread flour", amount: "500g", perStudent: true },
-      { name: "Butter (for lamination)", amount: "250g", perStudent: true },
-      { name: "Milk", amount: "150ml", perStudent: true },
-      { name: "Eggs", amount: "2", perStudent: true },
-      { name: "Sugar", amount: "50g", perStudent: true },
-      { name: "Salt", amount: "10g", perStudent: true },
-      { name: "Instant yeast", amount: "10g", perStudent: true },
-    ],
-    steps: [
-      "Prepare dough with flour, yeast, sugar, salt, milk, and eggs",
-      "Rest dough in refrigerator for 30 minutes",
-      "Prepare butter block by pounding cold butter into a square",
-      "Perform first lamination: roll dough and encase butter",
-      "First turn: fold into thirds and rest 30 minutes",
-      "Second turn: repeat folding process",
-      "Third turn: final folding for maximum layers",
-      "Rest overnight in refrigerator",
-      "Roll out and shape into desired forms",
-      "Proof for 1 hour until puffy",
-      "Bake at 200°C (400°F) for 20-25 minutes",
-    ],
-    techniques: [
-      "Lamination and folding technique",
-      "Temperature control for butter",
-      "Shaping various Danish forms",
-      "Understanding dough layers",
-    ],
-  },
-};
+import { Clock, Users, ChefHat, ArrowLeft, Calendar, CheckCircle, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const RecipeDetail = () => {
   const { id } = useParams();
-  const recipe = recipes[id || "1"] || recipes["1"];
+  const queryClient = useQueryClient();
+
+  // Fetch recipe from database
+  const { data: recipe, isLoading } = useQuery({
+    queryKey: ["recipe", id],
+    queryFn: async () => {
+      if (!id) throw new Error("Recipe ID required");
+
+      const { data, error } = await supabase
+        .from("recipes")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Fetch user's progress on this recipe
+  const { data: progress } = useQuery({
+    queryKey: ["recipe-progress", id],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !id) return null;
+
+      const { data, error } = await supabase
+        .from("student_recipe_progress")
+        .select("*")
+        .eq("student_id", user.id)
+        .eq("recipe_id", id)
+        .maybeSingle();
+
+      if (error && error.code !== "PGRST116") throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const markCompleteMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !id) throw new Error("Not authenticated");
+
+      // Upsert progress
+      const { error } = await supabase
+        .from("student_recipe_progress")
+        .upsert({
+          student_id: user.id,
+          recipe_id: id,
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        }, {
+          onConflict: "student_id,recipe_id",
+        });
+
+      if (error) throw error;
+
+      // Update enrollment progress
+      const { data: enrollment } = await supabase
+        .from("enrollments")
+        .select("id, course_id")
+        .eq("student_id", user.id)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (enrollment) {
+        const { data: totalRecipes } = await supabase
+          .from("recipes")
+          .select("id")
+          .eq("course_id", enrollment.course_id);
+
+        const { data: completedProgress } = await supabase
+          .from("student_recipe_progress")
+          .select("id, recipes!inner(course_id)")
+          .eq("student_id", user.id)
+          .eq("status", "completed");
+
+        const completedInCourse = completedProgress?.filter(
+          (p: any) => p.recipes?.course_id === enrollment.course_id
+        ).length || 0;
+
+        const newProgress = Math.round((completedInCourse / (totalRecipes?.length || 1)) * 100);
+
+        await supabase
+          .from("enrollments")
+          .update({ progress: newProgress })
+          .eq("id", enrollment.id);
+      }
+    },
+    onSuccess: () => {
+      toast({ title: "Recipe marked as complete!" });
+      queryClient.invalidateQueries({ queryKey: ["recipe-progress", id] });
+      queryClient.invalidateQueries({ queryKey: ["course-recipes"] });
+      queryClient.invalidateQueries({ queryKey: ["my-enrollment"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header role="student" />
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!recipe) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header role="student" />
+        <div className="container px-6 py-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-2xl font-bold mb-4">Recipe Not Found</h1>
+            <Button asChild>
+              <Link to="/student/my-course">Back to Course</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isCompleted = progress?.status === "completed";
+  const ingredients = (recipe.ingredients as any[]) || [];
+  const instructions = recipe.instructions?.split("\n").filter(Boolean) || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -96,79 +157,104 @@ const RecipeDetail = () => {
           </Button>
 
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-4">{recipe.name}</h1>
+            <div className="flex items-start justify-between">
+              <h1 className="text-3xl font-bold mb-4">{recipe.title}</h1>
+              {isCompleted && (
+                <Badge variant="default" className="gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Completed
+                </Badge>
+              )}
+            </div>
             <div className="flex flex-wrap gap-4 text-sm">
-              <Badge variant="secondary">
-                <Clock className="h-3 w-3 mr-1" />
-                Prep: {recipe.prepTime}
-              </Badge>
-              <Badge variant="secondary">
-                <ChefHat className="h-3 w-3 mr-1" />
-                Cook: {recipe.cookTime}
-              </Badge>
-              <Badge variant="secondary">
-                <Users className="h-3 w-3 mr-1" />
-                {recipe.servings}
-              </Badge>
-              <Badge>{recipe.difficulty}</Badge>
+              {recipe.prep_time && (
+                <Badge variant="secondary">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Prep: {recipe.prep_time} mins
+                </Badge>
+              )}
+              {recipe.cook_time && (
+                <Badge variant="secondary">
+                  <ChefHat className="h-3 w-3 mr-1" />
+                  Cook: {recipe.cook_time} mins
+                </Badge>
+              )}
+              {recipe.difficulty && <Badge>{recipe.difficulty}</Badge>}
             </div>
           </div>
 
-          <img
-            src={recipe.image}
-            alt={recipe.name}
-            className="w-full h-96 object-cover rounded-2xl mb-8"
-          />
-
-          <Card className="p-6 border-border/60 mb-6">
-            <h2 className="text-xl font-semibold mb-3">About This Recipe</h2>
-            <p className="text-muted-foreground leading-relaxed">{recipe.description}</p>
-          </Card>
-
-          <Card className="p-6 border-border/60 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Ingredients (Per Student)</h2>
-            <div className="space-y-2">
-              {recipe.ingredients.map((ingredient: any, index: number) => (
-                <div key={index} className="flex justify-between items-center py-2 border-b last:border-b-0">
-                  <span>{ingredient.name}</span>
-                  <span className="font-medium text-primary">{ingredient.amount}</span>
-                </div>
-              ))}
+          {recipe.video_url && (
+            <div className="mb-8 aspect-video rounded-2xl overflow-hidden bg-muted">
+              <iframe
+                src={recipe.video_url}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
             </div>
-          </Card>
+          )}
 
-          <Card className="p-6 border-border/60 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Instructions</h2>
-            <ol className="space-y-4">
-              {recipe.steps.map((step: string, index: number) => (
-                <li key={index} className="flex gap-4">
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-                    {index + 1}
-                  </span>
-                  <p className="flex-1 pt-1">{step}</p>
-                </li>
-              ))}
-            </ol>
-          </Card>
+          {recipe.description && (
+            <Card className="p-6 border-border/60 mb-6">
+              <h2 className="text-xl font-semibold mb-3">About This Recipe</h2>
+              <p className="text-muted-foreground leading-relaxed">{recipe.description}</p>
+            </Card>
+          )}
 
-          <Card className="p-6 border-border/60 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Techniques You'll Learn</h2>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {recipe.techniques.map((technique: string, index: number) => (
-                <div key={index} className="flex items-center gap-2">
-                  <ChefHat className="h-4 w-4 text-primary" />
-                  <span>{technique}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
+          {ingredients.length > 0 && (
+            <Card className="p-6 border-border/60 mb-6">
+              <h2 className="text-xl font-semibold mb-4">Ingredients</h2>
+              <div className="space-y-2">
+                {ingredients.map((ingredient: any, index: number) => (
+                  <div key={index} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                    <span>{typeof ingredient === 'string' ? ingredient : ingredient.name}</span>
+                    {typeof ingredient === 'object' && ingredient.amount && (
+                      <span className="font-medium text-primary">{ingredient.amount}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
-          <Button asChild size="lg" className="w-full">
-            <Link to="/student/book-slot">
-              <Calendar className="h-5 w-5" />
-              Book a Slot to Practice This Recipe
-            </Link>
-          </Button>
+          {instructions.length > 0 && (
+            <Card className="p-6 border-border/60 mb-6">
+              <h2 className="text-xl font-semibold mb-4">Instructions</h2>
+              <ol className="space-y-4">
+                {instructions.map((step: string, index: number) => (
+                  <li key={index} className="flex gap-4">
+                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+                      {index + 1}
+                    </span>
+                    <p className="flex-1 pt-1">{step}</p>
+                  </li>
+                ))}
+              </ol>
+            </Card>
+          )}
+
+          <div className="flex gap-4">
+            {!isCompleted && (
+              <Button
+                size="lg"
+                className="flex-1"
+                onClick={() => markCompleteMutation.mutate()}
+                disabled={markCompleteMutation.isPending}
+              >
+                {markCompleteMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                ) : (
+                  <><CheckCircle className="h-5 w-5 mr-2" />Mark as Complete</>
+                )}
+              </Button>
+            )}
+            <Button asChild variant={isCompleted ? "default" : "outline"} size="lg" className={isCompleted ? "flex-1" : ""}>
+              <Link to="/student/book-slot">
+                <Calendar className="h-5 w-5 mr-2" />
+                Book Practice Slot
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

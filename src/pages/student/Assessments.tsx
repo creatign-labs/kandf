@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +8,19 @@ import { FileText, Clock, CheckCircle, Lock, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { QuizEngine } from "@/components/quiz/QuizEngine";
+
+interface ActiveQuiz {
+  studentAssessmentId: string;
+  assessmentId: string;
+  title: string;
+  durationMinutes: number;
+  passingScore: number;
+}
 
 const Assessments = () => {
   const queryClient = useQueryClient();
+  const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz | null>(null);
 
   // Fetch user's active enrollment
   const { data: enrollment } = useQuery({
@@ -23,9 +34,9 @@ const Assessments = () => {
         .select('*, courses(*)')
         .eq('student_id', user.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data;
     }
   });
@@ -60,25 +71,31 @@ const Assessments = () => {
   });
 
   const startAssessmentMutation = useMutation({
-    mutationFn: async (assessmentId: string) => {
+    mutationFn: async (assessment: { id: string; title: string; duration_minutes: number; passing_score: number }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('student_assessments')
         .insert({
           student_id: user.id,
-          assessment_id: assessmentId,
+          assessment_id: assessment.id,
           status: 'in_progress',
           started_at: new Date().toISOString()
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+      return { studentAssessmentId: data.id, assessment };
     },
-    onSuccess: () => {
-      toast({
-        title: "Assessment Started",
-        description: "Good luck! Complete all questions within the time limit.",
+    onSuccess: (result) => {
+      setActiveQuiz({
+        studentAssessmentId: result.studentAssessmentId,
+        assessmentId: result.assessment.id,
+        title: result.assessment.title,
+        durationMinutes: result.assessment.duration_minutes,
+        passingScore: result.assessment.passing_score
       });
       queryClient.invalidateQueries({ queryKey: ['course-assessments'] });
     },
@@ -90,6 +107,16 @@ const Assessments = () => {
       });
     }
   });
+
+  const handleContinueAssessment = (assessment: { id: string; title: string; duration_minutes: number; passing_score: number }, studentAssessmentId: string) => {
+    setActiveQuiz({
+      studentAssessmentId,
+      assessmentId: assessment.id,
+      title: assessment.title,
+      durationMinutes: assessment.duration_minutes,
+      passingScore: assessment.passing_score
+    });
+  };
 
   const getAssessmentStatus = (assessmentId: string, index: number) => {
     const studentAssessment = assessmentsData?.studentAssessments?.find(
@@ -116,7 +143,6 @@ const Assessments = () => {
 
   const completedCount = assessmentsData?.studentAssessments?.filter(sa => sa.status === 'completed').length || 0;
   const totalCount = assessmentsData?.assessments?.length || 0;
-  const overallProgress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   if (isLoading) {
     return (
@@ -124,6 +150,29 @@ const Assessments = () => {
         <Header role="student" />
         <div className="flex items-center justify-center h-96">
           <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  // Show quiz engine if there's an active quiz
+  if (activeQuiz) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header role="student" />
+        <div className="container px-6 py-8">
+          <QuizEngine
+            studentAssessmentId={activeQuiz.studentAssessmentId}
+            assessmentId={activeQuiz.assessmentId}
+            assessmentTitle={activeQuiz.title}
+            durationMinutes={activeQuiz.durationMinutes}
+            passingScore={activeQuiz.passingScore}
+            onComplete={() => {
+              setActiveQuiz(null);
+              queryClient.invalidateQueries({ queryKey: ['course-assessments'] });
+            }}
+            onBack={() => setActiveQuiz(null)}
+          />
         </div>
       </div>
     );
@@ -222,7 +271,12 @@ const Assessments = () => {
                     <Button 
                       size="lg" 
                       className="w-full"
-                      onClick={() => startAssessmentMutation.mutate(assessment.id)}
+                      onClick={() => startAssessmentMutation.mutate({
+                        id: assessment.id,
+                        title: assessment.title,
+                        duration_minutes: assessment.duration_minutes,
+                        passing_score: assessment.passing_score
+                      })}
                       disabled={startAssessmentMutation.isPending}
                     >
                       {startAssessmentMutation.isPending ? (
@@ -233,8 +287,20 @@ const Assessments = () => {
                     </Button>
                   )}
 
-                  {status === "in_progress" && (
-                    <Button size="lg" className="w-full">
+                  {status === "in_progress" && studentAssessment && (
+                    <Button 
+                      size="lg" 
+                      className="w-full"
+                      onClick={() => handleContinueAssessment(
+                        {
+                          id: assessment.id,
+                          title: assessment.title,
+                          duration_minutes: assessment.duration_minutes,
+                          passing_score: assessment.passing_score
+                        },
+                        studentAssessment.id
+                      )}
+                    >
                       Continue Assessment
                     </Button>
                   )}
@@ -245,12 +311,6 @@ const Assessments = () => {
                         Complete previous assessments to unlock this one
                       </p>
                     </div>
-                  )}
-
-                  {status === "completed" && (
-                    <Button variant="outline" className="w-full mt-2">
-                      View Results
-                    </Button>
                   )}
                 </Card>
               );

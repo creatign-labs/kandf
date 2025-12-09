@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const orderSchema = z.object({
+  amount: z.number().positive().max(1000000),
+  currency: z.string().length(3).default('INR'),
+  receipt: z.string().min(1).max(40),
+  courseId: z.string().uuid(),
+  batchId: z.string().uuid(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,6 +21,30 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
     const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET');
     
@@ -19,9 +52,20 @@ serve(async (req) => {
       throw new Error('Razorpay credentials not configured');
     }
 
-    const { amount, currency = 'INR', receipt, courseId, batchId } = await req.json();
+    // Validate input
+    const body = await req.json();
+    const validationResult = orderSchema.safeParse(body);
     
-    console.log('Creating Razorpay order:', { amount, currency, receipt });
+    if (!validationResult.success) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid input', details: validationResult.error.flatten() }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { amount, currency, receipt, courseId, batchId } = validationResult.data;
+    
+    console.log('Creating Razorpay order for user:', user.id);
 
     // Create Razorpay order
     const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);

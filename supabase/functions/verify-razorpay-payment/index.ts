@@ -1,11 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { createHmac } from "https://deno.land/std@0.177.0/node/crypto.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const paymentSchema = z.object({
+  razorpay_order_id: z.string().min(1),
+  razorpay_payment_id: z.string().min(1),
+  razorpay_signature: z.string().min(1),
+  courseId: z.string().uuid(),
+  batchId: z.string().uuid(),
+  amount: z.number().positive(),
+  gstAmount: z.number().nonnegative(),
+  totalAmount: z.number().positive(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -25,7 +37,10 @@ serve(async (req) => {
     
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('No authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(
@@ -33,7 +48,21 @@ serve(async (req) => {
     );
     
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate input
+    const body = await req.json();
+    const validationResult = paymentSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid input', details: validationResult.error.flatten() }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { 
@@ -45,9 +74,9 @@ serve(async (req) => {
       amount,
       gstAmount,
       totalAmount
-    } = await req.json();
+    } = validationResult.data;
     
-    console.log('Verifying payment:', { razorpay_order_id, razorpay_payment_id });
+    console.log('Verifying payment for user:', user.id);
 
     // Verify signature
     const generated_signature = createHmac('sha256', razorpayKeySecret)

@@ -18,6 +18,7 @@ const Payment = () => {
   const { course, batch, fee, courseId, batchId } = location.state || {};
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [razorpayKey, setRazorpayKey] = useState<string>('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -30,6 +31,20 @@ const Payment = () => {
         navigate("/login");
       } else {
         setUser(session.user);
+      }
+    });
+
+    // Fetch Razorpay key from backend
+    supabase.functions.invoke('get-razorpay-key').then(({ data, error }) => {
+      if (error) {
+        console.error('Failed to get Razorpay key:', error);
+        toast({
+          title: "Configuration error",
+          description: "Payment system not configured properly.",
+          variant: "destructive",
+        });
+      } else if (data?.key) {
+        setRazorpayKey(data.key);
       }
     });
 
@@ -82,7 +97,7 @@ const Payment = () => {
       if (orderError) throw orderError;
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || '',
+        key: razorpayKey,
         amount: orderData.order.amount,
         currency: orderData.order.currency,
         name: 'Knead & Frost',
@@ -188,9 +203,9 @@ const Payment = () => {
                   className="w-full" 
                   size="lg"
                   onClick={handlePayment}
-                  disabled={loading}
+                  disabled={loading || !razorpayKey}
                 >
-                  {loading ? "Processing..." : "Pay with Razorpay"}
+                  {loading ? "Processing..." : !razorpayKey ? "Loading..." : "Pay with Razorpay"}
                 </Button>
               </Card>
             </div>

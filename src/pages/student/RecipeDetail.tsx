@@ -2,8 +2,9 @@ import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { useParams, Link } from "react-router-dom";
-import { Clock, Users, ChefHat, ArrowLeft, Calendar, CheckCircle, Loader2 } from "lucide-react";
+import { Clock, ChefHat, ArrowLeft, Calendar, CheckCircle, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -183,16 +184,12 @@ const RecipeDetail = () => {
             </div>
           </div>
 
-          {recipe.video_url && (
-            <div className="mb-8 aspect-video rounded-2xl overflow-hidden bg-muted">
-              <iframe
-                src={recipe.video_url}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          )}
+          <div className="mb-8">
+            <VideoPlayer 
+              videoUrl={recipe.video_url || ''} 
+              title={recipe.title}
+            />
+          </div>
 
           {recipe.description && (
             <Card className="p-6 border-border/60 mb-6">

@@ -3,7 +3,7 @@ import { StatsCard } from "@/components/StatsCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2 } from "lucide-react";
+import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -268,6 +268,12 @@ const AdminDashboard = () => {
                   <Link to="/admin/inventory">
                     <Package className="h-4 w-4 mr-2" />
                     Update Inventory
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/staff">
+                    <ChefHat className="h-4 w-4 mr-2" />
+                    Manage Staff
                   </Link>
                 </Button>
               </div>

@@ -294,6 +294,7 @@ export type Database = {
           id: string
           progress: number | null
           status: string
+          student_code: string | null
           student_id: string
           updated_at: string
         }
@@ -305,6 +306,7 @@ export type Database = {
           id?: string
           progress?: number | null
           status?: string
+          student_code?: string | null
           student_id: string
           updated_at?: string
         }
@@ -316,6 +318,7 @@ export type Database = {
           id?: string
           progress?: number | null
           status?: string
+          student_code?: string | null
           student_id?: string
           updated_at?: string
         }
@@ -684,6 +687,7 @@ export type Database = {
           enrollment_id: string
           gst_amount: number
           id: string
+          invoice_number: string | null
           payment_date: string
           payment_method: string
           status: string
@@ -697,6 +701,7 @@ export type Database = {
           enrollment_id: string
           gst_amount: number
           id?: string
+          invoice_number?: string | null
           payment_date?: string
           payment_method: string
           status?: string
@@ -710,6 +715,7 @@ export type Database = {
           enrollment_id?: string
           gst_amount?: number
           id?: string
+          invoice_number?: string | null
           payment_date?: string
           payment_method?: string
           status?: string
@@ -1085,6 +1091,12 @@ export type Database = {
     }
     Functions: {
       decrement_batch_seats: { Args: { batch_id: string }; Returns: undefined }
+      generate_certificate_number: {
+        Args: { p_course_id: string }
+        Returns: string
+      }
+      generate_invoice_number: { Args: never; Returns: string }
+      generate_student_id: { Args: { p_course_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

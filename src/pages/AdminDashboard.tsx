@@ -131,15 +131,15 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-background">
       <Header role="admin" userName="Admin" />
       
-      <div className="container px-6 py-8">
+      <div className="container px-4 md:px-6 py-6 md:py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Monitor academy operations and manage all aspects</p>
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Admin Dashboard</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Monitor academy operations and manage all aspects</p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
           <StatsCard
             title="Active Students"
             value={String(studentsCount || 0)}
@@ -168,15 +168,15 @@ const AdminDashboard = () => {
           />
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-6 md:space-y-8">
             {/* Recent Leads */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
+            <Card className="p-4 md:p-6">
+              <div className="flex items-center justify-between mb-4 md:mb-6">
                 <div>
-                  <h2 className="text-xl font-semibold mb-1">Recent Leads</h2>
-                  <p className="text-sm text-muted-foreground">Manage your sales pipeline</p>
+                  <h2 className="text-lg md:text-xl font-semibold mb-1">Recent Leads</h2>
+                  <p className="text-xs md:text-sm text-muted-foreground">Manage your sales pipeline</p>
                 </div>
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/admin/leads">View All</Link>
@@ -185,21 +185,21 @@ const AdminDashboard = () => {
 
               <div className="space-y-3">
                 {recentLeads?.map((lead) => (
-                  <div key={lead.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-primary" />
+                  <div key={lead.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors gap-3">
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Users className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                       </div>
-                      <div>
-                        <div className="font-medium">{lead.name}</div>
-                        <div className="text-sm text-muted-foreground">{lead.courses?.title || 'No course'}</div>
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm md:text-base truncate">{lead.name}</div>
+                        <div className="text-xs md:text-sm text-muted-foreground truncate">{lead.courses?.title || 'No course'}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <Badge variant={getStageVariant(lead.stage)}>
+                    <div className="flex items-center gap-3 md:gap-4 ml-11 sm:ml-0">
+                      <Badge variant={getStageVariant(lead.stage)} className="text-xs">
                         {lead.stage.charAt(0).toUpperCase() + lead.stage.slice(1)}
                       </Badge>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs md:text-sm text-muted-foreground">
                         {new Date(lead.created_at).toLocaleDateString()}
                       </span>
                     </div>

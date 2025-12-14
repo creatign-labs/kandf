@@ -120,15 +120,15 @@ const StudentDashboard = () => {
     <div className="min-h-screen bg-background">
       <Header role="student" userName={firstName} />
       
-      <div className="container px-6 py-8">
+      <div className="container px-4 md:px-6 py-6 md:py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">{greeting}, {firstName} 👋</h1>
-          <p className="text-muted-foreground">Welcome to Knead & Frost, check your priority learning.</p>
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">{greeting}, {firstName} 👋</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Welcome to Knead & Frost, check your priority learning.</p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
           <StatsCard
             title="Average Progress"
             value={`${averageProgress}%`}
@@ -175,17 +175,17 @@ const StudentDashboard = () => {
           </Card>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-6 md:space-y-8">
             {/* In Progress Courses */}
             <div>
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4 md:mb-6">
                 <div>
-                  <h2 className="text-xl font-semibold mb-1">In progress learning content</h2>
-                  <p className="text-sm text-muted-foreground">Continue where you left off</p>
+                  <h2 className="text-lg md:text-xl font-semibold mb-1">In progress learning content</h2>
+                  <p className="text-xs md:text-sm text-muted-foreground">Continue where you left off</p>
                 </div>
-                <Button variant="link" asChild>
+                <Button variant="link" size="sm" asChild>
                   <Link to="/student/my-course">View all</Link>
                 </Button>
               </div>
@@ -193,10 +193,10 @@ const StudentDashboard = () => {
               {activeEnrollments.length > 0 ? (
                 <div className="space-y-4">
                   {activeEnrollments.slice(0, 2).map((enrollment) => (
-                    <Card key={enrollment.id} className="p-6">
-                      <div className="flex gap-4">
+                    <Card key={enrollment.id} className="p-4 md:p-6">
+                      <div className="flex flex-col sm:flex-row gap-4">
                         <div 
-                          className="h-20 w-32 rounded-lg bg-cover bg-center flex-shrink-0"
+                          className="h-32 sm:h-20 sm:w-32 rounded-lg bg-cover bg-center flex-shrink-0"
                           style={{ 
                             backgroundImage: `url(${getCourseImage(enrollment.courses?.title || '')})`
                           }}
@@ -206,22 +206,22 @@ const StudentDashboard = () => {
                             <BookOpen className="h-3 w-3 mr-1" />
                             Course
                           </Badge>
-                          <h3 className="font-semibold mb-1">{enrollment.courses?.title}</h3>
-                          <div className="flex items-center gap-6 text-sm text-muted-foreground mt-3">
+                          <h3 className="font-semibold mb-1 text-sm md:text-base">{enrollment.courses?.title}</h3>
+                          <div className="flex flex-wrap items-center gap-3 md:gap-6 text-xs md:text-sm text-muted-foreground mt-2 md:mt-3">
                             <span className="flex items-center gap-1">
-                              <BookOpen className="h-4 w-4" />
+                              <BookOpen className="h-3 w-3 md:h-4 md:w-4" />
                               {enrollment.courses?.materials_count || 0} Materials
                             </span>
                             <span className={enrollment.progress && enrollment.progress > 50 ? "text-success" : ""}>
-                              Completion: {enrollment.progress || 0}%
+                              {enrollment.progress || 0}% Complete
                             </span>
                             <span className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
+                              <Clock className="h-3 w-3 md:h-4 md:w-4" />
                               {enrollment.courses?.duration}
                             </span>
                           </div>
                         </div>
-                        <Button asChild>
+                        <Button size="sm" className="w-full sm:w-auto mt-2 sm:mt-0" asChild>
                           <Link to="/student/my-course">
                             {enrollment.progress && enrollment.progress > 0 ? 'Continue' : 'Start'}
                           </Link>

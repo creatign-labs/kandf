@@ -47,25 +47,25 @@ const Home = () => {
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
-        <div className="container relative px-6 py-24">
+        <div className="container relative px-4 md:px-6 py-12 md:py-24">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 mb-6">
-              <ChefHat className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">World-Class Baking Education</span>
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 md:px-4 py-1.5 md:py-2 mb-4 md:mb-6">
+              <ChefHat className="h-3 w-3 md:h-4 md:w-4 text-primary" />
+              <span className="text-xs md:text-sm font-medium text-primary">World-Class Baking Education</span>
             </div>
-            <h1 className="text-5xl font-bold tracking-tight mb-6">
+            <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-4 md:mb-6">
               Master the Art of
-              <span className="block text-primary mt-2">Professional Baking</span>
+              <span className="block text-primary mt-1 md:mt-2">Professional Baking</span>
             </h1>
-            <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+            <p className="text-base md:text-xl text-muted-foreground mb-6 md:mb-8 leading-relaxed px-4 md:px-0">
               Transform your passion into profession with our comprehensive baking programs. 
               Learn from industry experts, master essential techniques, and build a successful career.
             </p>
-            <div className="flex items-center justify-center gap-4">
-              <Button size="lg" asChild className="shadow-lg">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
+              <Button size="lg" asChild className="shadow-lg w-full sm:w-auto">
                 <Link to="/courses">Explore Courses</Link>
               </Button>
-              <Button size="lg" variant="outline" asChild>
+              <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
                 <Link to="/signup">Get Started Free</Link>
               </Button>
             </div>
@@ -75,15 +75,15 @@ const Home = () => {
 
       {/* Stats Section */}
       <section className="border-y bg-card/50">
-        <div className="container px-6 py-16">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="container px-4 md:px-6 py-10 md:py-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="inline-flex p-4 rounded-2xl bg-primary/10 mb-4">
-                  <stat.icon className="h-8 w-8 text-primary" />
+                <div className="inline-flex p-3 md:p-4 rounded-xl md:rounded-2xl bg-primary/10 mb-3 md:mb-4">
+                  <stat.icon className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                 </div>
-                <div className="text-3xl font-bold mb-1">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
+                <div className="text-2xl md:text-3xl font-bold mb-0.5 md:mb-1">{stat.value}</div>
+                <div className="text-xs md:text-sm text-muted-foreground">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -91,17 +91,17 @@ const Home = () => {
       </section>
 
       {/* Featured Courses */}
-      <section className="container px-6 py-20">
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold mb-3">Featured Programs</h2>
-          <p className="text-muted-foreground text-lg">
+      <section className="container px-4 md:px-6 py-12 md:py-20">
+        <div className="mb-8 md:mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold mb-2 md:mb-3">Featured Programs</h2>
+          <p className="text-muted-foreground text-sm md:text-lg">
             Choose from our comprehensive baking programs designed for all skill levels
           </p>
         </div>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           {loading ? (
-            <p className="col-span-3 text-center text-muted-foreground">Loading courses...</p>
+            <p className="col-span-full text-center text-muted-foreground">Loading courses...</p>
           ) : (
             courses.map((course) => (
               <CourseCard 
@@ -128,41 +128,41 @@ const Home = () => {
 
       {/* Why Choose Us */}
       <section className="bg-gradient-to-b from-primary/5 to-background">
-        <div className="container px-6 py-20">
-          <div className="mx-auto max-w-3xl text-center mb-12">
-            <h2 className="text-3xl font-bold mb-3">Why Choose Knead & Frost?</h2>
-            <p className="text-muted-foreground text-lg">
+        <div className="container px-4 md:px-6 py-12 md:py-20">
+          <div className="mx-auto max-w-3xl text-center mb-8 md:mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2 md:mb-3">Why Choose Knead & Frost?</h2>
+            <p className="text-muted-foreground text-sm md:text-lg">
               We provide everything you need to succeed in your baking career
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="p-6 text-center border-border/60">
-              <div className="inline-flex p-4 rounded-2xl bg-primary/10 mb-4">
-                <ChefHat className="h-8 w-8 text-primary" />
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            <Card className="p-4 md:p-6 text-center border-border/60">
+              <div className="inline-flex p-3 md:p-4 rounded-xl md:rounded-2xl bg-primary/10 mb-3 md:mb-4">
+                <ChefHat className="h-6 w-6 md:h-8 md:w-8 text-primary" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Expert Instructors</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-base md:text-lg mb-1 md:mb-2">Expert Instructors</h3>
+              <p className="text-xs md:text-sm text-muted-foreground">
                 Learn from award-winning chefs with decades of industry experience
               </p>
             </Card>
             
-            <Card className="p-6 text-center border-border/60">
-              <div className="inline-flex p-4 rounded-2xl bg-primary/10 mb-4">
-                <Award className="h-8 w-8 text-primary" />
+            <Card className="p-4 md:p-6 text-center border-border/60">
+              <div className="inline-flex p-3 md:p-4 rounded-xl md:rounded-2xl bg-primary/10 mb-3 md:mb-4">
+                <Award className="h-6 w-6 md:h-8 md:w-8 text-primary" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Industry Certification</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-base md:text-lg mb-1 md:mb-2">Industry Certification</h3>
+              <p className="text-xs md:text-sm text-muted-foreground">
                 Earn recognized certifications that open doors to top opportunities
               </p>
             </Card>
             
-            <Card className="p-6 text-center border-border/60">
-              <div className="inline-flex p-4 rounded-2xl bg-primary/10 mb-4">
-                <Users className="h-8 w-8 text-primary" />
+            <Card className="p-4 md:p-6 text-center border-border/60 sm:col-span-2 md:col-span-1">
+              <div className="inline-flex p-3 md:p-4 rounded-xl md:rounded-2xl bg-primary/10 mb-3 md:mb-4">
+                <Users className="h-6 w-6 md:h-8 md:w-8 text-primary" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Career Support</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-base md:text-lg mb-1 md:mb-2">Career Support</h3>
+              <p className="text-xs md:text-sm text-muted-foreground">
                 Get personalized placement assistance and connect with hiring partners
               </p>
             </Card>
@@ -171,18 +171,18 @@ const Home = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="container px-6 py-20">
-        <Card className="relative overflow-hidden bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-12 border-0">
+      <section className="container px-4 md:px-6 py-12 md:py-20">
+        <Card className="relative overflow-hidden bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-6 md:p-12 border-0">
           <div className="relative z-10 mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold mb-4">Ready to Start Your Journey?</h2>
-            <p className="text-primary-foreground/90 text-lg mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">Ready to Start Your Journey?</h2>
+            <p className="text-primary-foreground/90 text-sm md:text-lg mb-6 md:mb-8">
               Join hundreds of successful students who have transformed their passion into a thriving career
             </p>
-            <div className="flex items-center justify-center gap-4">
-              <Button size="lg" variant="secondary" asChild>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
+              <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
                 <Link to="/signup">Enroll Now</Link>
               </Button>
-              <Button size="lg" variant="outline" className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" asChild>
+              <Button size="lg" variant="outline" className="w-full sm:w-auto bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" asChild>
                 <Link to="/courses">Browse Courses</Link>
               </Button>
             </div>

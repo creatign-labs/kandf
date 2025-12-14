@@ -171,15 +171,15 @@ const ChefDashboard = () => {
     <div className="min-h-screen bg-background">
       <Header role="chef" userName={`Chef ${firstName}`} />
       
-      <div className="container px-6 py-8">
+      <div className="container px-4 md:px-6 py-6 md:py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">{greeting}, Chef {firstName} 👨‍🍳</h1>
-          <p className="text-muted-foreground">Manage your classes and track student attendance</p>
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">{greeting}, Chef {firstName} 👨‍🍳</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Manage your classes and track student attendance</p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
           <StatsCard
             title="Today's Classes"
             value={String(totalBatches)}
@@ -207,36 +207,36 @@ const ChefDashboard = () => {
         </div>
 
         {/* Classes Schedule */}
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {batchesData?.map((batch) => {
             const presentCount = batch.attendance.filter((a: any) => a.status === 'present').length;
             
             return (
-              <Card key={batch.id} className="p-6">
-                <div className="flex items-start justify-between mb-6">
+              <Card key={batch.id} className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 md:mb-6 gap-3">
                   <div>
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                       <Badge variant="default">
                         {batch.time_slot}
                       </Badge>
-                      <span className="text-sm font-medium text-muted-foreground">{batch.days}</span>
+                      <span className="text-xs md:text-sm font-medium text-muted-foreground">{batch.days}</span>
                     </div>
-                    <h2 className="text-xl font-semibold mb-1">{batch.courses?.title}</h2>
-                    <p className="text-sm text-muted-foreground">{batch.batch_name}</p>
+                    <h2 className="text-lg md:text-xl font-semibold mb-1">{batch.courses?.title}</h2>
+                    <p className="text-xs md:text-sm text-muted-foreground">{batch.batch_name}</p>
                   </div>
                 </div>
 
                 {/* Student Roster */}
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold">Student Roster ({batch.enrollments.length})</h3>
-                    <span className="text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between mb-3 md:mb-4">
+                    <h3 className="font-semibold text-sm md:text-base">Student Roster ({batch.enrollments.length})</h3>
+                    <span className="text-xs md:text-sm text-muted-foreground">
                       Present: {presentCount}/{batch.enrollments.length}
                     </span>
                   </div>
                   
                   {batch.enrollments.length > 0 ? (
-                    <div className="grid md:grid-cols-2 gap-3">
+                    <div className="grid sm:grid-cols-2 gap-2 md:gap-3">
                       {batch.enrollments.map((enrollment: any) => {
                         const isPresent = isStudentPresent(enrollment.student_id, batch.attendance);
                         

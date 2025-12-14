@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, Phone, Upload, FileText, Trash2, Loader2 } from 'lucide-react';
+import { User, Mail, Phone, Upload, FileText, Trash2, Loader2, Camera } from 'lucide-react';
 
 interface KYCDocument {
   name: string;
@@ -18,14 +20,18 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profile, setProfile] = useState({
     first_name: '',
     last_name: '',
     phone: '',
-    email: ''
+    email: '',
+    bio: '',
+    avatar_url: ''
   });
   const [kycDocuments, setKycDocuments] = useState<KYCDocument[]>([]);
   const { toast } = useToast();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadProfile();
@@ -49,7 +55,9 @@ const Profile = () => {
         first_name: data.first_name || '',
         last_name: data.last_name || '',
         phone: data.phone || '',
-        email: user.email || ''
+        email: user.email || '',
+        bio: data.bio || '',
+        avatar_url: data.avatar_url || ''
       });
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -86,6 +94,83 @@ const Profile = () => {
     }
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload JPG, PNG, or WebP images only',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Maximum file size is 2MB',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `avatar.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      // Upload the new avatar (will overwrite if exists)
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Add cache-busting parameter
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      // Update profile with avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile({ ...profile, avatar_url: avatarUrl });
+
+      toast({
+        title: 'Success',
+        description: 'Profile picture updated successfully'
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload profile picture',
+        variant: 'destructive'
+      });
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = '';
+    }
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdating(true);
@@ -99,7 +184,8 @@ const Profile = () => {
         .update({
           first_name: profile.first_name,
           last_name: profile.last_name,
-          phone: profile.phone
+          phone: profile.phone,
+          bio: profile.bio
         })
         .eq('id', user.id);
 
@@ -207,6 +293,10 @@ const Profile = () => {
     }
   };
 
+  const getInitials = () => {
+    return `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || 'U';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -233,6 +323,41 @@ const Profile = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUpdate} className="space-y-6">
+                {/* Avatar Section */}
+                <div className="flex flex-col items-center gap-4 pb-6 border-b">
+                  <div className="relative group">
+                    <Avatar className="h-24 w-24">
+                      <AvatarImage src={profile.avatar_url || undefined} alt="Profile picture" />
+                      <AvatarFallback className="bg-primary/10 text-primary text-2xl font-medium">
+                        {getInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      {uploadingAvatar ? (
+                        <Loader2 className="h-6 w-6 text-white animate-spin" />
+                      ) : (
+                        <Camera className="h-6 w-6 text-white" />
+                      )}
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium">{profile.first_name} {profile.last_name}</p>
+                    <p className="text-sm text-muted-foreground">Click on avatar to change</p>
+                  </div>
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="first_name">First Name</Label>
@@ -282,6 +407,21 @@ const Profile = () => {
                       placeholder="+91 1234567890"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    value={profile.bio}
+                    onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                    placeholder="Tell us a little about yourself..."
+                    rows={3}
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {profile.bio.length}/500 characters
+                  </p>
                 </div>
 
                 <Button type="submit" disabled={updating} className="w-full">

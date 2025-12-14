@@ -279,7 +279,7 @@ const AdminDashboard = () => {
                 <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/data-template">
                     <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Data Templates
+                    Data Management
                   </Link>
                 </Button>
               </div>

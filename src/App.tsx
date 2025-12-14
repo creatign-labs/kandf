@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Home from "./pages/Home";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ChefDashboard from "./pages/ChefDashboard";
@@ -30,7 +32,11 @@ import Leads from "./pages/admin/Leads";
 import Students from "./pages/admin/Students";
 import AdminCourses from "./pages/admin/Courses";
 import Inventory from "./pages/admin/Inventory";
+import AdminNotifications from "./pages/admin/Notifications";
+import Batches from "./pages/admin/Batches";
 import Attendance from "./pages/chef/Attendance";
+import ChefRecipes from "./pages/chef/Recipes";
+import InventoryUsage from "./pages/chef/InventoryUsage";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/student/Profile";
 
@@ -44,6 +50,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/courses" element={<Courses />} />
@@ -71,10 +79,14 @@ const App = () => (
           <Route path="/admin/students" element={<ProtectedRoute requiredRole="admin"><Students /></ProtectedRoute>} />
           <Route path="/admin/courses" element={<ProtectedRoute requiredRole="admin"><AdminCourses /></ProtectedRoute>} />
           <Route path="/admin/inventory" element={<ProtectedRoute requiredRole="admin"><Inventory /></ProtectedRoute>} />
+          <Route path="/admin/notifications" element={<ProtectedRoute requiredRole="admin"><AdminNotifications /></ProtectedRoute>} />
+          <Route path="/admin/batches" element={<ProtectedRoute requiredRole="admin"><Batches /></ProtectedRoute>} />
           
           <Route path="/chef" element={<ProtectedRoute requiredRole="chef"><ChefDashboard /></ProtectedRoute>} />
           <Route path="/chef/attendance" element={<ProtectedRoute requiredRole="chef"><Attendance /></ProtectedRoute>} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/chef/recipes" element={<ProtectedRoute requiredRole="chef"><ChefRecipes /></ProtectedRoute>} />
+          <Route path="/chef/inventory-usage" element={<ProtectedRoute requiredRole="chef"><InventoryUsage /></ProtectedRoute>} />
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

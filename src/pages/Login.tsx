@@ -59,11 +59,25 @@ const Login = () => {
       }
 
       if (data.user) {
+        // Fetch user roles for redirect
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id);
+
         toast({
           title: "Welcome back!",
           description: "You have successfully logged in.",
         });
-        navigate("/courses");
+
+        // Redirect based on role priority: admin > chef > student
+        if (roles?.some(r => r.role === 'admin')) {
+          navigate('/admin');
+        } else if (roles?.some(r => r.role === 'chef')) {
+          navigate('/chef');
+        } else {
+          navigate('/student');
+        }
       }
     } catch (error) {
       if (error instanceof z.ZodError) {

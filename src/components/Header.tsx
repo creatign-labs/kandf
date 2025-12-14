@@ -1,13 +1,12 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bell, MessageSquare, User, ChefHat, Menu, X, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, BarChart3, Package, Settings, Award, FileText } from "lucide-react";
+import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-
+import { ProfileDropdown } from "@/components/ProfileDropdown";
 interface HeaderProps {
   role?: "public" | "student" | "admin" | "chef";
   userName?: string;
@@ -128,14 +127,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
                   </span>
                 </Link>
               </Button>
-              <Button variant="ghost" size="sm" className="gap-2" asChild>
-                <Link to={`/${role}/profile`}>
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-4 w-4 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium hidden lg:inline">{userName || "User"}</span>
-                </Link>
-              </Button>
+              <ProfileDropdown role={role} />
             </>
           )}
         </div>

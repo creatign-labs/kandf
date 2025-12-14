@@ -89,7 +89,18 @@ serve(async (req) => {
 
     console.log('Payment signature verified successfully');
 
-    // Create enrollment
+    // Generate student ID using database function
+    const { data: studentIdData, error: studentIdError } = await supabase
+      .rpc('generate_student_id', { p_course_id: courseId });
+
+    if (studentIdError) {
+      console.error('Student ID generation error:', studentIdError);
+    }
+
+    const generatedStudentId = studentIdData || null;
+    console.log('Generated student ID:', generatedStudentId);
+
+    // Create enrollment with custom student code
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
       .insert({
@@ -98,6 +109,7 @@ serve(async (req) => {
         batch_id: batchId,
         status: 'active',
         progress: 0,
+        student_code: generatedStudentId,
       })
       .select()
       .single();
@@ -109,7 +121,17 @@ serve(async (req) => {
 
     console.log('Enrollment created:', enrollment);
 
-    // Create payment record
+    // Generate invoice number using database function
+    const { data: invoiceNumber, error: invoiceError } = await supabase
+      .rpc('generate_invoice_number');
+
+    if (invoiceError) {
+      console.error('Invoice number generation error:', invoiceError);
+    }
+
+    console.log('Generated invoice number:', invoiceNumber);
+
+    // Create payment record with invoice number
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert({
@@ -121,6 +143,7 @@ serve(async (req) => {
         payment_method: 'razorpay',
         status: 'completed',
         stripe_payment_id: razorpay_payment_id,
+        invoice_number: invoiceNumber || null,
       })
       .select()
       .single();

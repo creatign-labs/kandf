@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, LogOut, Settings, BookOpen, ChevronDown } from "lucide-react";
+import { User, LogOut, Settings, BookOpen, ChevronDown, Shield, ChefHat, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,10 +35,19 @@ interface Enrollment {
   } | null;
 }
 
+type AppRole = "admin" | "student" | "chef";
+
+const roleConfig: Record<AppRole, { icon: React.ComponentType<{ className?: string }>; label: string; path: string }> = {
+  admin: { icon: Shield, label: "Admin Portal", path: "/admin" },
+  chef: { icon: ChefHat, label: "Chef Portal", path: "/chef" },
+  student: { icon: GraduationCap, label: "Student Portal", path: "/student" },
+};
+
 export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [userRoles, setUserRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,6 +68,16 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
 
       if (profileData) {
         setProfile(profileData);
+      }
+
+      // Fetch user roles
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      if (rolesData) {
+        setUserRoles(rolesData.map(r => r.role as AppRole));
       }
 
       // Fetch enrollments (only for students)
@@ -89,6 +108,10 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
     }
   };
 
+  const handleSwitchRole = (newRole: AppRole) => {
+    navigate(roleConfig[newRole].path);
+  };
+
   const getInitials = () => {
     if (!profile) return "U";
     return `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || "U";
@@ -97,6 +120,7 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
   const fullName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "User";
   const activeCourses = enrollments.filter(e => e.status === 'active');
   const completedCourses = enrollments.filter(e => e.status === 'completed' || e.progress === 100);
+  const otherRoles = userRoles.filter(r => r !== role);
 
   return (
     <DropdownMenu>
@@ -133,6 +157,32 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
             </div>
           </div>
         </div>
+
+        {/* Role Switcher (only if user has multiple roles) */}
+        {otherRoles.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-3 py-2">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Switch Portal</p>
+              <div className="space-y-1">
+                {otherRoles.map((r) => {
+                  const config = roleConfig[r];
+                  const Icon = config.icon;
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => handleSwitchRole(r)}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md hover:bg-muted transition-colors"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {config.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Course Stats (Student only) */}
         {role === 'student' && (

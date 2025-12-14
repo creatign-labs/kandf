@@ -27,8 +27,11 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
             <NavLink to="/courses" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Courses
             </NavLink>
-            <NavLink to="/enquiry" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
-              Contact Us
+            <NavLink to="/about" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              About
+            </NavLink>
+            <NavLink to="/contact" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              Contact
             </NavLink>
           </nav>
         )}
@@ -46,6 +49,9 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
             </NavLink>
             <NavLink to="/student/my-bookings" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Bookings
+            </NavLink>
+            <NavLink to="/student/assessments" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              Assessments
             </NavLink>
             <NavLink to="/student/jobs" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Jobs
@@ -67,8 +73,14 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
             <NavLink to="/admin/courses" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Courses
             </NavLink>
+            <NavLink to="/admin/batches" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              Batches
+            </NavLink>
             <NavLink to="/admin/inventory" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Inventory
+            </NavLink>
+            <NavLink to="/admin/notifications" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              Notifications
             </NavLink>
           </nav>
         )}
@@ -80,6 +92,12 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
             </NavLink>
             <NavLink to="/chef/attendance" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
               Attendance
+            </NavLink>
+            <NavLink to="/chef/recipes" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              Recipes
+            </NavLink>
+            <NavLink to="/chef/inventory-usage" className="text-sm font-medium transition-colors hover:text-primary" activeClassName="text-primary">
+              Inventory
             </NavLink>
           </nav>
         )}
@@ -96,20 +114,24 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
             </>
           ) : (
             <>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
-                  3
-                </span>
+              <Button variant="ghost" size="icon" className="relative" asChild>
+                <Link to={`/${role === 'admin' ? 'admin' : 'student'}/notifications`}>
+                  <Bell className="h-5 w-5" />
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
+                    3
+                  </span>
+                </Link>
               </Button>
               <Button variant="ghost" size="icon">
                 <MessageSquare className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-4 w-4 text-primary" />
-                </div>
-                <span className="text-sm font-medium">{userName || "User"}</span>
+              <Button variant="ghost" size="sm" className="gap-2" asChild>
+                <Link to={`/${role}/profile`}>
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium">{userName || "User"}</span>
+                </Link>
               </Button>
             </>
           )}

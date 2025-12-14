@@ -1,12 +1,13 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText } from "lucide-react";
+import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText, LayoutDashboard } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
+
 interface HeaderProps {
   role?: "public" | "student" | "admin" | "chef";
   userName?: string;
@@ -18,6 +19,8 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   end?: boolean;
 }
+
+type AppRole = "admin" | "student" | "chef";
 
 const publicNavItems: NavItem[] = [
   { to: "/", label: "Home", icon: Home, end: true },
@@ -60,6 +63,44 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userPrimaryRole, setUserPrimaryRole] = useState<AppRole | null>(null);
+
+  useEffect(() => {
+    // Only check auth status for public pages
+    if (role === "public") {
+      checkAuthStatus();
+    }
+  }, [role]);
+
+  const checkAuthStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setIsLoggedIn(true);
+      // Fetch user's primary role
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      
+      if (roles && roles.length > 0) {
+        // Priority: admin > chef > student
+        if (roles.some(r => r.role === 'admin')) {
+          setUserPrimaryRole('admin');
+        } else if (roles.some(r => r.role === 'chef')) {
+          setUserPrimaryRole('chef');
+        } else {
+          setUserPrimaryRole('student');
+        }
+      }
+    }
+  };
+
+  const getDashboardPath = () => {
+    if (userPrimaryRole === 'admin') return '/admin';
+    if (userPrimaryRole === 'chef') return '/chef';
+    return '/student';
+  };
 
   const getNavItems = () => {
     switch (role) {
@@ -109,14 +150,23 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
         {/* Desktop Right Side */}
         <div className="hidden md:flex items-center gap-2 md:gap-3">
           {role === "public" ? (
-            <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/login">Log In</Link>
-              </Button>
+            isLoggedIn && userPrimaryRole ? (
               <Button size="sm" asChild>
-                <Link to="/signup">Sign Up</Link>
+                <Link to={getDashboardPath()}>
+                  <LayoutDashboard className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Link>
               </Button>
-            </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/login">Log In</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link to="/signup">Sign Up</Link>
+                </Button>
+              </>
+            )
           ) : (
             <>
               <Button variant="ghost" size="icon" className="relative" asChild>
@@ -216,18 +266,29 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
                 {/* Mobile Menu Footer */}
                 <div className="p-4 border-t mt-auto">
                   {role === "public" ? (
-                    <div className="space-y-2">
+                    isLoggedIn && userPrimaryRole ? (
                       <SheetClose asChild>
-                        <Button variant="outline" className="w-full" asChild>
-                          <Link to="/login">Log In</Link>
+                        <Button className="w-full gap-2" asChild>
+                          <Link to={getDashboardPath()}>
+                            <LayoutDashboard className="h-4 w-4" />
+                            Back to Dashboard
+                          </Link>
                         </Button>
                       </SheetClose>
-                      <SheetClose asChild>
-                        <Button className="w-full" asChild>
-                          <Link to="/signup">Sign Up</Link>
-                        </Button>
-                      </SheetClose>
-                    </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <SheetClose asChild>
+                          <Button variant="outline" className="w-full" asChild>
+                            <Link to="/login">Log In</Link>
+                          </Button>
+                        </SheetClose>
+                        <SheetClose asChild>
+                          <Button className="w-full" asChild>
+                            <Link to="/signup">Sign Up</Link>
+                          </Button>
+                        </SheetClose>
+                      </div>
+                    )
                   ) : (
                     <Button 
                       variant="outline" 

@@ -28,6 +28,8 @@ import Feedback from "./pages/student/Feedback";
 import Certificates from "./pages/student/Certificates";
 import Resume from "./pages/student/Resume";
 import Jobs from "./pages/student/Jobs";
+import Onboarding from "./pages/student/Onboarding";
+import AwaitingApproval from "./pages/student/AwaitingApproval";
 import Leads from "./pages/admin/Leads";
 import Students from "./pages/admin/Students";
 import AdminCourses from "./pages/admin/Courses";
@@ -36,6 +38,10 @@ import AdminNotifications from "./pages/admin/Notifications";
 import Batches from "./pages/admin/Batches";
 import Staff from "./pages/admin/Staff";
 import DataTemplate from "./pages/admin/DataTemplate";
+import StudentApprovals from "./pages/admin/StudentApprovals";
+import InventoryChecklist from "./pages/admin/InventoryChecklist";
+import RecipeIngredients from "./pages/admin/RecipeIngredients";
+import AdminRecipes from "./pages/admin/AdminRecipes";
 import Attendance from "./pages/chef/Attendance";
 import ChefRecipes from "./pages/chef/Recipes";
 import InventoryUsage from "./pages/chef/InventoryUsage";
@@ -62,6 +68,8 @@ const App = () => (
           <Route path="/enquiry" element={<Enquiry />} />
           <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
           <Route path="/payment/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+          <Route path="/awaiting-approval" element={<ProtectedRoute><AwaitingApproval /></ProtectedRoute>} />
           
           <Route path="/student" element={<ProtectedRoute requiredRole="student"><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/my-course" element={<ProtectedRoute requiredRole="student"><MyCourse /></ProtectedRoute>} />
@@ -85,6 +93,10 @@ const App = () => (
           <Route path="/admin/batches" element={<ProtectedRoute requiredRole="admin"><Batches /></ProtectedRoute>} />
           <Route path="/admin/staff" element={<ProtectedRoute requiredRole="admin"><Staff /></ProtectedRoute>} />
           <Route path="/admin/data-template" element={<ProtectedRoute requiredRole="admin"><DataTemplate /></ProtectedRoute>} />
+          <Route path="/admin/student-approvals" element={<ProtectedRoute requiredRole="admin"><StudentApprovals /></ProtectedRoute>} />
+          <Route path="/admin/inventory-checklist" element={<ProtectedRoute requiredRole="admin"><InventoryChecklist /></ProtectedRoute>} />
+          <Route path="/admin/recipe-ingredients" element={<ProtectedRoute requiredRole="admin"><RecipeIngredients /></ProtectedRoute>} />
+          <Route path="/admin/recipes" element={<ProtectedRoute requiredRole="admin"><AdminRecipes /></ProtectedRoute>} />
           <Route path="/admin/profile" element={<ProtectedRoute requiredRole="admin"><Profile /></ProtectedRoute>} />
           
           <Route path="/chef" element={<ProtectedRoute requiredRole="chef"><ChefDashboard /></ProtectedRoute>} />

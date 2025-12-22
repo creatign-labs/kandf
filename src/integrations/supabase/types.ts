@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      advance_payments: {
+        Row: {
+          amount: number
+          course_id: string
+          created_at: string
+          id: string
+          paid_at: string | null
+          payment_method: string
+          razorpay_payment_id: string | null
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          course_id: string
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          payment_method?: string
+          razorpay_payment_id?: string | null
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          course_id?: string
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          payment_method?: string
+          razorpay_payment_id?: string | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advance_payments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessments: {
         Row: {
           course_id: string
@@ -416,6 +463,96 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_checklist_items: {
+        Row: {
+          checklist_id: string
+          created_at: string
+          current_stock: number
+          id: string
+          inventory_id: string
+          is_purchased: boolean
+          required_quantity: number
+          to_purchase: number
+        }
+        Insert: {
+          checklist_id: string
+          created_at?: string
+          current_stock?: number
+          id?: string
+          inventory_id: string
+          is_purchased?: boolean
+          required_quantity?: number
+          to_purchase?: number
+        }
+        Update: {
+          checklist_id?: string
+          created_at?: string
+          current_stock?: number
+          id?: string
+          inventory_id?: string
+          is_purchased?: boolean
+          required_quantity?: number
+          to_purchase?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_checklist_items_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_checklist_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_checklists: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          checklist_date: string
+          created_at: string
+          generated_by: string
+          id: string
+          notes: string | null
+          purchased_at: string | null
+          purchased_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          checklist_date: string
+          created_at?: string
+          generated_by: string
+          id?: string
+          notes?: string | null
+          purchased_at?: string | null
+          purchased_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          checklist_date?: string
+          created_at?: string
+          generated_by?: string
+          id?: string
+          notes?: string | null
+          purchased_at?: string | null
+          purchased_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_usage: {
         Row: {
           batch_id: string | null
@@ -813,6 +950,51 @@ export type Database = {
           },
         ]
       }
+      recipe_ingredients: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_id: string
+          notes: string | null
+          quantity_per_student: number
+          recipe_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_id: string
+          notes?: string | null
+          quantity_per_student?: number
+          recipe_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_id?: string
+          notes?: string | null
+          quantity_per_student?: number
+          recipe_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           cook_time: number | null
@@ -932,6 +1114,53 @@ export type Database = {
           },
         ]
       }
+      student_access_approvals: {
+        Row: {
+          advance_payment_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          credentials_sent_at: string | null
+          generated_password: string | null
+          id: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          advance_payment_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          credentials_sent_at?: string | null
+          generated_password?: string | null
+          id?: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          advance_payment_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          credentials_sent_at?: string | null
+          generated_password?: string | null
+          id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_access_approvals_advance_payment_id_fkey"
+            columns: ["advance_payment_id"]
+            isOneToOne: false
+            referencedRelation: "advance_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_answers: {
         Row: {
           answered_at: string
@@ -1022,6 +1251,39 @@ export type Database = {
           },
         ]
       }
+      student_onboarding: {
+        Row: {
+          completed_at: string
+          created_at: string
+          goal: string
+          id: string
+          preferred_duration: string
+          recipe_interests: string[]
+          skill_level: string
+          student_id: string
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          goal: string
+          id?: string
+          preferred_duration: string
+          recipe_interests?: string[]
+          skill_level: string
+          student_id: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          goal?: string
+          id?: string
+          preferred_duration?: string
+          recipe_interests?: string[]
+          skill_level?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
       student_recipe_progress: {
         Row: {
           completed_at: string | null
@@ -1099,6 +1361,7 @@ export type Database = {
         Returns: string
       }
       generate_invoice_number: { Args: never; Returns: string }
+      generate_random_password: { Args: never; Returns: string }
       generate_student_id: { Args: { p_course_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1107,9 +1370,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "student" | "chef"
+      app_role: "admin" | "student" | "chef" | "super_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1237,7 +1501,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "student", "chef"],
+      app_role: ["admin", "student", "chef", "super_admin"],
     },
   },
 } as const

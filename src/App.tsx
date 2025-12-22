@@ -43,6 +43,7 @@ import StudentApprovals from "./pages/admin/StudentApprovals";
 import InventoryChecklist from "./pages/admin/InventoryChecklist";
 import RecipeIngredients from "./pages/admin/RecipeIngredients";
 import AdminRecipes from "./pages/admin/AdminRecipes";
+import SuperAdminManagement from "./pages/admin/SuperAdminManagement";
 import Attendance from "./pages/chef/Attendance";
 import ChefRecipes from "./pages/chef/Recipes";
 import InventoryUsage from "./pages/chef/InventoryUsage";
@@ -99,6 +100,7 @@ const App = () => (
           <Route path="/admin/inventory-checklist" element={<ProtectedRoute requiredRole="admin"><InventoryChecklist /></ProtectedRoute>} />
           <Route path="/admin/recipe-ingredients" element={<ProtectedRoute requiredRole="admin"><RecipeIngredients /></ProtectedRoute>} />
           <Route path="/admin/recipes" element={<ProtectedRoute requiredRole="admin"><AdminRecipes /></ProtectedRoute>} />
+          <Route path="/admin/super-admins" element={<ProtectedRoute requiredRole="admin"><SuperAdminManagement /></ProtectedRoute>} />
           <Route path="/admin/profile" element={<ProtectedRoute requiredRole="admin"><Profile /></ProtectedRoute>} />
           
           <Route path="/chef" element={<ProtectedRoute requiredRole="chef"><ChefDashboard /></ProtectedRoute>} />

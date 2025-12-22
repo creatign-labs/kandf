@@ -35,12 +35,13 @@ interface Enrollment {
   } | null;
 }
 
-type AppRole = "admin" | "student" | "chef";
+type AppRole = "admin" | "student" | "chef" | "super_admin";
 
-const roleConfig: Record<AppRole, { icon: React.ComponentType<{ className?: string }>; label: string; path: string }> = {
+const roleConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; label: string; path: string }> = {
   admin: { icon: Shield, label: "Admin Portal", path: "/admin" },
   chef: { icon: ChefHat, label: "Chef Portal", path: "/chef" },
   student: { icon: GraduationCap, label: "Student Portal", path: "/student" },
+  super_admin: { icon: Shield, label: "Admin Portal", path: "/admin" },
 };
 
 export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
@@ -120,7 +121,8 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
   const fullName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "User";
   const activeCourses = enrollments.filter(e => e.status === 'active');
   const completedCourses = enrollments.filter(e => e.status === 'completed' || e.progress === 100);
-  const otherRoles = userRoles.filter(r => r !== role);
+  // Filter out super_admin from portal switching (it uses admin portal) and current role
+  const otherRoles = userRoles.filter(r => r !== role && r !== 'super_admin' && roleConfig[r]);
 
   return (
     <DropdownMenu>

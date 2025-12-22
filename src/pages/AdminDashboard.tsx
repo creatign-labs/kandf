@@ -3,12 +3,46 @@ import { StatsCard } from "@/components/StatsCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, FileSpreadsheet } from "lucide-react";
+import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, FileSpreadsheet, UserCheck, ClipboardList, UtensilsCrossed } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 const AdminDashboard = () => {
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  // Check if current user is super admin
+  useEffect(() => {
+    const checkSuperAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'super_admin')
+          .single();
+        setIsSuperAdmin(!!data);
+      }
+    };
+    checkSuperAdmin();
+  }, []);
+
+  // Fetch pending approvals count
+  const { data: pendingApprovalsCount } = useQuery({
+    queryKey: ['pending-approvals-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('student_access_approvals')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      
+      if (error) throw error;
+      return count || 0;
+    }
+  });
+
   // Fetch active students count
   const { data: studentsCount } = useQuery({
     queryKey: ['admin-students-count'],
@@ -258,6 +292,19 @@ const AdminDashboard = () => {
                     View Students
                   </Link>
                 </Button>
+                {isSuperAdmin && (
+                  <Button variant="outline" className="w-full justify-start relative" asChild>
+                    <Link to="/admin/student-approvals">
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Student Approvals
+                      {pendingApprovalsCount && pendingApprovalsCount > 0 && (
+                        <Badge variant="destructive" className="ml-auto text-xs">
+                          {pendingApprovalsCount}
+                        </Badge>
+                      )}
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/leads">
                     <TrendingUp className="h-4 w-4 mr-2" />
@@ -265,9 +312,21 @@ const AdminDashboard = () => {
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/recipes">
+                    <UtensilsCrossed className="h-4 w-4 mr-2" />
+                    Recipes
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/inventory">
                     <Package className="h-4 w-4 mr-2" />
-                    Update Inventory
+                    Inventory
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/inventory-checklist">
+                    <ClipboardList className="h-4 w-4 mr-2" />
+                    Inventory Checklist
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>

@@ -99,8 +99,8 @@ const AwaitingApproval = () => {
           <div className="space-y-6">
             {/* Payment Status */}
             <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
-              <div className={`p-2 rounded-full ${advancePayment?.status === "paid" ? "bg-green-100" : "bg-yellow-100"}`}>
-                {advancePayment?.status === "paid" ? (
+              <div className={`p-2 rounded-full ${advancePayment?.status === "completed" ? "bg-green-100" : "bg-yellow-100"}`}>
+                {advancePayment?.status === "completed" ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 ) : (
                   <Clock className="h-5 w-5 text-yellow-600" />
@@ -109,12 +109,12 @@ const AwaitingApproval = () => {
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">Advance Payment</h3>
-                  <Badge variant={advancePayment?.status === "paid" ? "default" : "secondary"}>
-                    {advancePayment?.status === "paid" ? "Completed" : "Pending"}
+                  <Badge variant={advancePayment?.status === "completed" ? "default" : "secondary"}>
+                    {advancePayment?.status === "completed" ? "Completed" : "Pending"}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {advancePayment?.status === "paid"
+                  {advancePayment?.status === "completed"
                     ? `₹${advancePayment.amount} paid for ${advancePayment.courses?.title || "course"}`
                     : "Complete your advance payment to proceed"}
                 </p>

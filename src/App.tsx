@@ -17,6 +17,7 @@ import CourseDetail from "./pages/CourseDetail";
 import Enroll from "./pages/Enroll";
 import Enquiry from "./pages/Enquiry";
 import Payment from "./pages/Payment";
+import AdvancePayment from "./pages/AdvancePayment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import MyCourse from "./pages/student/MyCourse";
 import RecipeDetail from "./pages/student/RecipeDetail";
@@ -68,8 +69,9 @@ const App = () => (
           <Route path="/enquiry" element={<Enquiry />} />
           <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
           <Route path="/payment/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+          <Route path="/advance-payment" element={<ProtectedRoute><AdvancePayment /></ProtectedRoute>} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-          <Route path="/awaiting-approval" element={<ProtectedRoute><AwaitingApproval /></ProtectedRoute>} />
+          <Route path="/student/awaiting-approval" element={<ProtectedRoute><AwaitingApproval /></ProtectedRoute>} />
           
           <Route path="/student" element={<ProtectedRoute requiredRole="student"><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/my-course" element={<ProtectedRoute requiredRole="student"><MyCourse /></ProtectedRoute>} />

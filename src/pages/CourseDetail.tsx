@@ -270,14 +270,41 @@ const CourseDetail = () => {
                     </div>
                   </div>
 
+                  {/* Advance Payment Option */}
+                  <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
+                    <h4 className="font-semibold text-sm mb-1">Reserve Your Spot</h4>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Pay ₹2,000 advance to secure your seat. Remaining fee payable upon approval.
+                    </p>
+                    <Button 
+                      size="lg" 
+                      className="w-full"
+                      onClick={() => navigate('/advance-payment', { 
+                        state: { course: course.title, courseId: course.id } 
+                      })}
+                    >
+                      Apply Now - ₹2,000
+                    </Button>
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">or</span>
+                    </div>
+                  </div>
+
                   <Button 
                     size="lg" 
+                    variant="outline"
                     className="w-full"
                     onClick={() => navigate(`/enroll/${course.id}`)}
                     disabled={batches.length === 0}
                   >
                     <IndianRupee className="h-4 w-4 mr-2" />
-                    {batches.length === 0 ? 'No Batches Available' : 'Enroll Now'}
+                    {batches.length === 0 ? 'No Batches Available' : 'Pay Full Amount'}
                   </Button>
 
                   <div className="text-center pt-2">

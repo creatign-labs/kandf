@@ -27,9 +27,10 @@ Deno.serve(async (req) => {
     );
 
     const demoUsers = [
-      { email: "student@demo.com", password: "Demo123!", firstName: "Demo", lastName: "Student", role: "student" },
-      { email: "admin@demo.com", password: "Demo123!", firstName: "Demo", lastName: "Admin", role: "admin" },
-      { email: "chef@demo.com", password: "Demo123!", firstName: "Demo", lastName: "Chef", role: "chef" },
+      { email: "student@demo.com", password: "Demo123!", firstName: "Demo", lastName: "Student", roles: ["student"] },
+      { email: "admin@demo.com", password: "Demo123!", firstName: "Demo", lastName: "Admin", roles: ["admin"] },
+      { email: "chef@demo.com", password: "Demo123!", firstName: "Demo", lastName: "Chef", roles: ["chef"] },
+      { email: "superadmin@demo.com", password: "SuperAdmin123!", firstName: "Super", lastName: "Admin", roles: ["admin", "super_admin"] },
     ];
 
     const results = [];
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
       const existingUser = existingUsers?.users?.find(u => u.email === user.email);
 
       if (existingUser) {
-        results.push({ email: user.email, status: "already exists", role: user.role });
+        results.push({ email: user.email, status: "already exists", roles: user.roles });
         continue;
       }
 
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      results.push({ email: user.email, status: "created", role: user.role, userId: authData.user?.id });
+      results.push({ email: user.email, status: "created", roles: user.roles, userId: authData.user?.id });
     }
 
     return new Response(JSON.stringify({ success: true, results }), {

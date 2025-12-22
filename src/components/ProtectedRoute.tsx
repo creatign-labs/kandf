@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'chef' | 'student';
+  requiredRole?: 'admin' | 'chef' | 'student' | 'super_admin';
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
@@ -26,14 +26,34 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
       }
 
       if (requiredRole) {
+        // For student role, also check approval status
+        if (requiredRole === 'student') {
+          const { data: approval } = await supabase
+            .from('student_access_approvals')
+            .select('status')
+            .eq('student_id', session.user.id)
+            .single();
+
+          // If student has pending approval, redirect to awaiting page
+          if (approval && approval.status === 'pending') {
+            navigate('/student/awaiting-approval');
+            return;
+          }
+        }
+
+        // Check if user has the required role or is super_admin (super_admin has access to admin routes)
+        type AppRole = 'admin' | 'chef' | 'student' | 'super_admin';
+        const rolesToCheck: AppRole[] = requiredRole === 'admin' 
+          ? ['admin', 'super_admin'] 
+          : [requiredRole];
+        
         const { data: roles, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id)
-          .eq('role', requiredRole)
-          .single();
+          .in('role', rolesToCheck);
         
-        if (roleError || !roles) {
+        if (roleError || !roles || roles.length === 0) {
           // Redirect based on what roles they DO have
           const { data: userRoles } = await supabase
             .from('user_roles')
@@ -42,7 +62,9 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
           
           if (userRoles && userRoles.length > 0) {
             const firstRole = userRoles[0].role;
-            navigate(`/${firstRole}`);
+            // Map super_admin to admin route
+            const route = firstRole === 'super_admin' ? 'admin' : firstRole;
+            navigate(`/${route}`);
           } else {
             navigate('/');
           }

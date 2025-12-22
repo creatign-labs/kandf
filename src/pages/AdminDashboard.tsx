@@ -297,7 +297,7 @@ const AdminDashboard = () => {
                     <Link to="/admin/student-approvals">
                       <UserCheck className="h-4 w-4 mr-2" />
                       Student Approvals
-                      {pendingApprovalsCount && pendingApprovalsCount > 0 && (
+                      {pendingApprovalsCount !== undefined && pendingApprovalsCount > 0 && (
                         <Badge variant="destructive" className="ml-auto text-xs">
                           {pendingApprovalsCount}
                         </Badge>

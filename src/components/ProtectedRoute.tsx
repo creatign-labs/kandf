@@ -25,22 +25,22 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         return;
       }
 
-      if (requiredRole) {
-        // For student role, also check approval status
-        if (requiredRole === 'student') {
-          const { data: approval } = await supabase
-            .from('student_access_approvals')
-            .select('status')
-            .eq('student_id', session.user.id)
-            .single();
+      // Check profile account_status for students
+      if (requiredRole === 'student') {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('account_status')
+          .eq('id', session.user.id)
+          .single();
 
-          // If student has pending approval, redirect to awaiting page
-          if (approval && approval.status === 'pending') {
-            navigate('/student/awaiting-approval');
-            return;
-          }
+        // If student account is not active, redirect to awaiting page
+        if (profile && profile.account_status !== 'active') {
+          navigate('/student/awaiting-approval');
+          return;
         }
+      }
 
+      if (requiredRole) {
         // Check if user has the required role or is super_admin (super_admin has access to admin routes)
         type AppRole = 'admin' | 'chef' | 'student' | 'super_admin';
         const rolesToCheck: AppRole[] = requiredRole === 'admin' 

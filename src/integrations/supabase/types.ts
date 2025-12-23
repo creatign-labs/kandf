@@ -332,6 +332,109 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_inventory_requirement_items: {
+        Row: {
+          created_at: string
+          current_stock: number
+          id: string
+          inventory_id: string
+          is_purchased: boolean
+          recipe_id: string | null
+          required_quantity: number
+          requirement_id: string
+          to_purchase: number
+        }
+        Insert: {
+          created_at?: string
+          current_stock?: number
+          id?: string
+          inventory_id: string
+          is_purchased?: boolean
+          recipe_id?: string | null
+          required_quantity?: number
+          requirement_id: string
+          to_purchase?: number
+        }
+        Update: {
+          created_at?: string
+          current_stock?: number
+          id?: string
+          inventory_id?: string
+          is_purchased?: boolean
+          recipe_id?: string | null
+          required_quantity?: number
+          requirement_id?: string
+          to_purchase?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_inventory_requirement_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_inventory_requirement_items_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_inventory_requirement_items_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "daily_inventory_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_inventory_requirements: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          generated_at: string
+          generated_by: string
+          id: string
+          notes: string | null
+          purchased_at: string | null
+          purchased_by: string | null
+          requirement_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          generated_at?: string
+          generated_by: string
+          id?: string
+          notes?: string | null
+          purchased_at?: string | null
+          purchased_by?: string | null
+          requirement_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          generated_at?: string
+          generated_by?: string
+          id?: string
+          notes?: string | null
+          purchased_at?: string | null
+          purchased_by?: string | null
+          requirement_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       enrollments: {
         Row: {
           batch_id: string
@@ -462,6 +565,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      inventory_approvals: {
+        Row: {
+          action: string
+          id: string
+          notes: string | null
+          performed_at: string
+          performed_by: string
+          requirement_id: string
+        }
+        Insert: {
+          action: string
+          id?: string
+          notes?: string | null
+          performed_at?: string
+          performed_by: string
+          requirement_id: string
+        }
+        Update: {
+          action?: string
+          id?: string
+          notes?: string | null
+          performed_at?: string
+          performed_by?: string
+          requirement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_approvals_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "daily_inventory_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_checklist_items: {
         Row: {
@@ -872,6 +1010,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_status: string
           avatar_url: string | null
           bio: string | null
           created_at: string
@@ -882,6 +1021,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_status?: string
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -892,6 +1032,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_status?: string
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -1355,9 +1496,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_inventory_checklist: {
+        Args: { p_notes?: string; p_requirement_id: string }
+        Returns: undefined
+      }
+      approve_student_access: {
+        Args: { p_student_id: string }
+        Returns: undefined
+      }
       decrement_batch_seats: { Args: { batch_id: string }; Returns: undefined }
       generate_certificate_number: {
         Args: { p_course_id: string }
+        Returns: string
+      }
+      generate_daily_inventory_requirements: {
+        Args: { p_date: string }
         Returns: string
       }
       generate_invoice_number: { Args: never; Returns: string }
@@ -1371,6 +1524,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      mark_advance_paid: {
+        Args: { p_payment_id: string; p_student_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "student" | "chef" | "super_admin"

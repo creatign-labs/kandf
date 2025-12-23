@@ -37,16 +37,16 @@ const AwaitingApproval = () => {
     enabled: !!user,
   });
 
-  // Fetch access approval status
-  const { data: accessApproval, isLoading: approvalLoading } = useQuery({
-    queryKey: ["my-access-approval", user?.id],
+  // Fetch account status from profiles table (single source of truth)
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ["my-profile-status", user?.id],
     queryFn: async () => {
       if (!user) return null;
       const { data, error } = await supabase
-        .from("student_access_approvals")
-        .select("*")
-        .eq("student_id", user.id)
-        .maybeSingle();
+        .from("profiles")
+        .select("account_status, first_name, last_name")
+        .eq("id", user.id)
+        .single();
 
       if (error) throw error;
       return data;
@@ -57,17 +57,17 @@ const AwaitingApproval = () => {
 
   // Check if approved and redirect
   useEffect(() => {
-    if (accessApproval?.status === "approved") {
+    if (profile?.account_status === "active") {
       navigate("/student");
     }
-  }, [accessApproval, navigate]);
+  }, [profile, navigate]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
   };
 
-  const isLoading = paymentLoading || approvalLoading;
+  const isLoading = paymentLoading || profileLoading;
 
   if (isLoading) {
     return (
@@ -126,21 +126,28 @@ const AwaitingApproval = () => {
               </div>
             </div>
 
-            {/* Approval Status */}
+            {/* Approval Status - using profile.account_status */}
             <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
-              <div className="p-2 rounded-full bg-yellow-100">
-                <Clock className="h-5 w-5 text-yellow-600" />
+              <div className={`p-2 rounded-full ${profile?.account_status === 'active' ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                {profile?.account_status === 'active' ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <Clock className="h-5 w-5 text-yellow-600" />
+                )}
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Account Approval</h3>
-                  <Badge variant="secondary">
-                    {accessApproval?.status === "approved" ? "Approved" : "Pending Review"}
+                  <h3 className="font-semibold">Account Status</h3>
+                  <Badge variant={profile?.account_status === 'active' ? "default" : "secondary"}>
+                    {profile?.account_status === 'active' ? "Active" : 
+                     profile?.account_status === 'advance_paid' ? "Awaiting Approval" :
+                     profile?.account_status === 'approved' ? "Approved" : "Pending"}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Your account is being reviewed by our admin team. You will receive your login
-                  credentials via email once approved.
+                  {profile?.account_status === 'active' 
+                    ? "Your account is active. Redirecting to dashboard..."
+                    : "Your account is being reviewed by our admin team. You will receive your login credentials via email once approved."}
                 </p>
               </div>
             </div>

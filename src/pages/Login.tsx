@@ -65,18 +65,32 @@ const Login = () => {
           .select('role')
           .eq('user_id', data.user.id);
 
+        // Check account_status for students
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('account_status')
+          .eq('id', data.user.id)
+          .single();
+
         toast({
           title: "Welcome back!",
           description: "You have successfully logged in.",
         });
 
-        // Redirect based on role priority: admin > chef > student
-        if (roles?.some(r => r.role === 'admin')) {
+        // Redirect based on role priority: super_admin > admin > chef > student
+        if (roles?.some(r => r.role === 'super_admin')) {
+          navigate('/admin');
+        } else if (roles?.some(r => r.role === 'admin')) {
           navigate('/admin');
         } else if (roles?.some(r => r.role === 'chef')) {
           navigate('/chef');
         } else {
-          navigate('/student');
+          // For students, check account_status
+          if (profile?.account_status !== 'active') {
+            navigate('/student/awaiting-approval');
+          } else {
+            navigate('/student');
+          }
         }
       }
     } catch (error) {

@@ -102,6 +102,18 @@ serve(async (req) => {
 
     console.log('Advance payment recorded:', advancePayment.id);
 
+    // Update profile account_status to advance_paid using mark_advance_paid function
+    const { error: markError } = await supabase.rpc('mark_advance_paid', {
+      p_student_id: user.id,
+      p_payment_id: razorpay_payment_id
+    });
+
+    if (markError) {
+      console.error('Failed to update account_status:', markError);
+    } else {
+      console.log('Account status updated to advance_paid');
+    }
+
     // Create student access approval record (pending)
     const { data: approval, error: approvalError } = await supabase
       .from('student_access_approvals')

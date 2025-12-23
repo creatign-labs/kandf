@@ -41,6 +41,7 @@ import Staff from "./pages/admin/Staff";
 import DataTemplate from "./pages/admin/DataTemplate";
 import StudentApprovals from "./pages/admin/StudentApprovals";
 import InventoryChecklist from "./pages/admin/InventoryChecklist";
+import DailyInventoryRequirements from "./pages/admin/DailyInventoryRequirements";
 import RecipeIngredients from "./pages/admin/RecipeIngredients";
 import AdminRecipes from "./pages/admin/AdminRecipes";
 import SuperAdminManagement from "./pages/admin/SuperAdminManagement";
@@ -98,6 +99,7 @@ const App = () => (
           <Route path="/admin/data-template" element={<ProtectedRoute requiredRole="admin"><DataTemplate /></ProtectedRoute>} />
           <Route path="/admin/student-approvals" element={<ProtectedRoute requiredRole="admin"><StudentApprovals /></ProtectedRoute>} />
           <Route path="/admin/inventory-checklist" element={<ProtectedRoute requiredRole="admin"><InventoryChecklist /></ProtectedRoute>} />
+          <Route path="/admin/daily-inventory" element={<ProtectedRoute requiredRole="admin"><DailyInventoryRequirements /></ProtectedRoute>} />
           <Route path="/admin/recipe-ingredients" element={<ProtectedRoute requiredRole="admin"><RecipeIngredients /></ProtectedRoute>} />
           <Route path="/admin/recipes" element={<ProtectedRoute requiredRole="admin"><AdminRecipes /></ProtectedRoute>} />
           <Route path="/admin/super-admins" element={<ProtectedRoute requiredRole="admin"><SuperAdminManagement /></ProtectedRoute>} />

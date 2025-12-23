@@ -79,7 +79,7 @@ const StudentApprovals = () => {
     },
   });
 
-  // Approve student mutation
+  // Approve student mutation - uses backend function for proper enforcement
   const approveMutation = useMutation({
     mutationFn: async (studentId: string) => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -88,18 +88,27 @@ const StudentApprovals = () => {
       // Generate password
       const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + "!";
 
-      // Update approval record
-      const { error: approvalError } = await supabase
+      // Call backend function to approve student (enforces super_admin check)
+      const { error: approveError } = await supabase.rpc('approve_student_access', {
+        p_student_id: studentId
+      });
+
+      if (approveError) {
+        throw new Error(approveError.message);
+      }
+
+      // Update the student_access_approvals with generated password
+      const { error: passwordError } = await supabase
         .from("student_access_approvals")
         .update({
-          status: "approved",
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
           generated_password: password,
+          credentials_sent_at: new Date().toISOString(),
         })
         .eq("student_id", studentId);
 
-      if (approvalError) throw approvalError;
+      if (passwordError) {
+        console.error("Failed to save password:", passwordError);
+      }
 
       return { studentId, password };
     },
@@ -107,7 +116,7 @@ const StudentApprovals = () => {
       queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
       toast({
         title: "Student Approved",
-        description: "Credentials have been generated. Please share them with the student.",
+        description: "Account is now active. Credentials have been generated.",
       });
       // Show the credentials dialog
       const student = pendingApprovals?.find(a => a.student_id === data.studentId);

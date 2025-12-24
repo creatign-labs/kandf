@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Accordion,
   AccordionContent,
@@ -26,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Clock, Users, DollarSign, Loader2, Trash2 } from "lucide-react";
+import { Plus, Edit, Clock, Users, DollarSign, Loader2, Trash2, ChefHat, Search } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -35,12 +37,28 @@ const Courses = () => {
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<any>(null);
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     duration: "",
     level: "Beginner",
     base_fee: "",
+  });
+
+  // Fetch all recipes for selection
+  const { data: allRecipes } = useQuery({
+    queryKey: ["all-recipes-for-course"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recipes")
+        .select("id, title, difficulty, course_id")
+        .order("title");
+
+      if (error) throw error;
+      return data;
+    },
   });
 
   // Fetch courses with modules and batches
@@ -57,7 +75,7 @@ const Courses = () => {
       // Fetch related data for each course
       const coursesWithRelations = await Promise.all(
         (coursesData || []).map(async (course) => {
-          const [modulesResult, batchesResult, enrollmentsResult] = await Promise.all([
+          const [modulesResult, batchesResult, enrollmentsResult, recipesResult] = await Promise.all([
             supabase
               .from("modules")
               .select("*, recipes(*)")
@@ -72,12 +90,17 @@ const Courses = () => {
               .select("id")
               .eq("course_id", course.id)
               .eq("status", "active"),
+            supabase
+              .from("recipes")
+              .select("id, title, difficulty")
+              .eq("course_id", course.id),
           ]);
 
           return {
             ...course,
             modules: modulesResult.data || [],
             batches: batchesResult.data || [],
+            recipes: recipesResult.data || [],
             studentCount: enrollmentsResult.data?.length || 0,
           };
         })
@@ -89,17 +112,32 @@ const Courses = () => {
 
   const createCourseMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("courses").insert({
+      // Create the course first
+      const { data: newCourse, error } = await supabase.from("courses").insert({
         title: data.title,
         description: data.description,
         duration: data.duration,
         level: data.level,
         base_fee: parseFloat(data.base_fee),
-      });
+      }).select().single();
+      
       if (error) throw error;
+
+      // Update selected recipes to link to this course
+      if (selectedRecipeIds.length > 0 && newCourse) {
+        const { error: recipeError } = await supabase
+          .from("recipes")
+          .update({ course_id: newCourse.id })
+          .in("id", selectedRecipeIds);
+        
+        if (recipeError) throw recipeError;
+      }
+
+      return newCourse;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["all-recipes-for-course"] });
       toast({ title: "Course created successfully" });
       setIsAddDialogOpen(false);
       resetForm();
@@ -122,9 +160,28 @@ const Courses = () => {
         })
         .eq("id", id);
       if (error) throw error;
+
+      // First, unlink all recipes from this course
+      const { error: unlinkError } = await supabase
+        .from("recipes")
+        .update({ course_id: null })
+        .eq("course_id", id);
+      
+      if (unlinkError) throw unlinkError;
+
+      // Then link the selected recipes
+      if (selectedRecipeIds.length > 0) {
+        const { error: linkError } = await supabase
+          .from("recipes")
+          .update({ course_id: id })
+          .in("id", selectedRecipeIds);
+        
+        if (linkError) throw linkError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["all-recipes-for-course"] });
       toast({ title: "Course updated successfully" });
       setEditingCourse(null);
       resetForm();
@@ -133,7 +190,6 @@ const Courses = () => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
-
   const deleteCourseMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("courses").delete().eq("id", id);
@@ -156,6 +212,8 @@ const Courses = () => {
       level: "Beginner",
       base_fee: "",
     });
+    setSelectedRecipeIds([]);
+    setRecipeSearchQuery("");
   };
 
   const handleEdit = (course: any) => {
@@ -167,6 +225,10 @@ const Courses = () => {
       level: course.level,
       base_fee: course.base_fee.toString(),
     });
+    // Pre-select recipes that are linked to this course
+    const linkedRecipeIds = course.recipes?.map((r: any) => r.id) || [];
+    setSelectedRecipeIds(linkedRecipeIds);
+    setRecipeSearchQuery("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -195,6 +257,25 @@ const Courses = () => {
       </div>
     );
   }
+
+  // Filter recipes for selection - exclude recipes already linked to other courses
+  const availableRecipes = allRecipes?.filter((recipe) => {
+    // Include if: no course_id, or is being edited and belongs to this course, or is already selected
+    const isAvailable = !recipe.course_id || 
+      (editingCourse && recipe.course_id === editingCourse.id) ||
+      selectedRecipeIds.includes(recipe.id);
+    
+    const matchesSearch = recipe.title.toLowerCase().includes(recipeSearchQuery.toLowerCase());
+    return isAvailable && matchesSearch;
+  }) || [];
+
+  const toggleRecipe = (recipeId: string) => {
+    setSelectedRecipeIds((prev) =>
+      prev.includes(recipeId)
+        ? prev.filter((id) => id !== recipeId)
+        : [...prev, recipeId]
+    );
+  };
 
   const CourseForm = () => (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -247,13 +328,86 @@ const Courses = () => {
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-popover">
             <SelectItem value="Beginner">Beginner</SelectItem>
             <SelectItem value="Intermediate">Intermediate</SelectItem>
             <SelectItem value="Advanced">Advanced</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {/* Recipe Selection */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <ChefHat className="h-4 w-4" />
+          Select Recipes for this Course
+        </Label>
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search recipes..."
+            className="pl-10"
+            value={recipeSearchQuery}
+            onChange={(e) => setRecipeSearchQuery(e.target.value)}
+          />
+        </div>
+        <ScrollArea className="h-48 rounded-md border p-2">
+          {availableRecipes.length > 0 ? (
+            <div className="space-y-2">
+              {availableRecipes.map((recipe) => (
+                <div
+                  key={recipe.id}
+                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                  onClick={() => toggleRecipe(recipe.id)}
+                >
+                  <Checkbox
+                    checked={selectedRecipeIds.includes(recipe.id)}
+                    onCheckedChange={() => toggleRecipe(recipe.id)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{recipe.title}</p>
+                    {recipe.difficulty && (
+                      <Badge variant="outline" className="text-xs">
+                        {recipe.difficulty}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center p-4">
+              <ChefHat className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                {recipeSearchQuery ? "No recipes match your search" : "No available recipes"}
+              </p>
+            </div>
+          )}
+        </ScrollArea>
+        {selectedRecipeIds.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {selectedRecipeIds.map((id) => {
+              const recipe = allRecipes?.find((r) => r.id === id);
+              return recipe ? (
+                <Badge key={id} variant="secondary" className="gap-1">
+                  {recipe.title}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleRecipe(id);
+                    }}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              ) : null;
+            })}
+          </div>
+        )}
+      </div>
+
       <Button type="submit" className="w-full" disabled={createCourseMutation.isPending || updateCourseMutation.isPending}>
         {createCourseMutation.isPending || updateCourseMutation.isPending ? (
           <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
@@ -354,6 +508,26 @@ const Courses = () => {
                     {course.batches.map((batch: any) => (
                       <Badge key={batch.id} variant="outline">
                         {batch.batch_name} ({batch.time_slot}) - {batch.available_seats}/{batch.total_seats} seats
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Linked Recipes Section */}
+              {course.recipes && course.recipes.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="font-semibold mb-2 flex items-center gap-2">
+                    <ChefHat className="h-4 w-4 text-primary" />
+                    Linked Recipes ({course.recipes.length})
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {course.recipes.map((recipe: any) => (
+                      <Badge key={recipe.id} variant="secondary" className="gap-1">
+                        {recipe.title}
+                        {recipe.difficulty && (
+                          <span className="text-xs opacity-70">• {recipe.difficulty}</span>
+                        )}
                       </Badge>
                     ))}
                   </div>

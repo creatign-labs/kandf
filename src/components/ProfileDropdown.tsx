@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 interface ProfileDropdownProps {
-  role: "student" | "admin" | "chef";
+  role: "student" | "admin" | "chef" | "super_admin";
 }
 
 interface ProfileData {
@@ -226,7 +226,7 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
         <DropdownMenuSeparator />
         
         <DropdownMenuItem asChild>
-          <Link to={`/${role}/profile`} className="cursor-pointer">
+          <Link to={`/${role === 'super_admin' ? 'admin' : role}/profile`} className="cursor-pointer">
             <Settings className="h-4 w-4 mr-2" />
             Profile Settings
           </Link>

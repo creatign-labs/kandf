@@ -143,7 +143,7 @@ const AdminDashboard = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header role="admin" userName="Admin" />
+        <Header role={isSuperAdmin ? "super_admin" : "admin"} userName={isSuperAdmin ? "Super Admin" : "Admin"} />
         <div className="flex items-center justify-center h-96">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -163,7 +163,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header role="admin" userName="Admin" />
+      <Header role={isSuperAdmin ? "super_admin" : "admin"} userName={isSuperAdmin ? "Super Admin" : "Admin"} />
       
       <div className="container px-4 md:px-6 py-6 md:py-8">
         {/* Welcome Section */}

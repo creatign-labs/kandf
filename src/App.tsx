@@ -35,6 +35,8 @@ import Leads from "./pages/admin/Leads";
 import Students from "./pages/admin/Students";
 import AdminCourses from "./pages/admin/Courses";
 import Inventory from "./pages/admin/Inventory";
+import IngredientsInventory from "./pages/admin/IngredientsInventory";
+import RecipeInventory from "./pages/admin/RecipeInventory";
 import AdminNotifications from "./pages/admin/Notifications";
 import Batches from "./pages/admin/Batches";
 import Staff from "./pages/admin/Staff";
@@ -93,6 +95,8 @@ const App = () => (
           <Route path="/admin/students" element={<ProtectedRoute requiredRole="admin"><Students /></ProtectedRoute>} />
           <Route path="/admin/courses" element={<ProtectedRoute requiredRole="admin"><AdminCourses /></ProtectedRoute>} />
           <Route path="/admin/inventory" element={<ProtectedRoute requiredRole="admin"><Inventory /></ProtectedRoute>} />
+          <Route path="/admin/ingredients-inventory" element={<ProtectedRoute requiredRole="admin"><IngredientsInventory /></ProtectedRoute>} />
+          <Route path="/admin/recipe-inventory" element={<ProtectedRoute requiredRole="admin"><RecipeInventory /></ProtectedRoute>} />
           <Route path="/admin/notifications" element={<ProtectedRoute requiredRole="admin"><AdminNotifications /></ProtectedRoute>} />
           <Route path="/admin/batches" element={<ProtectedRoute requiredRole="admin"><Batches /></ProtectedRoute>} />
           <Route path="/admin/staff" element={<ProtectedRoute requiredRole="admin"><Staff /></ProtectedRoute>} />

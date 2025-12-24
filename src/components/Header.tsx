@@ -9,7 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 
 interface HeaderProps {
-  role?: "public" | "student" | "admin" | "chef";
+  role?: "public" | "student" | "admin" | "chef" | "super_admin";
   userName?: string;
 }
 
@@ -48,6 +48,18 @@ const adminNavItems = [
   { to: "/admin/courses", label: "Courses", icon: BookOpen },
   { to: "/admin/batches", label: "Batches", icon: Calendar },
   { to: "/admin/inventory", label: "Inventory", icon: Package },
+  { to: "/admin/staff", label: "Staff", icon: Users },
+  { to: "/admin/notifications", label: "Notifications", icon: Bell },
+];
+
+const superAdminNavItems = [
+  { to: "/admin", label: "Dashboard", icon: Home, end: true },
+  { to: "/admin/leads", label: "Leads", icon: Users },
+  { to: "/admin/students", label: "Students", icon: Users },
+  { to: "/admin/courses", label: "Courses", icon: BookOpen },
+  { to: "/admin/batches", label: "Batches", icon: Calendar },
+  { to: "/admin/recipe-inventory", label: "Recipe Inventory", icon: BookOpen },
+  { to: "/admin/ingredients-inventory", label: "Ingredients Inventory", icon: Package },
   { to: "/admin/staff", label: "Staff", icon: Users },
   { to: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
@@ -106,6 +118,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
     switch (role) {
       case "student": return studentNavItems;
       case "admin": return adminNavItems;
+      case "super_admin": return superAdminNavItems;
       case "chef": return chefNavItems;
       default: return publicNavItems;
     }
@@ -170,7 +183,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
           ) : (
             <>
               <Button variant="ghost" size="icon" className="relative" asChild>
-                <Link to={`/${role === 'admin' ? 'admin' : 'student'}/notifications`}>
+                <Link to={`/${role === 'admin' || role === 'super_admin' ? 'admin' : 'student'}/notifications`}>
                   <Bell className="h-5 w-5" />
                   <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
                     3
@@ -186,7 +199,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
         <div className="flex items-center gap-2 lg:hidden">
           {role !== "public" && (
             <Button variant="ghost" size="icon" className="relative" asChild>
-              <Link to={`/${role === 'admin' ? 'admin' : 'student'}/notifications`}>
+              <Link to={`/${role === 'admin' || role === 'super_admin' ? 'admin' : 'student'}/notifications`}>
                 <Bell className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
                   3

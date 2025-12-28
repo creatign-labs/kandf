@@ -72,6 +72,28 @@ const Login = () => {
           .eq('id', data.user.id)
           .single();
 
+        // For students, check login eligibility (3 no-shows or expired course)
+        const isStudent = roles?.some(r => r.role === 'student') && !roles?.some(r => ['admin', 'super_admin', 'chef'].includes(r.role));
+        
+        if (isStudent) {
+          // Call the database function to check eligibility
+          const { data: eligibilityResult, error: eligibilityError } = await supabase
+            .rpc('check_student_login_eligibility', { p_user_id: data.user.id });
+          
+          if (eligibilityError) {
+            console.error('Error checking eligibility:', eligibilityError);
+          } else if (eligibilityResult) {
+            // If function returns a message, login is disabled
+            await supabase.auth.signOut();
+            toast({
+              title: "Login Disabled",
+              description: eligibilityResult,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+
         toast({
           title: "Welcome back!",
           description: "You have successfully logged in.",

@@ -213,6 +213,7 @@ export type Database = {
           course_id: string
           created_at: string
           id: string
+          recipe_id: string | null
           status: string
           student_id: string
           time_slot: string
@@ -223,6 +224,7 @@ export type Database = {
           course_id: string
           created_at?: string
           id?: string
+          recipe_id?: string | null
           status?: string
           student_id: string
           time_slot: string
@@ -233,6 +235,7 @@ export type Database = {
           course_id?: string
           created_at?: string
           id?: string
+          recipe_id?: string | null
           status?: string
           student_id?: string
           time_slot?: string
@@ -244,6 +247,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
         ]
@@ -1503,6 +1513,10 @@ export type Database = {
       approve_student_access: {
         Args: { p_student_id: string }
         Returns: undefined
+      }
+      check_student_login_eligibility: {
+        Args: { p_user_id: string }
+        Returns: string
       }
       decrement_batch_seats: { Args: { batch_id: string }; Returns: undefined }
       generate_certificate_number: {

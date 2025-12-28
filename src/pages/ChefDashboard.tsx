@@ -1,10 +1,9 @@
 import { Header } from "@/components/Header";
 import { StatsCard } from "@/components/StatsCard";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Users, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { Calendar, Users, CheckCircle2, Clock, Loader2, ChefHat } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -29,6 +28,42 @@ const ChefDashboard = () => {
       
       if (error) throw error;
       return data;
+    }
+  });
+
+  // Fetch today's bookings grouped by recipe
+  const { data: todaysBookings } = useQuery({
+    queryKey: ['todays-bookings-by-recipe', today],
+    queryFn: async () => {
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          student_id,
+          course_id,
+          recipe_id,
+          time_slot,
+          recipes(id, title),
+          courses(title)
+        `)
+        .eq('booking_date', today)
+        .eq('status', 'confirmed');
+      
+      if (error) throw error;
+      
+      // Fetch profiles for all students in bookings
+      const studentIds = [...new Set((bookings || []).map(b => b.student_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', studentIds);
+      
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      
+      return (bookings || []).map(b => ({
+        ...b,
+        profile: profileMap.get(b.student_id)
+      }));
     }
   });
 
@@ -90,6 +125,29 @@ const ChefDashboard = () => {
       return data;
     }
   });
+
+  // Group bookings by time slot and recipe
+  const groupedBySlotAndRecipe = todaysBookings?.reduce((acc, booking) => {
+    const slot = booking.time_slot;
+    const recipeId = booking.recipe_id || 'unassigned';
+    const recipeTitle = booking.recipes?.title || 'No Recipe Assigned';
+    
+    if (!acc[slot]) acc[slot] = {};
+    if (!acc[slot][recipeId]) {
+      acc[slot][recipeId] = {
+        recipeTitle,
+        students: []
+      };
+    }
+    
+    acc[slot][recipeId].students.push({
+      id: booking.profile?.id,
+      name: `${booking.profile?.first_name || ''} ${booking.profile?.last_name || ''}`.trim(),
+      courseName: booking.courses?.title
+    });
+    
+    return acc;
+  }, {} as Record<string, Record<string, { recipeTitle: string; students: { id: string | undefined; name: string; courseName: string | undefined }[] }>>);
 
   // Mark attendance mutation
   const attendanceMutation = useMutation({
@@ -205,6 +263,52 @@ const ChefDashboard = () => {
             variant="default"
           />
         </div>
+
+        {/* Today's Recipe Groupings */}
+        {groupedBySlotAndRecipe && Object.keys(groupedBySlotAndRecipe).length > 0 && (
+          <Card className="p-4 md:p-6 mb-6 md:mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <ChefHat className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-lg">Today's Recipe Groups</h3>
+            </div>
+            <div className="space-y-4">
+              {Object.entries(groupedBySlotAndRecipe).map(([slot, recipes]) => (
+                <div key={slot} className="border rounded-lg p-4">
+                  <Badge variant="outline" className="mb-3">{slot}</Badge>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Object.entries(recipes).map(([recipeId, data]) => (
+                      <div 
+                        key={recipeId} 
+                        className={`p-3 rounded-lg ${recipeId === 'unassigned' ? 'bg-muted/50 border-dashed border' : 'bg-primary/5 border border-primary/20'}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <ChefHat className={`h-4 w-4 ${recipeId === 'unassigned' ? 'text-muted-foreground' : 'text-primary'}`} />
+                          <span className={`font-medium text-sm ${recipeId === 'unassigned' ? 'text-muted-foreground italic' : ''}`}>
+                            {data.recipeTitle}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {data.students.map((student, idx) => (
+                            <Badge 
+                              key={idx} 
+                              variant="secondary" 
+                              className="text-xs"
+                            >
+                              {student.name || 'Unknown'}
+                            </Badge>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {data.students.length} student{data.students.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Classes Schedule */}
         <div className="space-y-4 md:space-y-6">

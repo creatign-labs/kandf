@@ -260,6 +260,20 @@ const Attendance = () => {
                                     <XCircle className="h-4 w-4 mr-1" />
                                     Absent
                                   </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={existingAttendance?.status === "no_show" ? "default" : "outline"}
+                                    className={existingAttendance?.status === "no_show" ? "bg-orange-500 hover:bg-orange-600" : ""}
+                                    onClick={() => markAttendanceMutation.mutate({
+                                      studentId: enrollment.student_id,
+                                      batchId: batch.id,
+                                      classDate: todayStr,
+                                      status: "no_show",
+                                    })}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    No Show
+                                  </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -342,6 +356,11 @@ const Attendance = () => {
                                   <>
                                     <CheckCircle className="h-4 w-4 text-green-500" />
                                     <Badge className="bg-green-500">Present</Badge>
+                                  </>
+                                ) : student.status === "no_show" ? (
+                                  <>
+                                    <XCircle className="h-4 w-4 text-orange-500" />
+                                    <Badge className="bg-orange-500">No Show</Badge>
                                   </>
                                 ) : (
                                   <>

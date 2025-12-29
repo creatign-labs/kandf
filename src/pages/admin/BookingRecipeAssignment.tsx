@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, Users, ChefHat, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Bell, Send } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 
 const BookingRecipeAssignment = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isNotifying, setIsNotifying] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch bookings for selected date with student and recipe details
@@ -78,6 +79,43 @@ const BookingRecipeAssignment = () => {
     }
   });
 
+  // Fetch all chefs with their specializations
+  const { data: chefsWithSpecializations } = useQuery({
+    queryKey: ['chefs-specializations'],
+    queryFn: async () => {
+      // Get all chef user_ids
+      const { data: chefRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'chef');
+
+      if (rolesError) throw rolesError;
+
+      // Get profiles and specializations for each chef
+      const chefs = await Promise.all(
+        (chefRoles || []).map(async (role) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .eq('id', role.user_id)
+            .single();
+
+          const { data: specializations } = await supabase
+            .from('chef_specializations')
+            .select('recipe_id, recipes (id, title)')
+            .eq('chef_id', role.user_id);
+
+          return {
+            ...profile,
+            specializations: specializations || []
+          };
+        })
+      );
+
+      return chefs.filter(c => c.id);
+    }
+  });
+
   const assignRecipeMutation = useMutation({
     mutationFn: async ({ bookingId, recipeId }: { bookingId: string; recipeId: string | null }) => {
       const { error } = await supabase
@@ -100,6 +138,111 @@ const BookingRecipeAssignment = () => {
     }
   });
 
+  // Notify chefs about assigned recipes
+  const notifyChefs = async () => {
+    if (!bookings || bookings.length === 0) {
+      toast({ title: "No bookings to notify about", variant: "destructive" });
+      return;
+    }
+
+    setIsNotifying(true);
+
+    try {
+      // Get unique assigned recipes for the date
+      const assignedRecipes = [...new Set(
+        bookings
+          .filter(b => b.recipe_id)
+          .map(b => b.recipe_id)
+      )];
+
+      if (assignedRecipes.length === 0) {
+        toast({ title: "No recipes assigned yet", description: "Assign recipes before notifying chefs", variant: "destructive" });
+        setIsNotifying(false);
+        return;
+      }
+
+      // Find chefs who specialize in these recipes
+      const chefsToNotify = new Set<string>();
+      const chefRecipeMap: Record<string, string[]> = {};
+
+      if (chefsWithSpecializations) {
+        for (const chef of chefsWithSpecializations) {
+          if (!chef.id) continue;
+          
+          const matchingRecipes = chef.specializations
+            .filter((s: any) => assignedRecipes.includes(s.recipe_id))
+            .map((s: any) => s.recipes?.title || 'Unknown Recipe');
+
+          if (matchingRecipes.length > 0) {
+            chefsToNotify.add(chef.id);
+            chefRecipeMap[chef.id] = matchingRecipes;
+          }
+        }
+      }
+
+      // If no specialized chefs found, notify all chefs
+      if (chefsToNotify.size === 0 && chefsWithSpecializations) {
+        chefsWithSpecializations.forEach(chef => {
+          if (chef.id) chefsToNotify.add(chef.id);
+        });
+      }
+
+      // Group bookings by recipe for the notification message
+      const recipeGroups = bookings
+        .filter(b => b.recipe_id)
+        .reduce((acc, booking) => {
+          const recipeTitle = booking.recipes?.title || 'Unknown Recipe';
+          if (!acc[recipeTitle]) {
+            acc[recipeTitle] = { count: 0, timeSlots: new Set<string>() };
+          }
+          acc[recipeTitle].count++;
+          acc[recipeTitle].timeSlots.add(booking.time_slot);
+          return acc;
+        }, {} as Record<string, { count: number; timeSlots: Set<string> }>);
+
+      const dateStr = format(selectedDate, 'MMMM d, yyyy');
+      
+      // Create notifications for each chef
+      const notifications = Array.from(chefsToNotify).map(chefId => {
+        const chefRecipes = chefRecipeMap[chefId];
+        const message = chefRecipes && chefRecipes.length > 0
+          ? `You have been assigned: ${chefRecipes.join(', ')}. ${Object.entries(recipeGroups).map(([recipe, data]) => `${recipe}: ${data.count} student(s)`).join('; ')}`
+          : `Recipe assignments for ${dateStr}: ${Object.entries(recipeGroups).map(([recipe, data]) => `${recipe}: ${data.count} student(s)`).join('; ')}`;
+
+        return {
+          user_id: chefId,
+          title: `Recipe Assignments for ${dateStr}`,
+          message: message,
+          type: 'info',
+          read: false
+        };
+      });
+
+      if (notifications.length > 0) {
+        const { error } = await supabase
+          .from('notifications')
+          .insert(notifications);
+
+        if (error) throw error;
+
+        toast({ 
+          title: "Chefs notified successfully", 
+          description: `${notifications.length} chef(s) have been notified about the recipe assignments` 
+        });
+      } else {
+        toast({ title: "No chefs to notify", variant: "destructive" });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to notify chefs",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsNotifying(false);
+    }
+  };
+
   // Group bookings by recipe and time slot for display
   const groupedByRecipe = bookings?.reduce((acc, booking) => {
     const recipeKey = booking.recipe_id || 'unassigned';
@@ -109,6 +252,7 @@ const BookingRecipeAssignment = () => {
     if (!acc[key]) {
       acc[key] = {
         recipe: booking.recipes,
+        recipeId: booking.recipe_id,
         timeSlot: booking.time_slot,
         students: [],
       };
@@ -119,18 +263,40 @@ const BookingRecipeAssignment = () => {
       course: booking.courses?.title,
     });
     return acc;
-  }, {} as Record<string, { recipe: any; timeSlot: string; students: any[] }>) || {};
+  }, {} as Record<string, { recipe: any; recipeId: string | null; timeSlot: string; students: any[] }>) || {};
 
   const groupedBookings = Object.values(groupedByRecipe);
+
+  // Find chef(s) for a given recipe
+  const getChefsForRecipe = (recipeId: string | null) => {
+    if (!recipeId || !chefsWithSpecializations) return [];
+    return chefsWithSpecializations.filter(chef => 
+      chef.specializations.some((s: any) => s.recipe_id === recipeId)
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Header role="admin" />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Recipe Assignment</h1>
-          <p className="text-muted-foreground">Assign recipes to student bookings and view grouped students</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Recipe Assignment</h1>
+            <p className="text-muted-foreground">Assign recipes to student bookings and notify chefs</p>
+          </div>
+          <Button 
+            onClick={notifyChefs} 
+            disabled={isNotifying || !bookings || bookings.length === 0}
+            className="gap-2"
+          >
+            {isNotifying ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            Notify Chefs
+          </Button>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
@@ -165,33 +331,76 @@ const BookingRecipeAssignment = () => {
               </Popover>
             </Card>
 
-            {/* Grouped by Recipe Summary */}
+            {/* Chef Specializations */}
             <Card className="p-4">
               <h2 className="font-semibold mb-4 flex items-center gap-2">
                 <ChefHat className="h-5 w-5" />
+                Chef Specializations
+              </h2>
+              {chefsWithSpecializations && chefsWithSpecializations.length > 0 ? (
+                <div className="space-y-3">
+                  {chefsWithSpecializations.map((chef) => (
+                    <div key={chef.id} className="p-3 border rounded-lg">
+                      <div className="font-medium text-sm mb-1">
+                        {chef.first_name} {chef.last_name}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {chef.specializations.length > 0 ? (
+                          chef.specializations.map((s: any) => (
+                            <Badge key={s.recipe_id} variant="secondary" className="text-xs">
+                              {s.recipes?.title}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No specializations</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No chef specializations found
+                </p>
+              )}
+            </Card>
+
+            {/* Grouped by Recipe Summary */}
+            <Card className="p-4">
+              <h2 className="font-semibold mb-4 flex items-center gap-2">
+                <Users className="h-5 w-5" />
                 Grouped by Recipe
               </h2>
               {groupedBookings.length > 0 ? (
                 <div className="space-y-4">
-                  {groupedBookings.map((group, index) => (
-                    <div key={index} className="p-3 border rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant={group.recipe ? "default" : "secondary"}>
-                          {group.timeSlot}
-                        </Badge>
-                        <span className="font-medium text-sm">
-                          {group.recipe?.title || "No Recipe Assigned"}
-                        </span>
+                  {groupedBookings.map((group, index) => {
+                    const assignedChefs = getChefsForRecipe(group.recipeId);
+                    return (
+                      <div key={index} className="p-3 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant={group.recipe ? "default" : "secondary"}>
+                            {group.timeSlot}
+                          </Badge>
+                          <span className="font-medium text-sm">
+                            {group.recipe?.title || "No Recipe Assigned"}
+                          </span>
+                        </div>
+                        {assignedChefs.length > 0 && (
+                          <div className="flex items-center gap-1 text-xs text-primary mb-1">
+                            <ChefHat className="h-3 w-3" />
+                            {assignedChefs.map(c => `${c.first_name}`).join(', ')}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Users className="h-4 w-4" />
+                          <span>{group.students.length} student(s)</span>
+                        </div>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {group.students.map(s => s.name).join(", ")}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="h-4 w-4" />
-                        <span>{group.students.length} student(s)</span>
-                      </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        {group.students.map(s => s.name).join(", ")}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">

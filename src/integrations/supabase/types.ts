@@ -303,6 +303,35 @@ export type Database = {
           },
         ]
       }
+      chef_specializations: {
+        Row: {
+          chef_id: string
+          created_at: string
+          id: string
+          recipe_id: string
+        }
+        Insert: {
+          chef_id: string
+          created_at?: string
+          id?: string
+          recipe_id: string
+        }
+        Update: {
+          chef_id?: string
+          created_at?: string
+          id?: string
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chef_specializations_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           base_fee: number

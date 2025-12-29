@@ -2,3 +2,6 @@ project_id = "txsbiergktqyhfyxoqwg"
 
 [functions.get-razorpay-key]
 verify_jwt = false
+
+[functions.create-demo-users]
+verify_jwt = false

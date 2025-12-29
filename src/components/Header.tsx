@@ -69,7 +69,8 @@ const superAdminNavItems = [
 const chefNavItems = [
   { to: "/chef", label: "Today's Classes", icon: Home, end: true },
   { to: "/chef/attendance", label: "Attendance", icon: ClipboardList },
-  { to: "/chef/recipes", label: "Recipes", icon: BookOpen },
+  { to: "/chef/my-recipes", label: "My Recipes", icon: ChefHat },
+  { to: "/chef/recipes", label: "All Recipes", icon: BookOpen },
   { to: "/chef/inventory-usage", label: "Inventory", icon: Package },
 ];
 

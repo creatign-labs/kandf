@@ -52,6 +52,7 @@ import Attendance from "./pages/chef/Attendance";
 import ChefRecipes from "./pages/chef/Recipes";
 import MySpecializations from "./pages/chef/MySpecializations";
 import InventoryUsage from "./pages/chef/InventoryUsage";
+import DailyIngredients from "./pages/chef/DailyIngredients";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/student/Profile";
 
@@ -117,6 +118,7 @@ const App = () => (
           <Route path="/chef/my-recipes" element={<ProtectedRoute requiredRole="chef"><MySpecializations /></ProtectedRoute>} />
           <Route path="/chef/recipes" element={<ProtectedRoute requiredRole="chef"><ChefRecipes /></ProtectedRoute>} />
           <Route path="/chef/inventory-usage" element={<ProtectedRoute requiredRole="chef"><InventoryUsage /></ProtectedRoute>} />
+          <Route path="/chef/daily-ingredients" element={<ProtectedRoute requiredRole="chef"><DailyIngredients /></ProtectedRoute>} />
           <Route path="/chef/profile" element={<ProtectedRoute requiredRole="chef"><Profile /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFound />} />

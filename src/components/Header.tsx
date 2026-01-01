@@ -71,6 +71,7 @@ const chefNavItems = [
   { to: "/chef/attendance", label: "Attendance", icon: ClipboardList },
   { to: "/chef/my-recipes", label: "My Recipes", icon: ChefHat },
   { to: "/chef/recipes", label: "All Recipes", icon: BookOpen },
+  { to: "/chef/daily-ingredients", label: "Daily Ingredients", icon: Calendar },
   { to: "/chef/inventory-usage", label: "Inventory", icon: Package },
 ];
 

@@ -18,14 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Download, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Calendar, Download, CheckCircle, XCircle, Loader2, BarChart3 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { AttendanceStatsWidget } from "@/components/chef/AttendanceStatsWidget";
 
 const Attendance = () => {
   const [courseFilter, setCourseFilter] = useState("all");
+  const [showStats, setShowStats] = useState(true);
   const queryClient = useQueryClient();
 
   const { data: courses } = useQuery({
@@ -169,6 +171,25 @@ const Attendance = () => {
           <h1 className="text-4xl font-bold text-foreground mb-2">Attendance Management</h1>
           <p className="text-muted-foreground">Mark and view attendance records</p>
         </div>
+
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showStats ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowStats(!showStats)}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              {showStats ? "Hide Statistics" : "Show Statistics"}
+            </Button>
+          </div>
+        </div>
+
+        {showStats && attendance && (
+          <div className="mb-6">
+            <AttendanceStatsWidget attendance={attendance} />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card className="p-4">

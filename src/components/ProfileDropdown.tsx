@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { format, addWeeks } from "date-fns";
+import { format, addMonths } from "date-fns";
 
 interface ProfileDropdownProps {
   role: "student" | "admin" | "chef" | "super_admin";
@@ -208,15 +208,14 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
               {activeCourses.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {activeCourses.slice(0, 2).map((enrollment) => {
-                    // Calculate course dates
+                    // Calculate course dates - duration is like "3 months", "4 months", etc.
                     const startDate = enrollment.batches?.start_date 
                       ? new Date(enrollment.batches.start_date) 
                       : null;
-                    const durationWeeks = enrollment.courses?.duration 
-                      ? parseInt(enrollment.courses.duration) || 12
-                      : 12;
+                    const durationStr = enrollment.courses?.duration || "";
+                    const durationMonths = parseInt(durationStr.match(/\d+/)?.[0] || "3");
                     const endDate = startDate 
-                      ? addWeeks(startDate, durationWeeks)
+                      ? addMonths(startDate, durationMonths)
                       : null;
 
                     return (

@@ -2,8 +2,8 @@ import { Header } from "@/components/Header";
 import { StatsCard } from "@/components/StatsCard";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Users, CheckCircle2, Clock, Loader2, ChefHat } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Users, CheckCircle2, Clock, Loader2, ChefHat, XCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -195,17 +195,13 @@ const ChefDashboard = () => {
     }
   });
 
-  const handleAttendanceChange = (studentId: string, batchId: string, checked: boolean) => {
-    attendanceMutation.mutate({
-      studentId,
-      batchId,
-      status: checked ? 'present' : 'absent'
-    });
+  const handleMarkAttendance = (studentId: string, batchId: string, status: 'present' | 'no_show') => {
+    attendanceMutation.mutate({ studentId, batchId, status });
   };
 
-  const isStudentPresent = (studentId: string, attendance: any[]) => {
+  const getStudentStatus = (studentId: string, attendance: any[]) => {
     const record = attendance.find(a => a.student_id === studentId);
-    return record?.status === 'present';
+    return record?.status || null;
   };
 
   const totalStudents = batchesData?.reduce((sum, batch) => sum + batch.enrollments.length, 0) || 0;
@@ -342,32 +338,46 @@ const ChefDashboard = () => {
                   {batch.enrollments.length > 0 ? (
                     <div className="grid sm:grid-cols-2 gap-2 md:gap-3">
                       {batch.enrollments.map((enrollment: any) => {
-                        const isPresent = isStudentPresent(enrollment.student_id, batch.attendance);
+                        const status = getStudentStatus(enrollment.student_id, batch.attendance);
                         
                         return (
                           <div
                             key={enrollment.id}
                             className="flex items-center gap-3 p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
                           >
-                            <Checkbox
-                              checked={isPresent}
-                              onCheckedChange={(checked) => handleAttendanceChange(
-                                enrollment.student_id,
-                                batch.id,
-                                checked as boolean
-                              )}
-                              className="h-5 w-5"
-                            />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">
                                   {enrollment.profiles?.first_name} {enrollment.profiles?.last_name}
                                 </span>
+                                {status === 'present' && (
+                                  <Badge className="bg-green-500 text-white">Present</Badge>
+                                )}
+                                {status === 'no_show' && (
+                                  <Badge className="bg-orange-500 text-white">No Show</Badge>
+                                )}
                               </div>
                             </div>
-                            {isPresent && (
-                              <CheckCircle2 className="h-5 w-5 text-success" />
-                            )}
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant={status === 'present' ? 'default' : 'outline'}
+                                className={status === 'present' ? 'bg-green-500 hover:bg-green-600' : ''}
+                                onClick={() => handleMarkAttendance(enrollment.student_id, batch.id, 'present')}
+                              >
+                                <CheckCircle2 className="h-4 w-4 mr-1" />
+                                Present
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={status === 'no_show' ? 'default' : 'outline'}
+                                className={status === 'no_show' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+                                onClick={() => handleMarkAttendance(enrollment.student_id, batch.id, 'no_show')}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                No Show
+                              </Button>
+                            </div>
                           </div>
                         );
                       })}

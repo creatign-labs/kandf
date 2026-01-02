@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, LogOut, Settings, BookOpen, ChevronDown, Shield, ChefHat, GraduationCap } from "lucide-react";
+import { LogOut, Settings, BookOpen, ChevronDown, Shield, ChefHat, GraduationCap, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -14,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { format, addWeeks } from "date-fns";
 
 interface ProfileDropdownProps {
   role: "student" | "admin" | "chef" | "super_admin";
@@ -32,6 +32,10 @@ interface Enrollment {
   progress: number | null;
   courses: {
     title: string;
+    duration: string;
+  } | null;
+  batches: {
+    start_date: string | null;
   } | null;
 }
 
@@ -85,7 +89,7 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
       if (role === 'student') {
         const { data: enrollmentsData } = await supabase
           .from('enrollments')
-          .select('id, status, progress, courses(title)')
+          .select('id, status, progress, courses(title, duration), batches(start_date)')
           .eq('student_id', user.id);
 
         if (enrollmentsData) {
@@ -203,20 +207,41 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
               </div>
               {activeCourses.length > 0 && (
                 <div className="mt-2 space-y-1">
-                  {activeCourses.slice(0, 2).map((enrollment) => (
-                    <div key={enrollment.id} className="text-xs p-2 bg-muted/50 rounded-md">
-                      <p className="font-medium truncate">{enrollment.courses?.title}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary rounded-full transition-all"
-                            style={{ width: `${enrollment.progress || 0}%` }}
-                          />
+                  {activeCourses.slice(0, 2).map((enrollment) => {
+                    // Calculate course dates
+                    const startDate = enrollment.batches?.start_date 
+                      ? new Date(enrollment.batches.start_date) 
+                      : null;
+                    const durationWeeks = enrollment.courses?.duration 
+                      ? parseInt(enrollment.courses.duration) || 12
+                      : 12;
+                    const endDate = startDate 
+                      ? addWeeks(startDate, durationWeeks)
+                      : null;
+
+                    return (
+                      <div key={enrollment.id} className="text-xs p-2 bg-muted/50 rounded-md">
+                        <p className="font-medium truncate">{enrollment.courses?.title}</p>
+                        {startDate && (
+                          <div className="flex items-center gap-1 mt-1 text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            <span>
+                              {format(startDate, 'MMM d, yyyy')} - {endDate ? format(endDate, 'MMM d, yyyy') : 'TBD'}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary rounded-full transition-all"
+                              style={{ width: `${enrollment.progress || 0}%` }}
+                            />
+                          </div>
+                          <span className="text-muted-foreground">{enrollment.progress || 0}%</span>
                         </div>
-                        <span className="text-muted-foreground">{enrollment.progress || 0}%</span>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

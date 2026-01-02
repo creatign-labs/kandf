@@ -21,7 +21,6 @@ import AdvancePayment from "./pages/AdvancePayment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import MyCourse from "./pages/student/MyCourse";
 import RecipeDetail from "./pages/student/RecipeDetail";
-import BookSlot from "./pages/student/BookSlot";
 import MyBookings from "./pages/student/MyBookings";
 import Notifications from "./pages/student/Notifications";
 import Assessments from "./pages/student/Assessments";
@@ -83,7 +82,6 @@ const App = () => (
           <Route path="/student" element={<ProtectedRoute requiredRole="student"><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/my-course" element={<ProtectedRoute requiredRole="student"><MyCourse /></ProtectedRoute>} />
           <Route path="/student/recipes/:id" element={<ProtectedRoute requiredRole="student"><RecipeDetail /></ProtectedRoute>} />
-          <Route path="/student/book-slot" element={<ProtectedRoute requiredRole="student"><BookSlot /></ProtectedRoute>} />
           <Route path="/student/my-bookings" element={<ProtectedRoute requiredRole="student"><MyBookings /></ProtectedRoute>} />
           <Route path="/student/notifications" element={<ProtectedRoute requiredRole="student"><Notifications /></ProtectedRoute>} />
           <Route path="/student/assessments" element={<ProtectedRoute requiredRole="student"><Assessments /></ProtectedRoute>} />

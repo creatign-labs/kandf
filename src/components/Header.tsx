@@ -1,9 +1,15 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText, LayoutDashboard } from "lucide-react";
+import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText, LayoutDashboard, ChevronDown, MoreHorizontal } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
@@ -29,16 +35,26 @@ const publicNavItems: NavItem[] = [
   { to: "/contact", label: "Contact", icon: MessageSquare },
 ];
 
-const studentNavItems: NavItem[] = [
+// Main nav items for student (shown in navbar)
+const studentMainNavItems: NavItem[] = [
   { to: "/student", label: "Dashboard", icon: Home, end: true },
   { to: "/student/my-course", label: "My Course", icon: BookOpen },
-  { to: "/student/book-slot", label: "Book Slot", icon: Calendar },
-  { to: "/student/my-bookings", label: "Bookings", icon: ClipboardList },
+  { to: "/student/my-bookings", label: "My Bookings", icon: Calendar },
+];
+
+// More dropdown items for student
+const studentMoreNavItems: NavItem[] = [
   { to: "/student/assessments", label: "Assessments", icon: FileText },
   { to: "/student/certificates", label: "Certificates", icon: Award },
   { to: "/student/jobs", label: "Jobs", icon: Briefcase },
   { to: "/student/resume", label: "Resume", icon: FileText },
   { to: "/student/feedback", label: "Feedback", icon: MessageSquare },
+];
+
+// Combined for mobile menu
+const studentNavItems: NavItem[] = [
+  ...studentMainNavItems,
+  ...studentMoreNavItems,
 ];
 
 const adminNavItems = [
@@ -120,6 +136,16 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
 
   const getNavItems = () => {
     switch (role) {
+      case "student": return studentMainNavItems;
+      case "admin": return adminNavItems;
+      case "super_admin": return superAdminNavItems;
+      case "chef": return chefNavItems;
+      default: return publicNavItems;
+    }
+  };
+
+  const getMobileNavItems = () => {
+    switch (role) {
       case "student": return studentNavItems;
       case "admin": return adminNavItems;
       case "super_admin": return superAdminNavItems;
@@ -129,6 +155,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
   };
 
   const navItems = getNavItems();
+  const mobileNavItems = getMobileNavItems();
 
   const handleLogout = async () => {
     try {
@@ -162,6 +189,26 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
               {item.label}
             </NavLink>
           ))}
+          
+          {/* More dropdown for student role */}
+          {role === "student" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium transition-colors hover:text-primary">
+                More
+                <ChevronDown className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {studentMoreNavItems.map((item) => (
+                  <DropdownMenuItem key={item.to} asChild>
+                    <Link to={item.to} className="flex items-center gap-2">
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </nav>
 
         {/* Desktop Right Side */}
@@ -247,7 +294,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
                 {/* Navigation Links */}
                 <nav className="flex-1 overflow-y-auto p-4">
                   <div className="space-y-1">
-                    {navItems.map((item) => (
+                    {mobileNavItems.map((item) => (
                       <SheetClose asChild key={item.to}>
                         <Link
                           to={item.to}

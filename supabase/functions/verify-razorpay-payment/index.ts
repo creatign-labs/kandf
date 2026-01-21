@@ -100,7 +100,7 @@ serve(async (req) => {
     const generatedStudentId = studentIdData || null;
     console.log('Generated student ID:', generatedStudentId);
 
-    // Create enrollment with custom student code
+    // Create enrollment with custom student code and payment flags
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
       .insert({
@@ -110,6 +110,8 @@ serve(async (req) => {
         status: 'active',
         progress: 0,
         student_code: generatedStudentId,
+        is_advance_payment: false,
+        payment_completed: true,
       })
       .select()
       .single();

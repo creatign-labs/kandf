@@ -2,11 +2,12 @@ import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Award, Lock, Loader2, Share2 } from "lucide-react";
+import { Download, Award, Lock, Loader2, Share2, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { CertificateEligibilityCard } from "@/components/student/CertificateEligibilityCard";
 
 const Certificates = () => {
   const { data: certificates, isLoading } = useQuery({
@@ -60,6 +61,23 @@ const Certificates = () => {
         `)
         .eq("student_id", user.id)
         .eq("status", "active");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Check for pending payments
+  const { data: paymentSchedules } = useQuery({
+    queryKey: ["my-payment-schedules-cert"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from("payment_schedules")
+        .select("*")
+        .eq("student_id", user.id);
 
       if (error) throw error;
       return data;
@@ -198,6 +216,13 @@ const Certificates = () => {
     }
   };
 
+  // Check if enrollment has pending payments
+  const hasPendingPayments = (enrollmentId: string) => {
+    return paymentSchedules?.some(
+      (p) => p.enrollment_id === enrollmentId && p.status !== "paid"
+    ) ?? false;
+  };
+
   // Combine certificates with in-progress enrollments
   const allCertificateItems = [
     ...(certificates || []).map(cert => ({
@@ -208,18 +233,30 @@ const Certificates = () => {
       progress: 100,
       certificateNumber: cert.certificate_number,
       courses: cert.courses,
+      paymentCompleted: true,
+      attendanceCompleted: true,
+      totalClasses: 0,
+      attendedClasses: 0,
     })),
     ...(enrollments || [])
       .filter(enr => !certificates?.some(c => c.course_id === enr.course_id))
-      .map(enr => ({
-        id: enr.id,
-        title: `${enr.courses?.title || "Course"} Certificate`,
-        issueDate: null,
-        status: (enr.progress || 0) > 0 ? "in-progress" : "locked" as const,
-        progress: enr.progress || 0,
-        certificateNumber: null,
-        courses: enr.courses,
-      })),
+      .map(enr => {
+        const paymentCompleted = (enr as any).payment_completed || !hasPendingPayments(enr.id);
+        const attendanceCompleted = (enr as any).attendance_completed || false;
+        return {
+          id: enr.id,
+          title: `${enr.courses?.title || "Course"} Certificate`,
+          issueDate: null,
+          status: (enr.progress || 0) > 0 ? "in-progress" : "locked" as const,
+          progress: enr.progress || 0,
+          certificateNumber: null,
+          courses: enr.courses,
+          paymentCompleted,
+          attendanceCompleted,
+          totalClasses: (enr as any).total_classes || 0,
+          attendedClasses: (enr as any).attended_classes || 0,
+        };
+      }),
   ];
 
   return (
@@ -307,24 +344,15 @@ const Certificates = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="space-y-3">
-                          <div>
-                            <div className="flex justify-between text-sm mb-2">
-                              <span className="text-muted-foreground">Progress</span>
-                              <span className="font-medium">{cert.progress}%</span>
-                            </div>
-                            <div className="w-full bg-muted rounded-full h-2">
-                              <div
-                                className="bg-primary h-2 rounded-full transition-all"
-                                style={{ width: `${cert.progress}%` }}
-                              />
-                            </div>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {cert.status === "in-progress"
-                              ? "Complete all module assessments to earn this certificate"
-                              : "Complete all previous modules to unlock"}
-                          </p>
+                        <div className="space-y-4">
+                          {/* Certificate Eligibility Card */}
+                          <CertificateEligibilityCard
+                            progress={cert.progress}
+                            paymentCompleted={cert.paymentCompleted}
+                            attendanceCompleted={cert.attendanceCompleted}
+                            totalClasses={cert.totalClasses}
+                            attendedClasses={cert.attendedClasses}
+                          />
                         </div>
                       )}
                     </div>

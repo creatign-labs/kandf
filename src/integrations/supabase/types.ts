@@ -476,39 +476,57 @@ export type Database = {
       }
       enrollments: {
         Row: {
+          attendance_completed: boolean | null
+          attended_classes: number | null
           batch_id: string
           course_id: string
           created_at: string
+          created_by: string | null
           enrollment_date: string
           id: string
+          is_advance_payment: boolean | null
+          payment_completed: boolean | null
           progress: number | null
           status: string
           student_code: string | null
           student_id: string
+          total_classes: number | null
           updated_at: string
         }
         Insert: {
+          attendance_completed?: boolean | null
+          attended_classes?: number | null
           batch_id: string
           course_id: string
           created_at?: string
+          created_by?: string | null
           enrollment_date?: string
           id?: string
+          is_advance_payment?: boolean | null
+          payment_completed?: boolean | null
           progress?: number | null
           status?: string
           student_code?: string | null
           student_id: string
+          total_classes?: number | null
           updated_at?: string
         }
         Update: {
+          attendance_completed?: boolean | null
+          attended_classes?: number | null
           batch_id?: string
           course_id?: string
           created_at?: string
+          created_by?: string | null
           enrollment_date?: string
           id?: string
+          is_advance_payment?: boolean | null
+          payment_completed?: boolean | null
           progress?: number | null
           status?: string
           student_code?: string | null
           student_id?: string
+          total_classes?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -994,6 +1012,48 @@ export type Database = {
           },
         ]
       }
+      payment_schedules: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          enrollment_id: string
+          id: string
+          paid_at: string | null
+          payment_id: string | null
+          payment_stage: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          enrollment_id: string
+          id?: string
+          paid_at?: string | null
+          payment_id?: string | null
+          payment_stage: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          enrollment_id?: string
+          id?: string
+          paid_at?: string | null
+          payment_id?: string | null
+          payment_stage?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -1050,34 +1110,46 @@ export type Database = {
       profiles: {
         Row: {
           account_status: string
+          address_proof_url: string | null
           avatar_url: string | null
           bio: string | null
           created_at: string
+          documents_verified: boolean | null
           first_name: string
           id: string
           last_name: string
+          marksheet_url: string | null
+          passport_photo_url: string | null
           phone: string | null
           updated_at: string
         }
         Insert: {
           account_status?: string
+          address_proof_url?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          documents_verified?: boolean | null
           first_name: string
           id: string
           last_name: string
+          marksheet_url?: string | null
+          passport_photo_url?: string | null
           phone?: string | null
           updated_at?: string
         }
         Update: {
           account_status?: string
+          address_proof_url?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          documents_verified?: boolean | null
           first_name?: string
           id?: string
           last_name?: string
+          marksheet_url?: string | null
+          passport_photo_url?: string | null
           phone?: string | null
           updated_at?: string
         }
@@ -1543,9 +1615,24 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: undefined
       }
+      check_certificate_eligibility: {
+        Args: { p_course_id: string; p_student_id: string }
+        Returns: boolean
+      }
       check_student_login_eligibility: {
         Args: { p_user_id: string }
         Returns: string
+      }
+      create_payment_schedule: {
+        Args: {
+          p_due_days_1?: number
+          p_due_days_2?: number
+          p_enrollment_id: string
+          p_registration_amount?: number
+          p_student_id: string
+          p_total_amount: number
+        }
+        Returns: undefined
       }
       decrement_batch_seats: { Args: { batch_id: string }; Returns: undefined }
       generate_certificate_number: {
@@ -1571,9 +1658,19 @@ export type Database = {
         Args: { p_payment_id: string; p_student_id: string }
         Returns: undefined
       }
+      mark_recipe_complete_by_chef: {
+        Args: { p_recipe_id: string; p_student_id: string }
+        Returns: boolean
+      }
+      update_overdue_payments: { Args: never; Returns: number }
     }
     Enums: {
-      app_role: "admin" | "student" | "chef" | "super_admin"
+      app_role:
+        | "admin"
+        | "student"
+        | "chef"
+        | "super_admin"
+        | "inventory_manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1701,7 +1798,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "student", "chef", "super_admin"],
+      app_role: [
+        "admin",
+        "student",
+        "chef",
+        "super_admin",
+        "inventory_manager",
+      ],
     },
   },
 } as const

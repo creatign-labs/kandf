@@ -287,31 +287,15 @@ const CourseDetail = () => {
                     </Button>
                   </div>
 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-border" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">or</span>
-                    </div>
-                  </div>
-
-                  <Button 
-                    size="lg" 
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate(`/enroll/${course.id}`)}
-                    disabled={batches.length === 0}
-                  >
-                    <IndianRupee className="h-4 w-4 mr-2" />
-                    {batches.length === 0 ? 'No Batches Available' : 'Pay Full Amount'}
-                  </Button>
-
                   <div className="text-center pt-2">
                     <Link to="/enquiry" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                       Have questions? Contact us
                     </Link>
                   </div>
+
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    After advance payment, our team will contact you for enrollment completion.
+                  </p>
                 </CardContent>
               </Card>
             </div>

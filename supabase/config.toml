@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.create-demo-users]
 verify_jwt = false
+
+[functions.reset-demo-password]
+verify_jwt = false

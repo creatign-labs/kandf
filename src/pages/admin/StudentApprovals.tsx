@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, CheckCircle, Clock, Loader2, UserCheck, Mail, Copy, Eye, EyeOff } from "lucide-react";
+import { Search, CheckCircle, Clock, Loader2, UserCheck, Mail, Copy, Eye, EyeOff, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -107,6 +107,28 @@ const StudentApprovals = () => {
       if (student) {
         setSelectedStudent({ ...student, generated_password: data.password });
       }
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Delete approval record mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (approvalId: string) => {
+      const { error } = await supabase
+        .from("student_access_approvals")
+        .delete()
+        .eq("id", approvalId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
+      toast({
+        title: "Record Deleted",
+        description: "The approval record has been removed.",
+      });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -232,29 +254,49 @@ const StudentApprovals = () => {
                       {format(new Date(approval.created_at), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="text-right">
-                      {approval.status === "pending" && isSuperAdmin ? (
-                        <Button
-                          size="sm"
-                          onClick={() => approveMutation.mutate(approval.student_id)}
-                          disabled={approveMutation.isPending}
-                        >
-                          {approveMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            "Approve & Generate Credentials"
-                          )}
-                        </Button>
-                      ) : approval.status === "approved" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setSelectedStudent(approval)}
-                        >
-                          View Credentials
-                        </Button>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Super Admin only</span>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {approval.status === "pending" && isSuperAdmin ? (
+                          <Button
+                            size="sm"
+                            onClick={() => approveMutation.mutate(approval.student_id)}
+                            disabled={approveMutation.isPending}
+                          >
+                            {approveMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Approve & Generate Credentials"
+                            )}
+                          </Button>
+                        ) : approval.status === "approved" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelectedStudent(approval)}
+                          >
+                            View Credentials
+                          </Button>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Super Admin only</span>
+                        )}
+                        {isSuperAdmin && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to delete this approval record?")) {
+                                deleteMutation.mutate(approval.id);
+                              }
+                            }}
+                            disabled={deleteMutation.isPending}
+                          >
+                            {deleteMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

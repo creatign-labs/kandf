@@ -50,6 +50,9 @@ const StudentApprovals = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editStatus, setEditStatus] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
+  const [approvingStudent, setApprovingStudent] = useState<any>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedBatchId, setSelectedBatchId] = useState<string>("");
   const queryClient = useQueryClient();
 
   // Check if current user is super_admin
@@ -101,11 +104,46 @@ const StudentApprovals = () => {
     },
   });
 
+  // Fetch all courses for dropdown
+  const { data: courses } = useQuery({
+    queryKey: ["all-courses"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id, title")
+        .order("title");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch batches for selected course
+  const { data: batches } = useQuery({
+    queryKey: ["course-batches", selectedCourseId],
+    queryFn: async () => {
+      if (!selectedCourseId) return [];
+      const { data, error } = await supabase
+        .from("batches")
+        .select("id, batch_name, start_date, time_slot, available_seats")
+        .eq("course_id", selectedCourseId)
+        .gte("start_date", new Date().toISOString().split("T")[0])
+        .gt("available_seats", 0)
+        .order("start_date");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedCourseId,
+  });
+
   // Approve student mutation - uses edge function to update auth password
   const approveMutation = useMutation({
-    mutationFn: async (studentId: string) => {
+    mutationFn: async ({ studentId, courseId, batchId }: { studentId: string; courseId?: string; batchId?: string }) => {
       const { data, error } = await supabase.functions.invoke('approve-student-with-password', {
-        body: { student_id: studentId }
+        body: { 
+          student_id: studentId,
+          course_id: courseId || undefined,
+          batch_id: batchId || undefined,
+        }
       });
 
       if (error) {
@@ -129,6 +167,10 @@ const StudentApprovals = () => {
       if (student) {
         setSelectedStudent({ ...student, generated_password: data.password });
       }
+      // Reset approval dialog state
+      setApprovingStudent(null);
+      setSelectedCourseId("");
+      setSelectedBatchId("");
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -210,6 +252,27 @@ const StudentApprovals = () => {
       setShowDeleteConfirm(false);
       setEditingApproval(null);
     }
+  };
+
+  const handleOpenApprovalDialog = (approval: any) => {
+    setApprovingStudent(approval);
+    // Pre-select the course from advance payment if available
+    const advancePaymentCourseId = approval.advance_payments?.course_id;
+    if (advancePaymentCourseId) {
+      setSelectedCourseId(advancePaymentCourseId);
+    } else {
+      setSelectedCourseId("");
+    }
+    setSelectedBatchId("");
+  };
+
+  const handleApproveWithEnrollment = () => {
+    if (!approvingStudent) return;
+    approveMutation.mutate({
+      studentId: approvingStudent.student_id,
+      courseId: selectedCourseId || undefined,
+      batchId: selectedBatchId || undefined,
+    });
   };
 
   const pendingCount = pendingApprovals?.filter(a => a.status === "pending").length || 0;
@@ -324,14 +387,10 @@ const StudentApprovals = () => {
                         {approval.status === "pending" && isSuperAdmin ? (
                           <Button
                             size="sm"
-                            onClick={() => approveMutation.mutate(approval.student_id)}
+                            onClick={() => handleOpenApprovalDialog(approval)}
                             disabled={approveMutation.isPending}
                           >
-                            {approveMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              "Approve & Generate Credentials"
-                            )}
+                            Approve & Enroll
                           </Button>
                         ) : approval.status === "approved" ? (
                           <Button
@@ -539,6 +598,101 @@ const StudentApprovals = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Approval with Enrollment Dialog */}
+        <Dialog open={!!approvingStudent} onOpenChange={() => setApprovingStudent(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Approve Student & Create Enrollment</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label className="text-sm font-medium">Student</Label>
+                <p className="text-lg font-medium">
+                  {approvingStudent?.profile?.first_name} {approvingStudent?.profile?.last_name}
+                </p>
+                <p className="text-sm text-muted-foreground">{approvingStudent?.profile?.email}</p>
+              </div>
+
+              {approvingStudent?.advance_payments?.courses?.title && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <Label className="text-sm font-medium">Advance Payment Made For</Label>
+                  <p className="text-sm">{approvingStudent.advance_payments.courses.title}</p>
+                  <p className="text-xs text-muted-foreground">₹{approvingStudent.advance_payments.amount} paid</p>
+                </div>
+              )}
+
+              <Separator />
+
+              <div>
+                <Label className="text-sm font-medium">Assign to Course</Label>
+                <Select value={selectedCourseId} onValueChange={(val) => {
+                  setSelectedCourseId(val);
+                  setSelectedBatchId("");
+                }}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses?.map((course) => (
+                      <SelectItem key={course.id} value={course.id}>
+                        {course.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  The student will be enrolled in this course
+                </p>
+              </div>
+
+              {selectedCourseId && (
+                <div>
+                  <Label className="text-sm font-medium">Assign to Batch (Optional)</Label>
+                  <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select a batch (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No specific batch</SelectItem>
+                      {batches?.map((batch) => (
+                        <SelectItem key={batch.id} value={batch.id}>
+                          {batch.batch_name} - {format(new Date(batch.start_date), "MMM d")} ({batch.available_seats} seats)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optionally assign to a specific batch with available seats
+                  </p>
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="flex gap-2">
+                <Button 
+                  className="flex-1" 
+                  onClick={handleApproveWithEnrollment}
+                  disabled={approveMutation.isPending || !selectedCourseId}
+                >
+                  {approveMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <UserCheck className="h-4 w-4 mr-2" />
+                  )}
+                  Approve & Generate Credentials
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setApprovingStudent(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

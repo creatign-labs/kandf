@@ -80,27 +80,65 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Now call the approve_student_access RPC to update status
-    const { error: approveError } = await supabaseAdmin.rpc("approve_student_access", {
-      p_student_id: student_id,
-    });
+    // Get current account status
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("account_status")
+      .eq("id", student_id)
+      .single();
 
-    if (approveError) {
-      console.error("Failed to approve student:", approveError);
-      return new Response(JSON.stringify({ error: "Failed to approve: " + approveError.message }), {
+    if (profileError || !profile) {
+      return new Response(JSON.stringify({ error: "Student not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (profile.account_status !== "advance_paid") {
+      return new Response(JSON.stringify({ error: "Only students with advance_paid status can be approved" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Update profile status to active
+    const { error: updateProfileError } = await supabaseAdmin
+      .from("profiles")
+      .update({ account_status: "active", updated_at: new Date().toISOString() })
+      .eq("id", student_id);
+
+    if (updateProfileError) {
+      console.error("Failed to update profile:", updateProfileError);
+      return new Response(JSON.stringify({ error: "Failed to update profile: " + updateProfileError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Store the generated password in student_access_approvals
-    await supabaseAdmin
+    // Update student_access_approvals
+    const { error: approvalError } = await supabaseAdmin
       .from("student_access_approvals")
       .update({
+        status: "approved",
+        approved_by: user.id,
+        approved_at: new Date().toISOString(),
         generated_password: newPassword,
         credentials_sent_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq("student_id", student_id);
+
+    if (approvalError) {
+      console.error("Failed to update approval record:", approvalError);
+    }
+
+    // Create notification for the student
+    await supabaseAdmin.from("notifications").insert({
+      user_id: student_id,
+      title: "Access Approved!",
+      message: "Your account has been approved. You can now access your dashboard.",
+      type: "success",
+    });
 
     console.log(`Student ${student_id} approved with new password`);
 

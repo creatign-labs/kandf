@@ -132,11 +132,62 @@ Deno.serve(async (req) => {
       console.error("Failed to update approval record:", approvalError);
     }
 
+    // Get advance payment to find the course the student paid for
+    const { data: advancePayment } = await supabaseAdmin
+      .from("advance_payments")
+      .select("course_id")
+      .eq("student_id", student_id)
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (advancePayment?.course_id) {
+      console.log(`Creating enrollment for student ${student_id} in course ${advancePayment.course_id}`);
+      
+      // Check if enrollment already exists
+      const { data: existingEnrollment } = await supabaseAdmin
+        .from("enrollments")
+        .select("id")
+        .eq("student_id", student_id)
+        .eq("course_id", advancePayment.course_id)
+        .single();
+
+      if (!existingEnrollment) {
+        // Generate student ID
+        const { data: studentCode } = await supabaseAdmin.rpc("generate_student_id", {
+          p_course_id: advancePayment.course_id,
+        });
+
+        // Create enrollment for the course
+        const { error: enrollmentError } = await supabaseAdmin
+          .from("enrollments")
+          .insert({
+            student_id: student_id,
+            course_id: advancePayment.course_id,
+            status: "active",
+            progress: 0,
+            student_code: studentCode || null,
+            enrollment_date: new Date().toISOString(),
+          });
+
+        if (enrollmentError) {
+          console.error("Failed to create enrollment:", enrollmentError);
+        } else {
+          console.log(`Enrollment created successfully for course ${advancePayment.course_id}`);
+        }
+      } else {
+        console.log("Enrollment already exists, skipping creation");
+      }
+    } else {
+      console.log("No advance payment found for student, skipping enrollment creation");
+    }
+
     // Create notification for the student
     await supabaseAdmin.from("notifications").insert({
       user_id: student_id,
       title: "Access Approved!",
-      message: "Your account has been approved. You can now access your dashboard.",
+      message: "Your account has been approved. You can now access your dashboard and your enrolled course.",
       type: "success",
     });
 

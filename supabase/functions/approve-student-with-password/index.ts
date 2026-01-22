@@ -44,13 +44,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { student_id } = await req.json();
+    const { student_id, course_id, batch_id } = await req.json();
     if (!student_id) {
       return new Response(JSON.stringify({ error: "student_id is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // course_id can be passed to override the advance payment course
+    // batch_id is optional for batch assignment
 
     // Create admin client for privileged operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -132,55 +135,77 @@ Deno.serve(async (req) => {
       console.error("Failed to update approval record:", approvalError);
     }
 
-    // Get advance payment to find the course the student paid for
-    const { data: advancePayment } = await supabaseAdmin
-      .from("advance_payments")
-      .select("course_id")
-      .eq("student_id", student_id)
-      .eq("status", "completed")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+    // Determine the course to enroll in: use provided course_id or fall back to advance payment course
+    let enrollmentCourseId = course_id;
+    
+    if (!enrollmentCourseId) {
+      // Get advance payment to find the course the student paid for
+      const { data: advancePayment } = await supabaseAdmin
+        .from("advance_payments")
+        .select("course_id")
+        .eq("student_id", student_id)
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      
+      enrollmentCourseId = advancePayment?.course_id;
+    }
 
-    if (advancePayment?.course_id) {
-      console.log(`Creating enrollment for student ${student_id} in course ${advancePayment.course_id}`);
+    if (enrollmentCourseId) {
+      console.log(`Creating enrollment for student ${student_id} in course ${enrollmentCourseId}`);
       
       // Check if enrollment already exists
       const { data: existingEnrollment } = await supabaseAdmin
         .from("enrollments")
         .select("id")
         .eq("student_id", student_id)
-        .eq("course_id", advancePayment.course_id)
+        .eq("course_id", enrollmentCourseId)
         .single();
 
       if (!existingEnrollment) {
         // Generate student ID
         const { data: studentCode } = await supabaseAdmin.rpc("generate_student_id", {
-          p_course_id: advancePayment.course_id,
+          p_course_id: enrollmentCourseId,
         });
 
         // Create enrollment for the course
-        const { error: enrollmentError } = await supabaseAdmin
+        const { data: newEnrollment, error: enrollmentError } = await supabaseAdmin
           .from("enrollments")
           .insert({
             student_id: student_id,
-            course_id: advancePayment.course_id,
+            course_id: enrollmentCourseId,
+            batch_id: batch_id || null,
             status: "active",
             progress: 0,
             student_code: studentCode || null,
             enrollment_date: new Date().toISOString(),
-          });
+          })
+          .select()
+          .single();
 
         if (enrollmentError) {
           console.error("Failed to create enrollment:", enrollmentError);
         } else {
-          console.log(`Enrollment created successfully for course ${advancePayment.course_id}`);
+          console.log(`Enrollment created successfully for course ${enrollmentCourseId}`);
+          
+          // If batch_id provided, decrement available seats
+          if (batch_id) {
+            const { error: batchError } = await supabaseAdmin.rpc("decrement_batch_seats", {
+              batch_id: batch_id,
+            });
+            if (batchError) {
+              console.error("Failed to decrement batch seats:", batchError);
+            } else {
+              console.log(`Decremented seats for batch ${batch_id}`);
+            }
+          }
         }
       } else {
         console.log("Enrollment already exists, skipping creation");
       }
     } else {
-      console.log("No advance payment found for student, skipping enrollment creation");
+      console.log("No course specified and no advance payment found, skipping enrollment creation");
     }
 
     // Create notification for the student

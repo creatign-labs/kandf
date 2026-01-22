@@ -55,6 +55,7 @@ import InventoryUsage from "./pages/chef/InventoryUsage";
 import DailyIngredients from "./pages/chef/DailyIngredients";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/student/Profile";
+import FlowWalkthrough from "./pages/FlowWalkthrough";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/flow-walkthrough" element={<FlowWalkthrough />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/courses/:id" element={<CourseDetail />} />
           <Route path="/enroll/:courseId" element={<ProtectedRoute><Enroll /></ProtectedRoute>} />

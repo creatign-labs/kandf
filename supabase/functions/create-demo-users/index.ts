@@ -28,62 +28,85 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create only ONE demo student for Flow 1 testing
-    const demoStudent = {
-      email: "student@demo.com",
-      password: "Demo123!",
-      firstName: "Demo",
-      lastName: "Student"
-    };
-
-    // Create auth user
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: demoStudent.email,
-      password: demoStudent.password,
-      email_confirm: true,
-      user_metadata: {
-        first_name: demoStudent.firstName,
-        last_name: demoStudent.lastName,
+    // Demo users for Flow 1 testing
+    const demoUsers = [
+      {
+        email: "student@demo.com",
+        password: "Demo123!",
+        firstName: "Demo",
+        lastName: "Student",
+        roles: ['student'] as const,
+        accountStatus: 'pending'
       },
-    });
+      {
+        email: "admin@demo.com",
+        password: "Admin@123",
+        firstName: "Demo",
+        lastName: "Admin",
+        roles: ['admin'] as const,
+        accountStatus: 'active'
+      },
+      {
+        email: "superadmin@demo.com",
+        password: "SuperAdmin123!",
+        firstName: "Super",
+        lastName: "Admin",
+        roles: ['admin', 'super_admin'] as const,
+        accountStatus: 'active'
+      }
+    ];
 
-    if (authError) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: authError.message,
-        deletedEmails 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const createdUsers: Array<{ email: string; password: string; userId?: string; roles: readonly string[]; accountStatus: string }> = [];
 
-    if (authData.user) {
-      // Create profile
-      await supabaseAdmin.from('profiles').insert({
-        id: authData.user.id,
-        first_name: demoStudent.firstName,
-        last_name: demoStudent.lastName,
-        account_status: 'pending' // Start as pending for Flow 1 testing
+    for (const user of demoUsers) {
+      // Create auth user
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: user.email,
+        password: user.password,
+        email_confirm: true,
+        user_metadata: {
+          first_name: user.firstName,
+          last_name: user.lastName,
+        },
       });
 
-      // Assign student role
-      await supabaseAdmin.from('user_roles').insert({
-        user_id: authData.user.id,
-        role: 'student'
-      });
+      if (authError) {
+        console.error(`Failed to create ${user.email}:`, authError.message);
+        continue;
+      }
+
+      if (authData.user) {
+        // Create profile
+        await supabaseAdmin.from('profiles').insert({
+          id: authData.user.id,
+          first_name: user.firstName,
+          last_name: user.lastName,
+          account_status: user.accountStatus
+        });
+
+        // Assign roles
+        for (const role of user.roles) {
+          await supabaseAdmin.from('user_roles').insert({
+            user_id: authData.user.id,
+            role: role
+          });
+        }
+
+        createdUsers.push({
+          email: user.email,
+          password: user.password,
+          userId: authData.user.id,
+          roles: user.roles,
+          accountStatus: user.accountStatus
+        });
+      }
     }
 
     return new Response(JSON.stringify({ 
       success: true, 
       deletedEmails,
-      createdUser: {
-        email: demoStudent.email,
-        password: demoStudent.password,
-        userId: authData.user?.id,
-        accountStatus: 'pending'
-      },
-      message: "Demo student created with 'pending' status - ready to test Flow 1"
+      createdUsers,
+      message: "Demo accounts created - ready to test Flow 1"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

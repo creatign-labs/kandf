@@ -79,44 +79,28 @@ const StudentApprovals = () => {
     },
   });
 
-  // Approve student mutation - uses backend function for proper enforcement
+  // Approve student mutation - uses edge function to update auth password
   const approveMutation = useMutation({
     mutationFn: async (studentId: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // Generate password
-      const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase() + "!";
-
-      // Call backend function to approve student (enforces super_admin check)
-      const { error: approveError } = await supabase.rpc('approve_student_access', {
-        p_student_id: studentId
+      const { data, error } = await supabase.functions.invoke('approve-student-with-password', {
+        body: { student_id: studentId }
       });
 
-      if (approveError) {
-        throw new Error(approveError.message);
+      if (error) {
+        throw new Error(error.message);
       }
 
-      // Update the student_access_approvals with generated password
-      const { error: passwordError } = await supabase
-        .from("student_access_approvals")
-        .update({
-          generated_password: password,
-          credentials_sent_at: new Date().toISOString(),
-        })
-        .eq("student_id", studentId);
-
-      if (passwordError) {
-        console.error("Failed to save password:", passwordError);
+      if (!data.success) {
+        throw new Error(data.error || "Failed to approve student");
       }
 
-      return { studentId, password };
+      return { studentId, password: data.password };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
       toast({
         title: "Student Approved",
-        description: "Account is now active. Credentials have been generated.",
+        description: "Account is now active. Password has been updated.",
       });
       // Show the credentials dialog
       const student = pendingApprovals?.find(a => a.student_id === data.studentId);

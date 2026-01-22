@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.reset-demo-password]
 verify_jwt = false
+
+[functions.daily-ingredient-push]
+verify_jwt = false
+
+[functions.attendance-auto-closure]
+verify_jwt = false

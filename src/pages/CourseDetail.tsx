@@ -100,7 +100,7 @@ const CourseDetail = () => {
                     id={c.id}
                     title={c.title}
                     description={c.description}
-                    image={getCourseImage(c.id, c.image_url || '')}
+                    image={getCourseImage(c.id, c.image_url || '', c.title)}
                     duration={c.duration}
                     materials={c.materials_count || 0}
                     enrolled={0}
@@ -135,7 +135,7 @@ const CourseDetail = () => {
       <div className="relative h-[400px] bg-gradient-to-br from-primary/10 to-accent/10">
         {course.image_url && (
           <img 
-            src={getCourseImage(course.id, course.image_url)} 
+            src={getCourseImage(course.id, course.image_url, course.title)} 
             alt={course.title}
             className="absolute inset-0 w-full h-full object-cover opacity-30"
           />

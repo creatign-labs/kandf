@@ -198,7 +198,7 @@ const StudentDashboard = () => {
                         <div 
                           className="h-32 sm:h-20 sm:w-32 rounded-lg bg-cover bg-center flex-shrink-0"
                           style={{ 
-                            backgroundImage: `url(${getCourseImage(enrollment.courses?.title || '')})`
+                            backgroundImage: `url(${getCourseImage(enrollment.course_id, '', enrollment.courses?.title || '')})`
                           }}
                         />
                         <div className="flex-1 min-w-0">
@@ -256,7 +256,7 @@ const StudentDashboard = () => {
                     id={course.id}
                     title={course.title}
                     description={course.description}
-                    image={getCourseImage(course.title)}
+                    image={getCourseImage(course.id, '', course.title)}
                     duration={course.duration}
                     materials={course.materials_count || 0}
                     level={course.level}

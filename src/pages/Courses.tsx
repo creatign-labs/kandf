@@ -245,7 +245,7 @@ const Courses = () => {
                           id={course.id}
                           title={course.title}
                           description={course.description}
-                          image={getCourseImage(course.id, course.image_url || '')}
+                          image={getCourseImage(course.id, course.image_url || '', course.title)}
                           duration={course.duration}
                           materials={course.materials_count || 0}
                           enrolled={0}
@@ -270,7 +270,7 @@ const Courses = () => {
                         id={course.id}
                         title={course.title}
                         description={course.description}
-                        image={getCourseImage(course.id, course.image_url || '')}
+                        image={getCourseImage(course.id, course.image_url || '', course.title)}
                         duration={course.duration}
                         materials={course.materials_count || 0}
                         enrolled={0}

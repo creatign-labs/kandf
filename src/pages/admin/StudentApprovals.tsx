@@ -18,7 +18,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, CheckCircle, Clock, Loader2, UserCheck, Mail, Copy, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Search, CheckCircle, Clock, Loader2, UserCheck, Mail, Copy, Eye, EyeOff, Trash2, Pencil } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -27,6 +46,9 @@ import { format } from "date-fns";
 const StudentApprovals = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [editingApproval, setEditingApproval] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editStatus, setEditStatus] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const queryClient = useQueryClient();
 
@@ -135,6 +157,29 @@ const StudentApprovals = () => {
     },
   });
 
+  // Update approval status mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ approvalId, status }: { approvalId: string; status: string }) => {
+      const { error } = await supabase
+        .from("student_access_approvals")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("id", approvalId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
+      toast({
+        title: "Record Updated",
+        description: "The approval status has been updated.",
+      });
+      setEditingApproval(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const filteredApprovals = pendingApprovals?.filter(approval =>
     approval.profile?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     approval.profile?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -144,6 +189,27 @@ const StudentApprovals = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copied to clipboard" });
+  };
+
+  const handleEditClick = (approval: any) => {
+    setEditingApproval(approval);
+    setEditStatus(approval.status);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingApproval && editStatus !== editingApproval.status) {
+      updateMutation.mutate({ approvalId: editingApproval.id, status: editStatus });
+    } else {
+      setEditingApproval(null);
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (editingApproval) {
+      deleteMutation.mutate(editingApproval.id);
+      setShowDeleteConfirm(false);
+      setEditingApproval(null);
+    }
   };
 
   const pendingCount = pendingApprovals?.filter(a => a.status === "pending").length || 0;
@@ -281,19 +347,10 @@ const StudentApprovals = () => {
                         {isSuperAdmin && (
                           <Button
                             size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this approval record?")) {
-                                deleteMutation.mutate(approval.id);
-                              }
-                            }}
-                            disabled={deleteMutation.isPending}
+                            variant="outline"
+                            onClick={() => handleEditClick(approval)}
                           >
-                            {deleteMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
+                            <Pencil className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
@@ -376,6 +433,112 @@ const StudentApprovals = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editingApproval} onOpenChange={() => setEditingApproval(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Approval Record</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label className="text-sm font-medium">Student Name</Label>
+                <p className="text-lg">
+                  {editingApproval?.profile?.first_name} {editingApproval?.profile?.last_name}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Email</Label>
+                <p className="text-muted-foreground">{editingApproval?.profile?.email || "N/A"}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Course</Label>
+                <p className="text-muted-foreground">
+                  {editingApproval?.advance_payments?.courses?.title || "N/A"}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Status</Label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Created</Label>
+                <p className="text-muted-foreground">
+                  {editingApproval?.created_at && format(new Date(editingApproval.created_at), "MMM d, yyyy h:mm a")}
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  className="flex-1" 
+                  onClick={handleSaveEdit}
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Save Changes
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setEditingApproval(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              <Separator className="my-4" />
+
+              <div className="pt-2">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Permanently delete this approval record. This action cannot be undone.
+                </p>
+                <Button 
+                  variant="destructive" 
+                  className="w-full gap-2"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Record
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Approval Record?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the approval record for{" "}
+                <strong>{editingApproval?.profile?.first_name} {editingApproval?.profile?.last_name}</strong>.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

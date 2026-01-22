@@ -302,11 +302,11 @@ const StudentApprovals = () => {
               <div>
                 <label className="text-sm font-medium">Email</label>
                 <div className="flex items-center gap-2">
-                  <Input value={selectedStudent?.profile?.phone || "N/A"} readOnly />
+                  <Input value={selectedStudent?.profile?.email || "N/A"} readOnly />
                   <Button
                     size="icon"
                     variant="outline"
-                    onClick={() => copyToClipboard(selectedStudent?.profile?.phone || "")}
+                    onClick={() => copyToClipboard(selectedStudent?.profile?.email || "")}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>

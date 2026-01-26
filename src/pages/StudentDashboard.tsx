@@ -136,42 +136,40 @@ const StudentDashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 mb-6 md:mb-8">
-          {/* Left Column - Stats Cards Stacked */}
-          <div className="flex flex-col gap-3 md:gap-6">
-            <StatsCard
-              title="Course Progress"
-              value={`${averageProgress}%`}
-              icon={Target}
-              variant="primary"
-            />
-            <StatsCard
-              title="Active Courses"
-              value={String(activeEnrollments.length)}
-              icon={BookOpen}
-              variant="default"
-            />
-          </div>
-          
-          {/* Right Column - Quick Actions */}
-          <Card className="p-6 h-full flex flex-col">
-            <h3 className="font-semibold mb-4">Quick Actions</h3>
-            <div className="space-y-2 flex-1 flex flex-col justify-center">
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link to="/student/my-bookings">
-                  <Clock className="h-4 w-4 mr-2" />
-                  Book a Class
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link to="/student/my-course">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Course Recipes
-                </Link>
-              </Button>
-            </div>
-          </Card>
+        {/* Stats Row - Course Progress and Active Courses side by side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 mb-3 md:mb-6">
+          <StatsCard
+            title="Course Progress"
+            value={`${averageProgress}%`}
+            icon={Target}
+            variant="primary"
+          />
+          <StatsCard
+            title="Active Courses"
+            value={String(activeEnrollments.length)}
+            icon={BookOpen}
+            variant="default"
+          />
         </div>
+        
+        {/* Quick Actions - Full width below */}
+        <Card className="p-6 mb-6 md:mb-8">
+          <h3 className="font-semibold mb-4">Quick Actions</h3>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="justify-start" asChild>
+              <Link to="/student/my-bookings">
+                <Clock className="h-4 w-4 mr-2" />
+                Book a Class
+              </Link>
+            </Button>
+            <Button variant="outline" className="justify-start" asChild>
+              <Link to="/student/my-course">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Course Recipes
+              </Link>
+            </Button>
+          </div>
+        </Card>
 
         {/* Feature Discussion Banner */}
         {notificationsCount && notificationsCount > 0 && (

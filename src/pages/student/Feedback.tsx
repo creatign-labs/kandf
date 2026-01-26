@@ -272,7 +272,7 @@ const Feedback = () => {
                   target="_blank" 
                   rel="noopener noreferrer"
                 >
-                  Leave a Review
+                  Write a Review on Google
                 </a>
               </Button>
             </div>

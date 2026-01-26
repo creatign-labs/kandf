@@ -125,7 +125,7 @@ const StudentApprovals = () => {
           throw new Error(data.error || "Failed to approve student");
         }
 
-        return { studentId, password: data.password };
+        return { studentId, password: data.password, studentCode: data.studentCode };
       } catch (err) {
         console.error("Approval mutation error:", err);
         throw err;
@@ -141,7 +141,7 @@ const StudentApprovals = () => {
         // Show the credentials dialog
         const student = pendingApprovals?.find(a => a.student_id === data.studentId);
         if (student) {
-          setSelectedStudent({ ...student, generated_password: data.password });
+          setSelectedStudent({ ...student, generated_password: data.password, student_code: data.studentCode });
         }
       } catch (err) {
         console.error("Error in onSuccess handler:", err);
@@ -408,6 +408,21 @@ const StudentApprovals = () => {
                   {selectedStudent?.profile?.first_name} {selectedStudent?.profile?.last_name}
                 </p>
               </div>
+              {selectedStudent?.student_code && (
+                <div>
+                  <label className="text-sm font-medium">Student ID</label>
+                  <div className="flex items-center gap-2">
+                    <Input value={selectedStudent.student_code} readOnly className="font-mono font-bold" />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => copyToClipboard(selectedStudent.student_code)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium">Email</label>
                 <div className="flex items-center gap-2">

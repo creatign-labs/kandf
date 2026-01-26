@@ -4,14 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, FileText, Download, Loader2 } from "lucide-react";
+import { Upload, FileText, Download, Loader2, Lock, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+const RESUME_ADDON_PRICE = 399;
+
 const Resume = () => {
   const [showBuilder, setShowBuilder] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -24,7 +27,27 @@ const Resume = () => {
   });
   const queryClient = useQueryClient();
 
-  const { data: resume, isLoading } = useQuery({
+  // Check if resume addon is purchased
+  const { data: addonPurchase, isLoading: addonLoading } = useQuery({
+    queryKey: ['resume-addon-purchase'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase
+        .from('addon_purchases')
+        .select('*')
+        .eq('student_id', user.id)
+        .eq('addon_type', 'resume_builder')
+        .eq('status', 'paid')
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    }
+  });
+
+  const { data: resume, isLoading: resumeLoading } = useQuery({
     queryKey: ['my-resume'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -38,8 +61,70 @@ const Resume = () => {
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!addonPurchase
   });
+
+  const handlePayment = async () => {
+    setIsProcessingPayment(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-resume-addon-order');
+      
+      if (error) throw error;
+
+      const options = {
+        key: data.keyId,
+        amount: data.amount * 100,
+        currency: data.currency,
+        name: 'Knead & Frost',
+        description: 'Resume Builder Add-on',
+        order_id: data.orderId,
+        handler: async (response: any) => {
+          try {
+            const { error: verifyError } = await supabase.functions.invoke('verify-resume-addon-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }
+            });
+
+            if (verifyError) throw verifyError;
+
+            toast({
+              title: "Payment successful!",
+              description: "Resume Builder is now unlocked. Start building your professional resume!",
+            });
+            queryClient.invalidateQueries({ queryKey: ['resume-addon-purchase'] });
+          } catch (err: any) {
+            toast({
+              title: "Payment verification failed",
+              description: err.message,
+              variant: "destructive",
+            });
+          }
+        },
+        prefill: {
+          name: '',
+          email: '',
+        },
+        theme: {
+          color: '#7c3aed',
+        },
+      };
+
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.open();
+    } catch (err: any) {
+      toast({
+        title: "Payment failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -144,6 +229,8 @@ const Resume = () => {
     setShowBuilder(true);
   };
 
+  const isLoading = addonLoading || resumeLoading;
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -155,7 +242,76 @@ const Resume = () => {
     );
   }
 
+  const isPurchased = !!addonPurchase;
   const hasResume = resume?.resume_url || resume?.first_name;
+
+  // Payment gate UI
+  if (!isPurchased) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header role="student" />
+        
+        <div className="container px-6 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card className="p-8 text-center border-border/60">
+              <div className="inline-flex p-4 rounded-2xl bg-primary/10 mb-6">
+                <Lock className="h-10 w-10 text-primary" />
+              </div>
+              
+              <h1 className="text-2xl font-bold mb-2">Resume Builder</h1>
+              <p className="text-muted-foreground mb-6">
+                Unlock the professional resume builder to create a standout resume for your culinary career.
+              </p>
+
+              <Card className="p-6 mb-6 bg-gradient-to-r from-primary/5 to-transparent border-primary/20">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">Premium Add-on</span>
+                </div>
+                
+                <div className="text-4xl font-bold text-primary mb-2">
+                  ₹{RESUME_ADDON_PRICE}
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">One-time payment</p>
+                
+                <ul className="text-left space-y-2 mb-6">
+                  <li className="flex items-center gap-2 text-sm">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Professional resume builder
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Upload className="h-4 w-4 text-primary" />
+                    Upload existing resume
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <Download className="h-4 w-4 text-primary" />
+                    Download & share with employers
+                  </li>
+                </ul>
+
+                <Button 
+                  size="lg" 
+                  className="w-full"
+                  onClick={handlePayment}
+                  disabled={isProcessingPayment}
+                >
+                  {isProcessingPayment ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
+                  ) : (
+                    <>Unlock for ₹{RESUME_ADDON_PRICE}</>
+                  )}
+                </Button>
+              </Card>
+
+              <p className="text-xs text-muted-foreground">
+                Secure payment powered by Razorpay
+              </p>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

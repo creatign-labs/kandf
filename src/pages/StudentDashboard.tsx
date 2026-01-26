@@ -4,7 +4,7 @@ import { CourseCard } from "@/components/CourseCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Award, Clock, Target, Bell, Loader2 } from "lucide-react";
+import { BookOpen, Award, Clock, Target, Bell, Loader2, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,9 +122,17 @@ const StudentDashboard = () => {
       
       <div className="container px-4 md:px-6 py-6 md:py-8">
         {/* Welcome Section */}
-        <div className="mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">{greeting}, {firstName} 👋</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Welcome to Knead & Frost, check your priority learning.</p>
+        <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">{greeting}, {firstName} 👋</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Welcome to Knead & Frost, check your priority learning.</p>
+          </div>
+          <Button asChild className="w-fit">
+            <Link to="/student/resume">
+              <FileText className="h-4 w-4 mr-2" />
+              Build Resume
+            </Link>
+          </Button>
         </div>
 
         {/* Stats Grid */}

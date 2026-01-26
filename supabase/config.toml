@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.approve-vendor-with-password]
 verify_jwt = false
+
+[functions.create-resume-addon-order]
+verify_jwt = false
+
+[functions.verify-resume-addon-payment]
+verify_jwt = false

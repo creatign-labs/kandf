@@ -52,6 +52,42 @@ export type Database = {
           },
         ]
       }
+      addon_purchases: {
+        Row: {
+          addon_type: string
+          amount: number
+          created_at: string
+          id: string
+          purchased_at: string | null
+          razorpay_payment_id: string | null
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          addon_type: string
+          amount: number
+          created_at?: string
+          id?: string
+          purchased_at?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          addon_type?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          purchased_at?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       advance_payments: {
         Row: {
           amount: number

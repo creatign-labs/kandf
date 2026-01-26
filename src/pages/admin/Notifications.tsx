@@ -43,6 +43,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { RecipientSelector } from "@/components/admin/RecipientSelector";
 
 const Notifications = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -51,8 +52,9 @@ const Notifications = () => {
     title: "",
     message: "",
     type: "info",
-    target: "all",
   });
+  const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
+  const [selectedIndividuals, setSelectedIndividuals] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
   // Fetch all notifications (for admin view)
@@ -98,40 +100,46 @@ const Notifications = () => {
     },
   });
 
+  // Fetch admins for targeting
+  const { data: admins } = useQuery({
+    queryKey: ["all-admins"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("user_id, profiles:user_id(id, first_name, last_name)")
+        .in("role", ["admin", "super_admin"]);
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Send notification mutation with logging
   const sendMutation = useMutation({
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      let userIds: string[] = [];
-      let targetType = formData.target;
+      const userIdsSet = new Set<string>();
 
-      if (targetType === "all_students") {
-        const { data: allStudents } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "student");
-        userIds = allStudents?.map((s) => s.user_id) || [];
-      } else if (targetType === "all_chefs") {
-        const { data: allChefs } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "chef");
-        userIds = allChefs?.map((c) => c.user_id) || [];
-      } else if (targetType === "all") {
-        // Get all users (students + chefs)
-        const { data: allUsers } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .in("role", ["student", "chef"]);
-        userIds = allUsers?.map((u) => u.user_id) || [];
-      } else {
-        userIds = [targetType];
+      // Add users from selected segments
+      if (selectedSegments.includes("all_students")) {
+        students?.forEach((s) => userIdsSet.add(s.user_id));
+      }
+      if (selectedSegments.includes("all_chefs")) {
+        chefs?.forEach((c) => userIdsSet.add(c.user_id));
+      }
+      if (selectedSegments.includes("all_admins")) {
+        admins?.forEach((a) => userIdsSet.add(a.user_id));
       }
 
+      // Add individually selected users
+      selectedIndividuals.forEach((id) => userIdsSet.add(id));
+
+      const userIds = Array.from(userIdsSet);
+
       if (userIds.length === 0) {
-        throw new Error("No recipients found");
+        throw new Error("No recipients selected");
       }
 
       // Create notification for each user
@@ -165,7 +173,9 @@ const Notifications = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
       setIsDialogOpen(false);
       setShowConfirmDialog(false);
-      setFormData({ title: "", message: "", type: "info", target: "all" });
+      setFormData({ title: "", message: "", type: "info" });
+      setSelectedSegments([]);
+      setSelectedIndividuals([]);
       toast({
         title: "Notification sent!",
         description: "All selected users have been notified.",
@@ -190,14 +200,46 @@ const Notifications = () => {
   };
 
   const getRecipientCount = () => {
-    if (formData.target === "all") {
-      return (students?.length || 0) + (chefs?.length || 0);
-    } else if (formData.target === "all_students") {
-      return students?.length || 0;
-    } else if (formData.target === "all_chefs") {
-      return chefs?.length || 0;
+    const userIdsSet = new Set<string>();
+
+    if (selectedSegments.includes("all_students")) {
+      students?.forEach((s) => userIdsSet.add(s.user_id));
     }
-    return 1;
+    if (selectedSegments.includes("all_chefs")) {
+      chefs?.forEach((c) => userIdsSet.add(c.user_id));
+    }
+    if (selectedSegments.includes("all_admins")) {
+      admins?.forEach((a) => userIdsSet.add(a.user_id));
+    }
+
+    selectedIndividuals.forEach((id) => userIdsSet.add(id));
+
+    return userIdsSet.size;
+  };
+
+  const getRecipientSummary = () => {
+    const parts: string[] = [];
+    if (selectedSegments.includes("all_students")) parts.push("All Students");
+    if (selectedSegments.includes("all_chefs")) parts.push("All Chefs");
+    if (selectedSegments.includes("all_admins")) parts.push("All Admins");
+    
+    const individualCount = selectedIndividuals.filter((id) => {
+      const isStudent = students?.some((s) => s.user_id === id);
+      const isChef = chefs?.some((c) => c.user_id === id);
+      const isAdmin = admins?.some((a) => a.user_id === id);
+      
+      if (isStudent && selectedSegments.includes("all_students")) return false;
+      if (isChef && selectedSegments.includes("all_chefs")) return false;
+      if (isAdmin && selectedSegments.includes("all_admins")) return false;
+      
+      return true;
+    }).length;
+
+    if (individualCount > 0) {
+      parts.push(`${individualCount} individual(s)`);
+    }
+
+    return parts.join(", ") || "None selected";
   };
 
   const getTypeBadge = (type: string) => {
@@ -295,16 +337,16 @@ const Notifications = () => {
                   New Notification
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Send Notification</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
+                    <Label htmlFor="title">Notification Title</Label>
                     <Input
                       id="title"
-                      placeholder="Notification title"
+                      placeholder="Enter notification title..."
                       value={formData.title}
                       onChange={(e) =>
                         setFormData({ ...formData, title: e.target.value })
@@ -313,7 +355,7 @@ const Notifications = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="message">Message</Label>
+                    <Label htmlFor="message">Notification Message</Label>
                     <Textarea
                       id="message"
                       placeholder="Write your message here..."
@@ -345,54 +387,24 @@ const Notifications = () => {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Send To</Label>
-                    <Select
-                      value={formData.target}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, target: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Users</SelectItem>
-                        <SelectItem value="all_students">All Students</SelectItem>
-                        <SelectItem value="all_chefs">All Chefs</SelectItem>
-                        {students && students.length > 0 && (
-                          <>
-                            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                              ── Students ──
-                            </div>
-                            {students.map((student: any) => (
-                              <SelectItem key={student.user_id} value={student.user_id}>
-                                📚 {student.profiles?.first_name} {student.profiles?.last_name}
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                        {chefs && chefs.length > 0 && (
-                          <>
-                            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                              ── Chefs ──
-                            </div>
-                            {chefs.map((chef: any) => (
-                              <SelectItem key={chef.user_id} value={chef.user_id}>
-                                👨‍🍳 {chef.profiles?.first_name} {chef.profiles?.last_name}
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <RecipientSelector
+                    students={students || []}
+                    chefs={chefs || []}
+                    admins={admins || []}
+                    selectedSegments={selectedSegments}
+                    selectedIndividuals={selectedIndividuals}
+                    onSegmentChange={setSelectedSegments}
+                    onIndividualChange={setSelectedIndividuals}
+                  />
 
                   <Button
                     className="w-full gap-2"
                     onClick={handleSendClick}
                     disabled={
-                      !formData.title || !formData.message || sendMutation.isPending
+                      !formData.title || 
+                      !formData.message || 
+                      sendMutation.isPending ||
+                      (selectedSegments.length === 0 && selectedIndividuals.length === 0)
                     }
                   >
                     {sendMutation.isPending ? (
@@ -430,7 +442,7 @@ const Notifications = () => {
                       </div>
                       <div>
                         <span className="font-medium">Recipients:</span>{" "}
-                        {getRecipientCount()} user(s)
+                        {getRecipientSummary()} ({getRecipientCount()} user(s))
                       </div>
                     </div>
                     <p className="text-amber-600 font-medium">

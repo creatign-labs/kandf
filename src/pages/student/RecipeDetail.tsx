@@ -2,7 +2,7 @@ import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { VideoPlayer } from "@/components/VideoPlayer";
+
 import { useParams, Link } from "react-router-dom";
 import { Clock, ChefHat, ArrowLeft, Calendar, CheckCircle, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -182,13 +182,6 @@ const RecipeDetail = () => {
               )}
               {recipe.difficulty && <Badge>{recipe.difficulty}</Badge>}
             </div>
-          </div>
-
-          <div className="mb-8">
-            <VideoPlayer 
-              videoUrl={recipe.video_url || ''} 
-              title={recipe.title}
-            />
           </div>
 
           {recipe.description && (

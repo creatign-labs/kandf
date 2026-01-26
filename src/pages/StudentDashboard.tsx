@@ -136,30 +136,18 @@ const StudentDashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+        <div className="grid grid-cols-2 gap-3 md:gap-6 mb-6 md:mb-8">
           <StatsCard
-            title="Average Progress"
+            title="Course Progress"
             value={`${averageProgress}%`}
             icon={Target}
             variant="primary"
-          />
-          <StatsCard
-            title="Certificates"
-            value={String(certificatesCount || 0)}
-            icon={Award}
-            variant="success"
           />
           <StatsCard
             title="Active Courses"
             value={String(activeEnrollments.length)}
             icon={BookOpen}
             variant="default"
-          />
-          <StatsCard
-            title="Completed"
-            value={String(completedEnrollments.length)}
-            icon={Clock}
-            variant="warning"
           />
         </div>
 

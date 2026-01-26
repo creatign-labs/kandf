@@ -3,7 +3,7 @@ import { StatsCard } from "@/components/StatsCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, FileSpreadsheet, UserCheck, ClipboardList, UtensilsCrossed, Crown } from "lucide-react";
+import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, FileSpreadsheet, UserCheck, ClipboardList, UtensilsCrossed, Crown, Briefcase } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -339,6 +339,12 @@ const AdminDashboard = () => {
                   <Link to="/admin/data-template">
                     <FileSpreadsheet className="h-4 w-4 mr-2" />
                     Data Management
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/job-applications">
+                    <Briefcase className="h-4 w-4 mr-2" />
+                    Job Applications
                   </Link>
                 </Button>
                 {isSuperAdmin && (

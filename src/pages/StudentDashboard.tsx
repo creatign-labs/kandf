@@ -331,7 +331,7 @@ const StudentDashboard = () => {
               <h3 className="font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-2">
                 <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/student/book-slot">
+                  <Link to="/student/my-bookings">
                     <Clock className="h-4 w-4 mr-2" />
                     Book a Class
                   </Link>

@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -27,7 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Users, Calendar, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Calendar, Loader2, CalendarCheck } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -153,6 +154,34 @@ const Batches = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-batches"] });
       toast({ title: "Batch deleted" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Toggle booking enabled mutation
+  const toggleBookingMutation = useMutation({
+    mutationFn: async ({ batchId, enabled }: { batchId: string; enabled: boolean }) => {
+      const { error } = await supabase
+        .from("batches")
+        .update({ booking_enabled: enabled, updated_at: new Date().toISOString() })
+        .eq("id", batchId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { enabled }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-batches"] });
+      toast({
+        title: enabled ? "Booking enabled" : "Booking disabled",
+        description: enabled
+          ? "Students can now book slots for this batch."
+          : "Slot booking is now disabled for this batch.",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -410,6 +439,7 @@ const Batches = () => {
                   <TableHead>Schedule</TableHead>
                   <TableHead>Capacity</TableHead>
                   <TableHead>Start Date</TableHead>
+                  <TableHead>Booking</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -440,6 +470,20 @@ const Batches = () => {
                         ? format(new Date(batch.start_date), "MMM d, yyyy")
                         : "Not set"}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={batch.booking_enabled ?? true}
+                          onCheckedChange={(checked) =>
+                            toggleBookingMutation.mutate({ batchId: batch.id, enabled: checked })
+                          }
+                          disabled={toggleBookingMutation.isPending}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {batch.booking_enabled ?? true ? "Open" : "Closed"}
+                        </span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
@@ -465,7 +509,7 @@ const Batches = () => {
                 {(!batches || batches.length === 0) && (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="text-center py-8 text-muted-foreground"
                     >
                       No batches created yet

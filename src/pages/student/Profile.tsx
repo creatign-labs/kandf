@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, Phone, Upload, FileText, Trash2, Loader2, Camera, IdCard } from 'lucide-react';
+import { User, Mail, Phone, Upload, FileText, Trash2, Loader2, Camera, IdCard, Eye } from 'lucide-react';
 
 interface KYCDocument {
   name: string;
@@ -31,6 +32,7 @@ const Profile = () => {
     student_code: ''
   });
   const [kycDocuments, setKycDocuments] = useState<KYCDocument[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<KYCDocument | null>(null);
   const { toast } = useToast();
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -509,17 +511,21 @@ const Profile = () => {
                         key={doc.name}
                         className="flex items-center justify-between p-3 bg-muted rounded-lg"
                       >
-                        <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setPreviewDoc(doc)}
+                          className="flex items-center gap-3 flex-1 text-left hover:opacity-80 transition-opacity"
+                        >
                           <FileText className="h-5 w-5 text-primary" />
                           <span className="text-sm font-medium truncate max-w-[200px]">
                             {doc.name.split('_').slice(1).join('_') || doc.name}
                           </span>
-                        </div>
+                          <Eye className="h-4 w-4 text-muted-foreground ml-auto" />
+                        </button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDeleteDocument(doc.name)}
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:text-destructive ml-2"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -528,6 +534,34 @@ const Profile = () => {
                   </div>
                 </div>
               )}
+
+              {/* Document Preview Dialog */}
+              <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+                <DialogContent className="max-w-3xl max-h-[90vh]">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {previewDoc?.name.split('_').slice(1).join('_') || previewDoc?.name}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="flex items-center justify-center overflow-auto max-h-[70vh]">
+                    {previewDoc && (
+                      previewDoc.name.toLowerCase().endsWith('.pdf') ? (
+                        <iframe
+                          src={previewDoc.url}
+                          className="w-full h-[60vh] border rounded"
+                          title="Document Preview"
+                        />
+                      ) : (
+                        <img
+                          src={previewDoc.url}
+                          alt="Document Preview"
+                          className="max-w-full max-h-[60vh] object-contain rounded"
+                        />
+                      )
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </div>

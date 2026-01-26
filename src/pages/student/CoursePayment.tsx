@@ -103,9 +103,10 @@ const CoursePayment = () => {
   const totalCourseFee = enrollment?.courses?.base_fee || 0;
   const remainingFee = totalCourseFee - advanceAmount;
 
+  // Calculate paid amount from payment schedules only (registration fee is already included in schedules)
   const paidAmount = (paymentSchedules || [])
     .filter(p => p.status === "paid")
-    .reduce((sum, p) => sum + Number(p.amount), 0) + advanceAmount;
+    .reduce((sum, p) => sum + Number(p.amount), 0);
 
   const totalAmount = totalCourseFee;
   const overduePayments = (paymentSchedules || []).filter(p => p.status === "overdue" || (p.status === "pending" && isPast(new Date(p.due_date))));

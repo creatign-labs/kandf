@@ -264,8 +264,8 @@ Deno.serve(async (req) => {
               p_student_id: student_id,
               p_total_amount: courseData.base_fee,
               p_registration_amount: 2000, // The advance payment already made
-              p_due_days_1: 15,
-              p_due_days_2: 30,
+              p_due_days_1: 7,  // Balance 1 due in 7 days
+              p_due_days_2: 30, // Balance 2 due in 30 days
             });
 
             if (scheduleError) {

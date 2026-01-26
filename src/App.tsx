@@ -59,6 +59,11 @@ import NotFound from "./pages/NotFound";
 import Profile from "./pages/student/Profile";
 import FlowWalkthrough from "./pages/FlowWalkthrough";
 import FeatureReport from "./pages/FeatureReport";
+import VendorDashboard from "./pages/vendor/VendorDashboard";
+import VendorJobs from "./pages/vendor/VendorJobs";
+import JobForm from "./pages/vendor/JobForm";
+import JobApplications from "./pages/vendor/JobApplications";
+import VendorProfile from "./pages/vendor/VendorProfile";
 
 const queryClient = new QueryClient();
 
@@ -129,6 +134,13 @@ const App = () => (
           <Route path="/chef/inventory-usage" element={<ProtectedRoute requiredRole="chef"><InventoryUsage /></ProtectedRoute>} />
           <Route path="/chef/daily-ingredients" element={<ProtectedRoute requiredRole="chef"><DailyIngredients /></ProtectedRoute>} />
           <Route path="/chef/profile" element={<ProtectedRoute requiredRole="chef"><Profile /></ProtectedRoute>} />
+          
+          <Route path="/vendor" element={<ProtectedRoute requiredRole="vendor"><VendorDashboard /></ProtectedRoute>} />
+          <Route path="/vendor/jobs" element={<ProtectedRoute requiredRole="vendor"><VendorJobs /></ProtectedRoute>} />
+          <Route path="/vendor/jobs/new" element={<ProtectedRoute requiredRole="vendor"><JobForm /></ProtectedRoute>} />
+          <Route path="/vendor/jobs/:id/edit" element={<ProtectedRoute requiredRole="vendor"><JobForm /></ProtectedRoute>} />
+          <Route path="/vendor/jobs/:id/applications" element={<ProtectedRoute requiredRole="vendor"><JobApplications /></ProtectedRoute>} />
+          <Route path="/vendor/profile" element={<ProtectedRoute requiredRole="vendor"><VendorProfile /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>

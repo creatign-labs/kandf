@@ -843,6 +843,9 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
+          released_at: string | null
+          released_by: string | null
+          released_to_vendor: boolean
           resume_url: string | null
           status: string
           student_id: string
@@ -853,6 +856,9 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
+          released_at?: string | null
+          released_by?: string | null
+          released_to_vendor?: boolean
           resume_url?: string | null
           status?: string
           student_id: string
@@ -863,12 +869,22 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
+          released_at?: string | null
+          released_by?: string | null
+          released_to_vendor?: boolean
           resume_url?: string | null
           status?: string
           student_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_application_counts"
+            referencedColumns: ["job_id"]
+          },
           {
             foreignKeyName: "job_applications_job_id_fkey"
             columns: ["job_id"]
@@ -899,6 +915,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          vendor_id: string | null
         }
         Insert: {
           company: string
@@ -913,6 +930,7 @@ export type Database = {
           title: string
           type?: string
           updated_at?: string
+          vendor_id?: string | null
         }
         Update: {
           company?: string
@@ -927,8 +945,17 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          vendor_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "jobs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leads: {
         Row: {
@@ -1690,9 +1717,75 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_profiles: {
+        Row: {
+          company_description: string | null
+          company_name: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          company_description?: string | null
+          company_name: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          company_description?: string | null
+          company_name?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      job_application_counts: {
+        Row: {
+          application_count: number | null
+          company: string | null
+          is_active: boolean | null
+          job_id: string | null
+          location: string | null
+          pending_count: number | null
+          posted_at: string | null
+          reviewed_count: number | null
+          shortlisted_count: number | null
+          title: string | null
+          type: string | null
+          vendor_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       approve_inventory_checklist: {
@@ -1734,6 +1827,28 @@ export type Database = {
       generate_invoice_number: { Args: never; Returns: string }
       generate_random_password: { Args: never; Returns: string }
       generate_student_id: { Args: { p_course_id: string }; Returns: string }
+      get_current_vendor_profile: {
+        Args: never
+        Returns: {
+          company_description: string | null
+          company_name: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "vendor_profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1750,6 +1865,10 @@ export type Database = {
         Args: { p_recipe_id: string; p_student_id: string }
         Returns: boolean
       }
+      release_application_to_vendor: {
+        Args: { p_application_id: string }
+        Returns: boolean
+      }
       update_overdue_payments: { Args: never; Returns: number }
     }
     Enums: {
@@ -1759,6 +1878,7 @@ export type Database = {
         | "chef"
         | "super_admin"
         | "inventory_manager"
+        | "vendor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1892,6 +2012,7 @@ export const Constants = {
         "chef",
         "super_admin",
         "inventory_manager",
+        "vendor",
       ],
     },
   },

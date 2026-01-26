@@ -76,7 +76,6 @@ const Jobs = () => {
 
   const filteredJobs = jobs?.filter(job =>
     job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
     job.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -100,7 +99,7 @@ const Jobs = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  placeholder="Search jobs by title, company, or skill..."
+                  placeholder="Search jobs by title or description..."
                   className="pl-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -121,7 +120,7 @@ const Jobs = () => {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <h3 className="text-xl font-semibold mb-2">{job.title}</h3>
-                      <p className="text-lg text-muted-foreground mb-3">{job.company}</p>
+                      <p className="text-lg text-muted-foreground mb-3 italic">Company Name Hidden</p>
                       
                       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-4">
                         <span className="flex items-center gap-1">

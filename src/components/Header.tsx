@@ -15,7 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 
 interface HeaderProps {
-  role?: "public" | "student" | "admin" | "chef" | "super_admin";
+  role?: "public" | "student" | "admin" | "chef" | "super_admin" | "vendor";
   userName?: string;
 }
 
@@ -26,7 +26,13 @@ interface NavItem {
   end?: boolean;
 }
 
-type AppRole = "admin" | "student" | "chef";
+type AppRole = "admin" | "student" | "chef" | "vendor";
+
+const vendorNavItems: NavItem[] = [
+  { to: "/vendor", label: "Dashboard", icon: Home, end: true },
+  { to: "/vendor/jobs", label: "Job Listings", icon: Briefcase },
+  { to: "/vendor/profile", label: "Company Profile", icon: Settings },
+];
 
 const publicNavItems: NavItem[] = [
   { to: "/", label: "Home", icon: Home, end: true },
@@ -116,11 +122,13 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
         .eq('user_id', user.id);
       
       if (roles && roles.length > 0) {
-        // Priority: admin > chef > student
+        // Priority: admin > chef > vendor > student
         if (roles.some(r => r.role === 'admin')) {
           setUserPrimaryRole('admin');
         } else if (roles.some(r => r.role === 'chef')) {
           setUserPrimaryRole('chef');
+        } else if (roles.some(r => r.role === 'vendor')) {
+          setUserPrimaryRole('vendor');
         } else {
           setUserPrimaryRole('student');
         }
@@ -131,6 +139,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
   const getDashboardPath = () => {
     if (userPrimaryRole === 'admin') return '/admin';
     if (userPrimaryRole === 'chef') return '/chef';
+    if (userPrimaryRole === 'vendor') return '/vendor';
     return '/student';
   };
 
@@ -140,6 +149,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
       case "admin": return adminNavItems;
       case "super_admin": return superAdminNavItems;
       case "chef": return chefNavItems;
+      case "vendor": return vendorNavItems;
       default: return publicNavItems;
     }
   };
@@ -150,6 +160,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
       case "admin": return adminNavItems;
       case "super_admin": return superAdminNavItems;
       case "chef": return chefNavItems;
+      case "vendor": return vendorNavItems;
       default: return publicNavItems;
     }
   };
@@ -233,14 +244,16 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
             )
           ) : (
             <>
-              <Button variant="ghost" size="icon" className="relative" asChild>
-                <Link to={`/${role === 'admin' || role === 'super_admin' ? 'admin' : 'student'}/notifications`}>
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
-                    3
-                  </span>
-                </Link>
-              </Button>
+              {role !== 'vendor' && (
+                <Button variant="ghost" size="icon" className="relative" asChild>
+                  <Link to={`/${role === 'admin' || role === 'super_admin' ? 'admin' : 'student'}/notifications`}>
+                    <Bell className="h-5 w-5" />
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
+                      3
+                    </span>
+                  </Link>
+                </Button>
+              )}
               <ProfileDropdown role={role} />
             </>
           )}

@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'chef' | 'student' | 'super_admin';
+  requiredRole?: 'admin' | 'chef' | 'student' | 'super_admin' | 'vendor';
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
@@ -68,10 +68,10 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
 
       if (requiredRole) {
         // Check if user has the required role or is super_admin (super_admin has access to admin routes)
-        type AppRole = 'admin' | 'chef' | 'student' | 'super_admin';
+        type AppRole = 'admin' | 'chef' | 'student' | 'super_admin' | 'vendor';
         const rolesToCheck: AppRole[] = requiredRole === 'admin' 
           ? ['admin', 'super_admin'] 
-          : [requiredRole];
+          : [requiredRole as AppRole];
         
         const { data: roles, error: roleError } = await supabase
           .from('user_roles')

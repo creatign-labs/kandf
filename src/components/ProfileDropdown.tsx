@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { format, addMonths } from "date-fns";
 
 interface ProfileDropdownProps {
-  role: "student" | "admin" | "chef" | "super_admin";
+  role: "student" | "admin" | "chef" | "super_admin" | "vendor";
 }
 
 interface ProfileData {
@@ -39,13 +39,14 @@ interface Enrollment {
   } | null;
 }
 
-type AppRole = "admin" | "student" | "chef" | "super_admin";
+type AppRole = "admin" | "student" | "chef" | "super_admin" | "vendor";
 
 const roleConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; label: string; path: string }> = {
   admin: { icon: Shield, label: "Admin Portal", path: "/admin" },
   chef: { icon: ChefHat, label: "Chef Portal", path: "/chef" },
   student: { icon: GraduationCap, label: "Student Portal", path: "/student" },
   super_admin: { icon: Shield, label: "Admin Portal", path: "/admin" },
+  vendor: { icon: Shield, label: "Vendor Portal", path: "/vendor" },
 };
 
 export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {

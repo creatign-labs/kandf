@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_status_logs: {
+        Row: {
+          changed_by: string
+          created_at: string | null
+          id: string
+          new_status: string
+          old_status: string
+          reason: string | null
+          student_id: string
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string | null
+          id?: string
+          new_status: string
+          old_status: string
+          reason?: string | null
+          student_id: string
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string | null
+          id?: string
+          new_status?: string
+          old_status?: string
+          reason?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_status_logs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       advance_payments: {
         Row: {
           amount: number
@@ -164,6 +202,7 @@ export type Database = {
         Row: {
           available_seats: number
           batch_name: string
+          booking_enabled: boolean | null
           course_id: string
           created_at: string
           days: string
@@ -176,6 +215,7 @@ export type Database = {
         Insert: {
           available_seats?: number
           batch_name: string
+          booking_enabled?: boolean | null
           course_id: string
           created_at?: string
           days: string
@@ -188,6 +228,7 @@ export type Database = {
         Update: {
           available_seats?: number
           batch_name?: string
+          booking_enabled?: boolean | null
           course_id?: string
           created_at?: string
           days?: string
@@ -974,6 +1015,47 @@ export type Database = {
           },
         ]
       }
+      notification_logs: {
+        Row: {
+          confirmed_at: string
+          created_at: string | null
+          id: string
+          message: string
+          notification_id: string | null
+          recipient_id: string
+          sent_by: string
+          title: string
+        }
+        Insert: {
+          confirmed_at?: string
+          created_at?: string | null
+          id?: string
+          message: string
+          notification_id?: string | null
+          recipient_id: string
+          sent_by: string
+          title: string
+        }
+        Update: {
+          confirmed_at?: string
+          created_at?: string | null
+          id?: string
+          message?: string
+          notification_id?: string | null
+          recipient_id?: string
+          sent_by?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1120,6 +1202,7 @@ export type Database = {
           id: string
           last_name: string
           marksheet_url: string | null
+          must_change_password: boolean | null
           passport_photo_url: string | null
           phone: string | null
           updated_at: string
@@ -1136,6 +1219,7 @@ export type Database = {
           id: string
           last_name: string
           marksheet_url?: string | null
+          must_change_password?: boolean | null
           passport_photo_url?: string | null
           phone?: string | null
           updated_at?: string
@@ -1152,6 +1236,7 @@ export type Database = {
           id?: string
           last_name?: string
           marksheet_url?: string | null
+          must_change_password?: boolean | null
           passport_photo_url?: string | null
           phone?: string | null
           updated_at?: string

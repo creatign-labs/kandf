@@ -28,7 +28,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Bell, Plus, Send, Users, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Bell, Plus, Send, Users, Loader2, AlertTriangle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -36,6 +46,7 @@ import { format } from "date-fns";
 
 const Notifications = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     message: "",
@@ -73,20 +84,50 @@ const Notifications = () => {
     },
   });
 
-  // Send notification mutation
+  // Fetch chefs for targeting
+  const { data: chefs } = useQuery({
+    queryKey: ["all-chefs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("user_id, profiles:user_id(id, first_name, last_name)")
+        .eq("role", "chef");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Send notification mutation with logging
   const sendMutation = useMutation({
     mutationFn: async () => {
-      let userIds: string[] = [];
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
-      if (formData.target === "all") {
-        // Get all student user IDs
+      let userIds: string[] = [];
+      let targetType = formData.target;
+
+      if (targetType === "all_students") {
         const { data: allStudents } = await supabase
           .from("user_roles")
           .select("user_id")
           .eq("role", "student");
         userIds = allStudents?.map((s) => s.user_id) || [];
+      } else if (targetType === "all_chefs") {
+        const { data: allChefs } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "chef");
+        userIds = allChefs?.map((c) => c.user_id) || [];
+      } else if (targetType === "all") {
+        // Get all users (students + chefs)
+        const { data: allUsers } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .in("role", ["student", "chef"]);
+        userIds = allUsers?.map((u) => u.user_id) || [];
       } else {
-        userIds = [formData.target];
+        userIds = [targetType];
       }
 
       if (userIds.length === 0) {
@@ -102,15 +143,28 @@ const Notifications = () => {
         read: false,
       }));
 
-      const { error } = await supabase
+      const { data: insertedNotifications, error } = await supabase
         .from("notifications")
-        .insert(notificationsToInsert);
+        .insert(notificationsToInsert)
+        .select();
 
       if (error) throw error;
+
+      // Log each notification sent
+      const logsToInsert = userIds.map((userId) => ({
+        sent_by: user.id,
+        recipient_id: userId,
+        title: formData.title,
+        message: formData.message,
+        notification_id: insertedNotifications?.[0]?.id || null,
+      }));
+
+      await supabase.from("notification_logs").insert(logsToInsert);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
       setIsDialogOpen(false);
+      setShowConfirmDialog(false);
       setFormData({ title: "", message: "", type: "info", target: "all" });
       toast({
         title: "Notification sent!",
@@ -118,6 +172,7 @@ const Notifications = () => {
       });
     },
     onError: (error: Error) => {
+      setShowConfirmDialog(false);
       toast({
         title: "Error",
         description: error.message,
@@ -125,6 +180,25 @@ const Notifications = () => {
       });
     },
   });
+
+  const handleSendClick = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const confirmSend = () => {
+    sendMutation.mutate();
+  };
+
+  const getRecipientCount = () => {
+    if (formData.target === "all") {
+      return (students?.length || 0) + (chefs?.length || 0);
+    } else if (formData.target === "all_students") {
+      return students?.length || 0;
+    } else if (formData.target === "all_chefs") {
+      return chefs?.length || 0;
+    }
+    return 1;
+  };
 
   const getTypeBadge = (type: string) => {
     switch (type) {
@@ -283,19 +357,40 @@ const Notifications = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Students</SelectItem>
-                        {students?.map((student: any) => (
-                          <SelectItem key={student.user_id} value={student.user_id}>
-                            {student.profiles?.first_name} {student.profiles?.last_name}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="all">All Users</SelectItem>
+                        <SelectItem value="all_students">All Students</SelectItem>
+                        <SelectItem value="all_chefs">All Chefs</SelectItem>
+                        {students && students.length > 0 && (
+                          <>
+                            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                              ── Students ──
+                            </div>
+                            {students.map((student: any) => (
+                              <SelectItem key={student.user_id} value={student.user_id}>
+                                📚 {student.profiles?.first_name} {student.profiles?.last_name}
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                        {chefs && chefs.length > 0 && (
+                          <>
+                            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                              ── Chefs ──
+                            </div>
+                            {chefs.map((chef: any) => (
+                              <SelectItem key={chef.user_id} value={chef.user_id}>
+                                👨‍🍳 {chef.profiles?.first_name} {chef.profiles?.last_name}
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <Button
                     className="w-full gap-2"
-                    onClick={() => sendMutation.mutate()}
+                    onClick={handleSendClick}
                     disabled={
                       !formData.title || !formData.message || sendMutation.isPending
                     }
@@ -308,13 +403,56 @@ const Notifications = () => {
                     ) : (
                       <>
                         <Send className="h-4 w-4" />
-                        Send Notification
+                        Review & Send
                       </>
                     )}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
+
+            {/* Confirmation Dialog */}
+            <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                    Confirm Notification
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-4">
+                    <p>You are about to send the following notification:</p>
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                      <div>
+                        <span className="font-medium">Title:</span> {formData.title}
+                      </div>
+                      <div>
+                        <span className="font-medium">Message:</span> {formData.message}
+                      </div>
+                      <div>
+                        <span className="font-medium">Recipients:</span>{" "}
+                        {getRecipientCount()} user(s)
+                      </div>
+                    </div>
+                    <p className="text-amber-600 font-medium">
+                      This action cannot be undone. Are you sure you want to send this notification?
+                    </p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmSend} disabled={sendMutation.isPending}>
+                    {sendMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      "Confirm & Send"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </Card>
 

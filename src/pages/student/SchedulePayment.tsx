@@ -195,12 +195,13 @@ const SchedulePayment = () => {
 
             if (updateError) throw updateError;
 
-            // Check if all payments are complete
+            // Check if all payments are complete (exclude the one just paid)
             const { data: pendingPayments } = await supabase
               .from('payment_schedules')
               .select('id')
               .eq('enrollment_id', enrollment.id)
-              .eq('status', 'pending');
+              .neq('id', schedule.id)
+              .in('status', ['pending', 'overdue']);
 
             // If no pending payments, update enrollment payment_completed flag
             if (!pendingPayments || pendingPayments.length === 0) {

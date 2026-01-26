@@ -82,6 +82,15 @@ Deno.serve(async (req) => {
         roles: ['admin', 'super_admin'],
         accountStatus: 'active',
         needsEnrollment: false
+      },
+      {
+        email: "vendor@demo.com",
+        password: "Vendor123!",
+        firstName: "Demo",
+        lastName: "Vendor",
+        roles: ['vendor'],
+        accountStatus: 'active',
+        needsEnrollment: false
       }
     ];
 
@@ -179,6 +188,39 @@ Deno.serve(async (req) => {
                 recipe_id: recipe.id
               }, { onConflict: 'chef_id,recipe_id' });
             }
+          }
+        }
+
+        // Create vendor profile if vendor
+        if (user.roles.includes('vendor')) {
+          await supabaseAdmin.from('vendor_profiles').upsert({
+            user_id: authData.user.id,
+            company_name: 'Demo Bakery Co.',
+            company_description: 'A demo vendor company for testing the job portal functionality.',
+            contact_email: user.email,
+            contact_phone: '+91 98765 43210',
+            website: 'https://demo-bakery.example.com',
+            is_active: true
+          }, { onConflict: 'user_id' });
+
+          // Create a demo job posting
+          const { data: vendorProfile } = await supabaseAdmin
+            .from('vendor_profiles')
+            .select('id')
+            .eq('user_id', authData.user.id)
+            .single();
+
+          if (vendorProfile) {
+            await supabaseAdmin.from('jobs').insert({
+              vendor_id: vendorProfile.id,
+              title: 'Junior Pastry Chef',
+              company: 'Demo Bakery Co.',
+              location: 'Mumbai, India',
+              type: 'Full-time',
+              salary_range: '₹25,000 - ₹35,000/month',
+              description: 'We are looking for a passionate junior pastry chef to join our team. You will assist in preparing pastries, cakes, and desserts for our customers. This is a demo job posting for testing purposes.',
+              is_active: true
+            });
           }
         }
 

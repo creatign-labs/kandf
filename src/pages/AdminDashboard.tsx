@@ -3,14 +3,17 @@ import { StatsCard } from "@/components/StatsCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, FileSpreadsheet, UserCheck, ClipboardList, UtensilsCrossed, Crown, Briefcase } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Switch } from "@/components/ui/switch";
+import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, FileSpreadsheet, UserCheck, ClipboardList, UtensilsCrossed, Crown, Briefcase, CalendarCheck } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
 const AdminDashboard = () => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const queryClient = useQueryClient();
 
   // Check if current user is super admin
   useEffect(() => {
@@ -121,6 +124,38 @@ const AdminDashboard = () => {
       return batchesWithCounts;
     }
   });
+
+  // Master toggle for all batches booking
+  const masterToggleMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { error } = await supabase
+        .from("batches")
+        .update({ booking_enabled: enabled, updated_at: new Date().toISOString() })
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      if (error) throw error;
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-todays-batches"] });
+      toast({
+        title: enabled ? "All bookings enabled" : "All bookings disabled",
+        description: enabled
+          ? "Slot booking is now open for all batches."
+          : "Slot booking is now closed for all batches.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Calculate booking status from batches data
+  const allBookingsEnabled = batchesData?.every((b) => b.booking_enabled ?? true) ?? true;
+  const someBookingsEnabled = batchesData?.some((b) => b.booking_enabled ?? true) ?? false;
 
   // Fetch low stock inventory items
   const { data: lowStockItems } = useQuery({
@@ -242,6 +277,31 @@ const AdminDashboard = () => {
                 {(!recentLeads || recentLeads.length === 0) && (
                   <p className="text-center text-muted-foreground py-4">No recent leads</p>
                 )}
+              </div>
+            </Card>
+
+            {/* Master Booking Toggle */}
+            <Card className="p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CalendarCheck className="h-5 w-5 text-primary" />
+                  <div>
+                    <h3 className="font-semibold">Master Booking Control</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Enable or disable slot booking for all batches
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium">
+                    {allBookingsEnabled ? "All Open" : someBookingsEnabled ? "Partial" : "All Closed"}
+                  </span>
+                  <Switch
+                    checked={allBookingsEnabled}
+                    onCheckedChange={(checked) => masterToggleMutation.mutate(checked)}
+                    disabled={masterToggleMutation.isPending}
+                  />
+                </div>
               </div>
             </Card>
 

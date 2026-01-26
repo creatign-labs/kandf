@@ -192,6 +192,38 @@ const Batches = () => {
     },
   });
 
+  // Master toggle for all batches
+  const masterToggleMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { error } = await supabase
+        .from("batches")
+        .update({ booking_enabled: enabled, updated_at: new Date().toISOString() })
+        .neq("id", "00000000-0000-0000-0000-000000000000"); // Update all batches
+
+      if (error) throw error;
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-batches"] });
+      toast({
+        title: enabled ? "All bookings enabled" : "All bookings disabled",
+        description: enabled
+          ? "Slot booking is now open for all batches."
+          : "Slot booking is now closed for all batches.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Calculate if all batches have booking enabled
+  const allBookingsEnabled = batches?.every((b) => b.booking_enabled ?? true) ?? true;
+  const someBookingsEnabled = batches?.some((b) => b.booking_enabled ?? true) ?? false;
+
   const resetForm = () => {
     setFormData({
       batch_name: "",
@@ -296,6 +328,31 @@ const Batches = () => {
             </div>
           </Card>
         </div>
+
+        {/* Master Booking Toggle */}
+        <Card className="p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CalendarCheck className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-semibold">Master Booking Control</h3>
+                <p className="text-sm text-muted-foreground">
+                  Enable or disable slot booking for all batches at once
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">
+                {allBookingsEnabled ? "All Open" : someBookingsEnabled ? "Partial" : "All Closed"}
+              </span>
+              <Switch
+                checked={allBookingsEnabled}
+                onCheckedChange={(checked) => masterToggleMutation.mutate(checked)}
+                disabled={masterToggleMutation.isPending}
+              />
+            </div>
+          </div>
+        </Card>
 
         {/* Add Batch Button & Table */}
         <Card className="p-6">

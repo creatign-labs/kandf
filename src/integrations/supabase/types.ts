@@ -1317,6 +1317,187 @@ export type Database = {
           },
         ]
       }
+      recipe_batch_audit_log: {
+        Row: {
+          action: string
+          actor_id: string
+          course_id: string
+          created_at: string
+          id: string
+          new_batch_id: string | null
+          previous_batch_id: string | null
+          reason: string | null
+          recipe_id: string
+          student_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          course_id: string
+          created_at?: string
+          id?: string
+          new_batch_id?: string | null
+          previous_batch_id?: string | null
+          reason?: string | null
+          recipe_id: string
+          student_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          new_batch_id?: string | null
+          previous_batch_id?: string | null
+          reason?: string | null
+          recipe_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_batch_audit_log_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_batch_audit_log_new_batch_id_fkey"
+            columns: ["new_batch_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_batch_audit_log_previous_batch_id_fkey"
+            columns: ["previous_batch_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_batch_audit_log_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_batch_audit_log_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_batch_memberships: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          booking_id: string | null
+          created_at: string
+          id: string
+          is_manual_assignment: boolean
+          recipe_batch_id: string
+          student_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          is_manual_assignment?: boolean
+          recipe_batch_id: string
+          student_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          is_manual_assignment?: boolean
+          recipe_batch_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_batch_memberships_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_batch_memberships_recipe_batch_id_fkey"
+            columns: ["recipe_batch_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_batch_memberships_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_batches: {
+        Row: {
+          batch_date: string
+          capacity: number
+          course_id: string
+          created_at: string
+          id: string
+          is_manually_adjusted: boolean
+          recipe_id: string
+          time_slot: string
+          updated_at: string
+        }
+        Insert: {
+          batch_date: string
+          capacity?: number
+          course_id: string
+          created_at?: string
+          id?: string
+          is_manually_adjusted?: boolean
+          recipe_id: string
+          time_slot: string
+          updated_at?: string
+        }
+        Update: {
+          batch_date?: string
+          capacity?: number
+          course_id?: string
+          created_at?: string
+          id?: string
+          is_manually_adjusted?: boolean
+          recipe_id?: string
+          time_slot?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_batches_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_batches_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_ingredients: {
         Row: {
           created_at: string
@@ -1788,6 +1969,25 @@ export type Database = {
       }
     }
     Functions: {
+      admin_move_student_batch: {
+        Args: {
+          p_from_batch_id: string
+          p_reason?: string
+          p_student_id: string
+          p_to_batch_id: string
+        }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
+      }
+      admin_remove_student_from_batch: {
+        Args: { p_batch_id: string; p_reason?: string; p_student_id: string }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
+      }
       approve_inventory_checklist: {
         Args: { p_notes?: string; p_requirement_id: string }
         Returns: undefined
@@ -1796,9 +1996,41 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: undefined
       }
+      book_recipe_slot: {
+        Args: {
+          p_batch_date: string
+          p_course_id: string
+          p_recipe_id: string
+          p_student_id: string
+          p_time_slot: string
+        }
+        Returns: {
+          booking_id: string
+          message: string
+          recipe_batch_id: string
+          success: boolean
+        }[]
+      }
+      cancel_recipe_booking: {
+        Args: { p_booking_id: string; p_student_id: string }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
+      }
       check_certificate_eligibility: {
         Args: { p_course_id: string; p_student_id: string }
         Returns: boolean
+      }
+      check_student_booking_eligibility: {
+        Args: { p_student_id: string }
+        Returns: {
+          course_id: string
+          is_eligible: boolean
+          next_recipe_id: string
+          next_recipe_title: string
+          reason: string
+        }[]
       }
       check_student_login_eligibility: {
         Args: { p_user_id: string }
@@ -1827,6 +2059,17 @@ export type Database = {
       generate_invoice_number: { Args: never; Returns: string }
       generate_random_password: { Args: never; Returns: string }
       generate_student_id: { Args: { p_course_id: string }; Returns: string }
+      get_available_recipe_slots: {
+        Args: { p_course_id: string; p_from_date?: string; p_recipe_id: string }
+        Returns: {
+          available_spots: number
+          batch_date: string
+          capacity: number
+          current_count: number
+          recipe_batch_id: string
+          time_slot: string
+        }[]
+      }
       get_current_vendor_profile: {
         Args: never
         Returns: {
@@ -1848,6 +2091,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_next_incomplete_recipe: {
+        Args: { p_course_id: string; p_student_id: string }
+        Returns: {
+          recipe_id: string
+          recipe_order: number
+          recipe_title: string
+        }[]
       }
       has_role: {
         Args: {

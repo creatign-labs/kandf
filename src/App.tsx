@@ -49,6 +49,7 @@ import RecipeIngredients from "./pages/admin/RecipeIngredients";
 import AdminRecipes from "./pages/admin/AdminRecipes";
 import SuperAdminManagement from "./pages/admin/SuperAdminManagement";
 import BookingRecipeAssignment from "./pages/admin/BookingRecipeAssignment";
+import RecipeBatchManagement from "./pages/admin/RecipeBatchManagement";
 import AdminEnrollments from "./pages/admin/Enrollments";
 import JobApplicationsReview from "./pages/admin/JobApplicationsReview";
 import Attendance from "./pages/chef/Attendance";
@@ -126,6 +127,7 @@ const App = () => (
           <Route path="/admin/super-admins" element={<ProtectedRoute requiredRole="admin"><SuperAdminManagement /></ProtectedRoute>} />
           <Route path="/admin/profile" element={<ProtectedRoute requiredRole="admin"><Profile /></ProtectedRoute>} />
           <Route path="/admin/booking-recipes" element={<ProtectedRoute requiredRole="admin"><BookingRecipeAssignment /></ProtectedRoute>} />
+          <Route path="/admin/recipe-batches" element={<ProtectedRoute requiredRole="admin"><RecipeBatchManagement /></ProtectedRoute>} />
           <Route path="/admin/enrollments" element={<ProtectedRoute requiredRole="admin"><AdminEnrollments /></ProtectedRoute>} />
           <Route path="/admin/job-applications" element={<ProtectedRoute requiredRole="admin"><JobApplicationsReview /></ProtectedRoute>} />
           

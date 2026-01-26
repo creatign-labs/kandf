@@ -136,19 +136,47 @@ const StudentDashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 md:gap-6 mb-6 md:mb-8">
-          <StatsCard
-            title="Course Progress"
-            value={`${averageProgress}%`}
-            icon={Target}
-            variant="primary"
-          />
-          <StatsCard
-            title="Active Courses"
-            value={String(activeEnrollments.length)}
-            icon={BookOpen}
-            variant="default"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 mb-6 md:mb-8">
+          {/* Left Column - Stats Cards Stacked */}
+          <div className="flex flex-col gap-3 md:gap-6">
+            <StatsCard
+              title="Course Progress"
+              value={`${averageProgress}%`}
+              icon={Target}
+              variant="primary"
+            />
+            <StatsCard
+              title="Active Courses"
+              value={String(activeEnrollments.length)}
+              icon={BookOpen}
+              variant="default"
+            />
+          </div>
+          
+          {/* Right Column - Quick Actions */}
+          <Card className="p-6 h-fit">
+            <h3 className="font-semibold mb-4">Quick Actions</h3>
+            <div className="space-y-2">
+              <Button variant="outline" className="w-full justify-start" asChild>
+                <Link to="/student/my-bookings">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Book a Class
+                </Link>
+              </Button>
+              <Button variant="outline" className="w-full justify-start" asChild>
+                <Link to="/student/my-bookings">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  My Bookings
+                </Link>
+              </Button>
+              <Button variant="outline" className="w-full justify-start" asChild>
+                <Link to="/student/certificates">
+                  <Award className="h-4 w-4 mr-2" />
+                  Certificates
+                </Link>
+              </Button>
+            </div>
+          </Card>
         </div>
 
         {/* Feature Discussion Banner */}
@@ -319,31 +347,6 @@ const StudentDashboard = () => {
                     </Button>
                   </div>
                 </div>
-              </div>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card className="p-6">
-              <h3 className="font-semibold mb-4">Quick Actions</h3>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/student/my-bookings">
-                    <Clock className="h-4 w-4 mr-2" />
-                    Book a Class
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/student/my-bookings">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    My Bookings
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/student/certificates">
-                    <Award className="h-4 w-4 mr-2" />
-                    Certificates
-                  </Link>
-                </Button>
               </div>
             </Card>
           </div>

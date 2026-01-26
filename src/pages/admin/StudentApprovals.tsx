@@ -137,42 +137,58 @@ const StudentApprovals = () => {
   // Approve student mutation - uses edge function to update auth password
   const approveMutation = useMutation({
     mutationFn: async ({ studentId, courseId, batchId }: { studentId: string; courseId?: string; batchId?: string }) => {
-      const { data, error } = await supabase.functions.invoke('approve-student-with-password', {
-        body: { 
-          student_id: studentId,
-          course_id: courseId || undefined,
-          batch_id: batchId || undefined,
+      try {
+        const { data, error } = await supabase.functions.invoke('approve-student-with-password', {
+          body: { 
+            student_id: studentId,
+            course_id: courseId || undefined,
+            batch_id: batchId || undefined,
+          }
+        });
+
+        if (error) {
+          console.error("Edge function invocation error:", error);
+          throw new Error(error.message || "Failed to call approval function");
         }
-      });
 
-      if (error) {
-        throw new Error(error.message);
+        if (!data) {
+          throw new Error("No response from approval function");
+        }
+
+        if (!data.success) {
+          throw new Error(data.error || "Failed to approve student");
+        }
+
+        return { studentId, password: data.password };
+      } catch (err) {
+        console.error("Approval mutation error:", err);
+        throw err;
       }
-
-      if (!data.success) {
-        throw new Error(data.error || "Failed to approve student");
-      }
-
-      return { studentId, password: data.password };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
-      toast({
-        title: "Student Approved",
-        description: "Account is now active. Password has been updated.",
-      });
-      // Show the credentials dialog
-      const student = pendingApprovals?.find(a => a.student_id === data.studentId);
-      if (student) {
-        setSelectedStudent({ ...student, generated_password: data.password });
+      try {
+        queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
+        toast({
+          title: "Student Approved",
+          description: "Account is now active. Password has been updated.",
+        });
+        // Show the credentials dialog
+        const student = pendingApprovals?.find(a => a.student_id === data.studentId);
+        if (student) {
+          setSelectedStudent({ ...student, generated_password: data.password });
+        }
+        // Reset approval dialog state
+        setApprovingStudent(null);
+        setSelectedCourseId("");
+        setSelectedBatchId("");
+      } catch (err) {
+        console.error("Error in onSuccess handler:", err);
       }
-      // Reset approval dialog state
-      setApprovingStudent(null);
-      setSelectedCourseId("");
-      setSelectedBatchId("");
     },
     onError: (error: Error) => {
+      console.error("Approval error:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      // Don't close the dialog on error so user can retry
     },
   });
 

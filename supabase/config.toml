@@ -14,3 +14,18 @@ verify_jwt = false
 
 [functions.attendance-auto-closure]
 verify_jwt = false
+
+[functions.approve-student-with-password]
+verify_jwt = false
+
+[functions.verify-advance-payment]
+verify_jwt = false
+
+[functions.verify-razorpay-payment]
+verify_jwt = false
+
+[functions.create-razorpay-order]
+verify_jwt = false
+
+[functions.create-advance-payment-order]
+verify_jwt = false

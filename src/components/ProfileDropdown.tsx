@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Settings, BookOpen, ChevronDown, Shield, ChefHat, GraduationCap, Calendar, CreditCard } from "lucide-react";
+import { LogOut, Settings, BookOpen, ChevronDown, Shield, ChefHat, GraduationCap, Calendar, CreditCard, IdCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,6 +30,7 @@ interface Enrollment {
   id: string;
   status: string;
   progress: number | null;
+  student_code: string | null;
   courses: {
     title: string;
     duration: string;
@@ -90,7 +91,7 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
       if (role === 'student') {
         const { data: enrollmentsData } = await supabase
           .from('enrollments')
-          .select('id, status, progress, courses(title, duration), batches(start_date)')
+          .select('id, status, progress, student_code, courses(title, duration), batches(start_date)')
           .eq('student_id', user.id);
 
         if (enrollmentsData) {
@@ -126,6 +127,8 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
   const fullName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "User";
   const activeCourses = enrollments.filter(e => e.status === 'active');
   const completedCourses = enrollments.filter(e => e.status === 'completed' || e.progress === 100);
+  // Get the student code from the first active enrollment
+  const studentCode = activeCourses[0]?.student_code || enrollments[0]?.student_code;
   // Filter out super_admin from portal switching (it uses admin portal) and current role
   const otherRoles = userRoles.filter(r => r !== role && r !== 'super_admin' && roleConfig[r]);
 
@@ -157,7 +160,14 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate">{fullName}</p>
-              <p className="text-xs text-muted-foreground capitalize">{role}</p>
+              {role === 'student' && studentCode ? (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <IdCard className="h-3 w-3" />
+                  <span className="font-mono">{studentCode}</span>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground capitalize">{role}</p>
+              )}
               {profile?.bio && (
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{profile.bio}</p>
               )}

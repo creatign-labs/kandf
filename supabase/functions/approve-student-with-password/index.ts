@@ -203,16 +203,19 @@ Deno.serve(async (req) => {
       // Check if enrollment already exists
       const { data: existingEnrollment } = await supabaseAdmin
         .from("enrollments")
-        .select("id")
+        .select("id, student_code")
         .eq("student_id", student_id)
         .eq("course_id", enrollmentCourseId)
         .maybeSingle();
 
+      let studentCode = existingEnrollment?.student_code || null;
+
       if (!existingEnrollment) {
         // Generate student ID
-        const { data: studentCode } = await supabaseAdmin.rpc("generate_student_id", {
+        const { data: generatedCode } = await supabaseAdmin.rpc("generate_student_id", {
           p_course_id: enrollmentCourseId,
         });
+        studentCode = generatedCode;
 
         // Create enrollment for the course
         const { data: newEnrollment, error: enrollmentError } = await supabaseAdmin
@@ -277,9 +280,14 @@ Deno.serve(async (req) => {
         }
       } else {
         console.log("Enrollment already exists, skipping creation");
+        studentCode = existingEnrollment.student_code;
       }
+
+      // Store studentCode for response
+      var finalStudentCode = studentCode;
     } else {
       console.log("No course specified and no advance payment found, skipping enrollment creation");
+      var finalStudentCode = null;
     }
 
     // Create notification for the student
@@ -290,11 +298,12 @@ Deno.serve(async (req) => {
       type: "success",
     });
 
-    console.log(`Student ${student_id} approved with new password`);
+    console.log(`Student ${student_id} approved with new password and student ID: ${finalStudentCode}`);
 
     return new Response(JSON.stringify({ 
       success: true, 
       password: newPassword,
+      studentCode: finalStudentCode,
       message: "Student approved and password updated"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

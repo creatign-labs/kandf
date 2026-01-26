@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, Phone, Upload, FileText, Trash2, Loader2, Camera } from 'lucide-react';
+import { User, Mail, Phone, Upload, FileText, Trash2, Loader2, Camera, IdCard } from 'lucide-react';
 
 interface KYCDocument {
   name: string;
@@ -27,7 +27,8 @@ const Profile = () => {
     phone: '',
     email: '',
     bio: '',
-    avatar_url: ''
+    avatar_url: '',
+    student_code: ''
   });
   const [kycDocuments, setKycDocuments] = useState<KYCDocument[]>([]);
   const { toast } = useToast();
@@ -51,13 +52,23 @@ const Profile = () => {
 
       if (error) throw error;
 
+      // Fetch student code from enrollment
+      const { data: enrollmentData } = await supabase
+        .from('enrollments')
+        .select('student_code')
+        .eq('student_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       setProfile({
         first_name: data.first_name || '',
         last_name: data.last_name || '',
         phone: data.phone || '',
         email: user.email || '',
         bio: data.bio || '',
-        avatar_url: data.avatar_url || ''
+        avatar_url: data.avatar_url || '',
+        student_code: enrollmentData?.student_code || ''
       });
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -354,9 +365,30 @@ const Profile = () => {
                   </div>
                   <div className="text-center">
                     <p className="font-medium">{profile.first_name} {profile.last_name}</p>
+                    {profile.student_code && (
+                      <div className="flex items-center justify-center gap-1 text-sm text-primary font-mono mt-1">
+                        <IdCard className="h-4 w-4" />
+                        <span>{profile.student_code}</span>
+                      </div>
+                    )}
                     <p className="text-sm text-muted-foreground">Click on avatar to change</p>
                   </div>
                 </div>
+
+                {/* Student ID Card */}
+                {profile.student_code && (
+                  <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <IdCard className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Student ID</p>
+                        <p className="text-lg font-bold font-mono text-primary">{profile.student_code}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">

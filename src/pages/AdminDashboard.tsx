@@ -157,19 +157,20 @@ const AdminDashboard = () => {
   const allBookingsEnabled = batchesData?.every((b) => b.booking_enabled ?? true) ?? true;
   const someBookingsEnabled = batchesData?.some((b) => b.booking_enabled ?? true) ?? false;
 
-  // Fetch low stock inventory items
-  const { data: lowStockItems } = useQuery({
-    queryKey: ['admin-low-stock'],
+  // Fetch items that need to be purchased (low stock)
+  const { data: stockToPurchase } = useQuery({
+    queryKey: ['admin-stock-to-purchase'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('inventory')
         .select('*')
-        .lt('current_stock', 10)
+        .lt('current_stock', supabase.rpc ? 10 : 10) // items below reorder level
         .order('current_stock')
-        .limit(3);
+        .limit(5);
       
       if (error) throw error;
-      return data;
+      // Filter items where current_stock < reorder_level
+      return data?.filter(item => item.current_stock < item.reorder_level) || [];
     }
   });
 
@@ -229,11 +230,11 @@ const AdminDashboard = () => {
             variant="warning"
           />
           <StatsCard
-            title="Inventory Alerts"
-            value={String(lowStockItems?.length || 0)}
+            title="Stock to Purchase"
+            value={String(stockToPurchase?.length || 0)}
             icon={AlertCircle}
             variant="default"
-            description="Low stock items"
+            description="Items below reorder level"
           />
         </div>
 
@@ -418,28 +419,28 @@ const AdminDashboard = () => {
               </div>
             </Card>
 
-            {/* Inventory Alerts */}
+            {/* Stock to Purchase */}
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <AlertCircle className="h-5 w-5 text-warning" />
-                <h3 className="font-semibold">Inventory Alerts</h3>
+                <h3 className="font-semibold">Stock to Purchase</h3>
               </div>
-              {lowStockItems && lowStockItems.length > 0 ? (
+              {stockToPurchase && stockToPurchase.length > 0 ? (
                 <div className="space-y-3">
-                  {lowStockItems.map((item) => (
+                  {stockToPurchase.map((item) => (
                     <div key={item.id} className="p-3 rounded-lg bg-warning/10 border border-warning/20">
                       <div className="font-medium text-sm">{item.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        Low stock: {item.current_stock} {item.unit} remaining
+                        Current: {item.current_stock} {item.unit} (Need: {item.reorder_level} {item.unit})
                       </div>
                     </div>
                   ))}
                   <Button variant="link" size="sm" className="w-full" asChild>
-                    <Link to="/admin/inventory">View All Alerts</Link>
+                    <Link to="/admin/inventory">View All Stock</Link>
                   </Button>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No inventory alerts</p>
+                <p className="text-sm text-muted-foreground">All stock levels are adequate</p>
               )}
             </Card>
           </div>

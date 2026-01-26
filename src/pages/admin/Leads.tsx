@@ -31,16 +31,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Phone, Mail, Calendar, Loader2, MoreHorizontal, MessageSquare, Trash2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, Phone, Mail, Calendar, Loader2, MoreHorizontal, MessageSquare, Trash2, List, LayoutGrid } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { LeadsKanban } from "@/components/admin/LeadsKanban";
 
 const Leads = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
   const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const queryClient = useQueryClient();
 
   const { data: leads, isLoading } = useQuery({
@@ -145,37 +148,85 @@ const Leads = () => {
           <p className="text-muted-foreground">Track and manage potential students through the enrollment pipeline</p>
         </div>
 
-        <Card className="p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search leads by name, email, or phone..." 
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by stage" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Stages</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="contacted">Contacted</SelectItem>
-                <SelectItem value="follow-up">Follow-up</SelectItem>
-                <SelectItem value="converted">Converted</SelectItem>
-                <SelectItem value="lost">Lost</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Stage Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-500">{stageCounts["new"] || 0}</div>
+            <div className="text-sm text-muted-foreground">New</div>
+          </Card>
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-purple-500">{stageCounts["contacted"] || 0}</div>
+            <div className="text-sm text-muted-foreground">Contacted</div>
+          </Card>
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-500">{stageCounts["follow-up"] || 0}</div>
+            <div className="text-sm text-muted-foreground">Follow-up</div>
+          </Card>
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-green-500">{stageCounts["converted"] || 0}</div>
+            <div className="text-sm text-muted-foreground">Converted</div>
+          </Card>
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-red-500">{stageCounts["lost"] || 0}</div>
+            <div className="text-sm text-muted-foreground">Lost</div>
+          </Card>
+        </div>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {/* Filters and View Toggle */}
+        <Card className="p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex flex-col md:flex-row gap-4 flex-1 w-full">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search leads by name, email, or phone..." 
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select value={stageFilter} onValueChange={setStageFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Filter by stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Stages</SelectItem>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="contacted">Contacted</SelectItem>
+                  <SelectItem value="follow-up">Follow-up</SelectItem>
+                  <SelectItem value="converted">Converted</SelectItem>
+                  <SelectItem value="lost">Lost</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
+
+            {/* View Toggle */}
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")}>
+              <TabsList>
+                <TabsTrigger value="list" className="gap-2">
+                  <List className="h-4 w-4" />
+                  List
+                </TabsTrigger>
+                <TabsTrigger value="kanban" className="gap-2">
+                  <LayoutGrid className="h-4 w-4" />
+                  Kanban
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </Card>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : viewMode === "kanban" ? (
+          <LeadsKanban 
+            leads={filteredLeads || []} 
+            onLeadClick={setSelectedLead} 
+          />
+        ) : (
+          <Card className="p-6">
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -248,7 +299,7 @@ const Leads = () => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => setSelectedLead(lead)}>
                                 <MessageSquare className="h-4 w-4 mr-2" />
-                                View Message
+                                View Details
                               </DropdownMenuItem>
                               {lead.phone && (
                                 <DropdownMenuItem asChild>
@@ -291,33 +342,11 @@ const Leads = () => {
                 </TableBody>
               </Table>
             </div>
-          )}
-        </Card>
-
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-500">{stageCounts["new"] || 0}</div>
-            <div className="text-sm text-muted-foreground">New</div>
           </Card>
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-purple-500">{stageCounts["contacted"] || 0}</div>
-            <div className="text-sm text-muted-foreground">Contacted</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-yellow-500">{stageCounts["follow-up"] || 0}</div>
-            <div className="text-sm text-muted-foreground">Follow-up</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-500">{stageCounts["converted"] || 0}</div>
-            <div className="text-sm text-muted-foreground">Converted</div>
-          </Card>
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-red-500">{stageCounts["lost"] || 0}</div>
-            <div className="text-sm text-muted-foreground">Lost</div>
-          </Card>
-        </div>
+        )}
       </main>
 
+      {/* Lead Details Dialog */}
       <Dialog open={!!selectedLead} onOpenChange={() => setSelectedLead(null)}>
         <DialogContent>
           <DialogHeader>
@@ -341,6 +370,12 @@ const Leads = () => {
             <div>
               <p className="text-sm text-muted-foreground">Source</p>
               <p className="font-medium capitalize">{selectedLead?.source || "Website"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Stage</p>
+              <Badge className={getStageColor(selectedLead?.stage || "new")}>
+                {selectedLead?.stage?.charAt(0).toUpperCase() + selectedLead?.stage?.slice(1).replace("-", " ")}
+              </Badge>
             </div>
             {selectedLead?.message && (
               <div>

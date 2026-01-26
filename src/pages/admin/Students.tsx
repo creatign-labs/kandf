@@ -150,7 +150,26 @@ const Students = () => {
           <p className="text-muted-foreground">View and manage all enrolled students</p>
         </div>
 
-        <Card className="p-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground mb-1">Total Students</div>
+            <div className="text-3xl font-bold text-foreground">{stats.total}</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground mb-1">Active Students</div>
+            <div className="text-3xl font-bold text-green-500">{stats.active}</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground mb-1">Completed</div>
+            <div className="text-3xl font-bold text-blue-500">{stats.completed}</div>
+          </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground mb-1">On Hold</div>
+            <div className="text-3xl font-bold text-yellow-500">{stats.onHold}</div>
+          </Card>
+        </div>
+
+        <Card className="p-6">
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -260,25 +279,6 @@ const Students = () => {
             </Table>
           </div>
         </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">Total Students</div>
-            <div className="text-3xl font-bold text-foreground">{stats.total}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">Active Students</div>
-            <div className="text-3xl font-bold text-green-500">{stats.active}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">Completed</div>
-            <div className="text-3xl font-bold text-blue-500">{stats.completed}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">On Hold</div>
-            <div className="text-3xl font-bold text-yellow-500">{stats.onHold}</div>
-          </Card>
-        </div>
       </main>
     </div>
   );

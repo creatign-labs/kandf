@@ -120,11 +120,29 @@ const Login = () => {
             navigate('/vendor');
           }
         } else {
-          // For students, check account_status
-          if (profile?.account_status !== 'active') {
-            navigate('/student/awaiting-approval');
-          } else {
-            navigate('/student');
+          // For students, route based on account_status (STATE-BASED ROUTING)
+          switch (profile?.account_status) {
+            case 'pending':
+              // Signed up but hasn't paid advance - go to advance payment
+              navigate('/advance-payment');
+              break;
+            case 'advance_paid':
+              // Paid but awaiting Super Admin approval
+              navigate('/student/awaiting-approval');
+              break;
+            case 'on_hold':
+              // Account on hold
+              navigate('/student/account-hold');
+              break;
+            case 'rejected':
+              // Account rejected
+              navigate('/student/account-rejected');
+              break;
+            case 'active':
+            default:
+              // Approved and active - go to dashboard
+              navigate('/student');
+              break;
           }
         }
       }

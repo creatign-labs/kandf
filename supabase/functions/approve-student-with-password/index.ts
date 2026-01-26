@@ -116,10 +116,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update profile status to active
+    // Update profile status to active and explicitly set must_change_password to false
+    // The generated password is FINAL - no mandatory password change required
     const { error: updateProfileError } = await supabaseAdmin
       .from("profiles")
-      .update({ account_status: "active", updated_at: new Date().toISOString() })
+      .update({ 
+        account_status: "active", 
+        must_change_password: false,
+        updated_at: new Date().toISOString() 
+      })
       .eq("id", student_id);
 
     if (updateProfileError) {

@@ -15,7 +15,10 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const authHeader = req.headers.get("Authorization");
 
+    console.log("Received approval request");
+
     if (!authHeader) {
+      console.error("No authorization header provided");
       return new Response(JSON.stringify({ error: "No authorization header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -29,23 +32,32 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) {
+      console.error("Failed to get user:", userError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log("User authenticated:", user.id);
+
     // Check if caller is super_admin
     const { data: isSuperAdmin } = await supabaseUser.rpc("is_super_admin", { _user_id: user.id });
     if (!isSuperAdmin) {
+      console.error("User is not super admin:", user.id);
       return new Response(JSON.stringify({ error: "Only super admins can approve students" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log("Super admin verified");
+
     const { student_id, course_id, batch_id } = await req.json();
+    console.log("Request params:", { student_id, course_id, batch_id });
+
     if (!student_id) {
+      console.error("No student_id provided");
       return new Response(JSON.stringify({ error: "student_id is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

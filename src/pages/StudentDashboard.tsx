@@ -152,44 +152,61 @@ const StudentDashboard = () => {
           />
         </div>
         
-        {/* Quick Actions - Full width below */}
-        <Card className="p-6 mb-6 md:mb-8">
-          <h3 className="font-semibold mb-4">Quick Actions</h3>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="justify-start" asChild>
-              <Link to="/student/my-bookings">
-                <Clock className="h-4 w-4 mr-2" />
-                Book a Class
-              </Link>
-            </Button>
-            <Button variant="outline" className="justify-start" asChild>
-              <Link to="/student/my-course">
-                <BookOpen className="h-4 w-4 mr-2" />
-                Course Recipes
-              </Link>
-            </Button>
-          </div>
-        </Card>
-
-        {/* Feature Discussion Banner */}
-        {notificationsCount && notificationsCount > 0 && (
-          <Card className="p-6 mb-8 bg-gradient-to-r from-success/10 via-background to-background border-success/20">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <Badge className="mb-3 bg-success text-success-foreground">
-                  {notificationsCount} New
-                </Badge>
-                <h3 className="font-semibold text-lg mb-2">You have unread notifications</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Check your notifications for important updates about your courses and bookings.
-                </p>
-                <Button size="sm" variant="outline" asChild>
-                  <Link to="/student/notifications">View Notifications →</Link>
-                </Button>
-              </div>
+        {/* Quick Actions and Notifications - 2 column layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 mb-6 md:mb-8">
+          {/* Quick Actions - Left */}
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4">Quick Actions</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" className="justify-start" asChild>
+                <Link to="/student/my-bookings">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Book a Class
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link to="/student/my-course">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Course Recipes
+                </Link>
+              </Button>
             </div>
           </Card>
-        )}
+
+          {/* Notifications - Right */}
+          {notificationsCount && notificationsCount > 0 ? (
+            <Card className="p-6 bg-gradient-to-r from-success/10 via-background to-background border-success/20">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <Badge className="mb-3 bg-success text-success-foreground">
+                    {notificationsCount} New
+                  </Badge>
+                  <h3 className="font-semibold text-lg mb-2">You have unread notifications</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Check your notifications for important updates about your courses and bookings.
+                  </p>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to="/student/notifications">View Notifications →</Link>
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg mb-2">Notifications</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    You're all caught up! No new notifications.
+                  </p>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to="/student/notifications">View All →</Link>
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
 
         <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
           {/* Main Content */}

@@ -249,6 +249,31 @@ Deno.serve(async (req) => {
           } else {
             console.log(`Decremented seats for batch ${enrollmentBatchId}`);
           }
+
+          // Create payment schedule for the student
+          // Get the course fee first
+          const { data: courseData } = await supabaseAdmin
+            .from("courses")
+            .select("base_fee")
+            .eq("id", enrollmentCourseId)
+            .single();
+
+          if (courseData?.base_fee) {
+            const { error: scheduleError } = await supabaseAdmin.rpc("create_payment_schedule", {
+              p_enrollment_id: newEnrollment.id,
+              p_student_id: student_id,
+              p_total_amount: courseData.base_fee,
+              p_registration_amount: 2000, // The advance payment already made
+              p_due_days_1: 15,
+              p_due_days_2: 30,
+            });
+
+            if (scheduleError) {
+              console.error("Failed to create payment schedule:", scheduleError);
+            } else {
+              console.log(`Payment schedule created for enrollment ${newEnrollment.id}`);
+            }
+          }
         }
       } else {
         console.log("Enrollment already exists, skipping creation");

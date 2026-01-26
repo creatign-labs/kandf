@@ -38,7 +38,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         setAccountStatus(profile.account_status);
         setMustChangePassword(profile.must_change_password || false);
 
-        // Handle account status redirects for students
+        // Handle account status redirects for students - STATE-BASED ROUTING
         if (requiredRole === 'student') {
           // Handle on_hold status
           if (profile.account_status === 'on_hold') {
@@ -52,17 +52,20 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
             return;
           }
 
-          // Handle pending/advance_paid status - redirect to awaiting page
-          if (profile.account_status !== 'active') {
+          // Handle pending status (signed up, no payment yet) - redirect to advance payment
+          if (profile.account_status === 'pending') {
+            navigate('/advance-payment');
+            return;
+          }
+
+          // Handle advance_paid status - redirect to awaiting approval
+          if (profile.account_status === 'advance_paid') {
             navigate('/student/awaiting-approval');
             return;
           }
 
-          // Check if password change is required (for active accounts)
-          if (profile.must_change_password) {
-            navigate('/student/change-password');
-            return;
-          }
+          // For active students - allow access to dashboard
+          // Password change is OPTIONAL - no forced redirect
         }
 
         // Handle vendor approval status

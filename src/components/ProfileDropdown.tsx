@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Settings, BookOpen, ChevronDown, Shield, ChefHat, GraduationCap, Calendar } from "lucide-react";
+import { LogOut, Settings, BookOpen, ChevronDown, Shield, ChefHat, GraduationCap, Calendar, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -249,6 +249,16 @@ export const ProfileDropdown = ({ role }: ProfileDropdownProps) => {
         )}
 
         <DropdownMenuSeparator />
+
+        {/* Course Payment - Only for active students */}
+        {role === 'student' && (
+          <DropdownMenuItem asChild>
+            <Link to="/student/course-payment" className="cursor-pointer">
+              <CreditCard className="h-4 w-4 mr-2" />
+              Course Payment
+            </Link>
+          </DropdownMenuItem>
+        )}
         
         <DropdownMenuItem asChild>
           <Link to={`/${role === 'super_admin' ? 'admin' : role}/profile`} className="cursor-pointer">

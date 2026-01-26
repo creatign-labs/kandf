@@ -29,6 +29,7 @@ import Certificates from "./pages/student/Certificates";
 import Resume from "./pages/student/Resume";
 import Jobs from "./pages/student/Jobs";
 import Onboarding from "./pages/student/Onboarding";
+import CoursePayment from "./pages/student/CoursePayment";
 import AwaitingApproval from "./pages/student/AwaitingApproval";
 import ChangePassword from "./pages/student/ChangePassword";
 import AccountOnHold from "./pages/student/AccountOnHold";
@@ -112,6 +113,7 @@ const App = () => (
           <Route path="/student/resume" element={<ProtectedRoute requiredRole="student"><Resume /></ProtectedRoute>} />
           <Route path="/student/jobs" element={<ProtectedRoute requiredRole="student"><Jobs /></ProtectedRoute>} />
           <Route path="/student/profile" element={<ProtectedRoute requiredRole="student"><Profile /></ProtectedRoute>} />
+          <Route path="/student/course-payment" element={<ProtectedRoute requiredRole="student"><CoursePayment /></ProtectedRoute>} />
           
           <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/leads" element={<ProtectedRoute requiredRole="admin"><Leads /></ProtectedRoute>} />

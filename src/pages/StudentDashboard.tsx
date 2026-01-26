@@ -154,9 +154,9 @@ const StudentDashboard = () => {
           </div>
           
           {/* Right Column - Quick Actions */}
-          <Card className="p-6 h-fit">
+          <Card className="p-6 h-full flex flex-col">
             <h3 className="font-semibold mb-4">Quick Actions</h3>
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1 flex flex-col justify-center">
               <Button variant="outline" className="w-full justify-start" asChild>
                 <Link to="/student/my-bookings">
                   <Clock className="h-4 w-4 mr-2" />
@@ -164,15 +164,9 @@ const StudentDashboard = () => {
                 </Link>
               </Button>
               <Button variant="outline" className="w-full justify-start" asChild>
-                <Link to="/student/my-bookings">
+                <Link to="/student/my-course">
                   <BookOpen className="h-4 w-4 mr-2" />
-                  My Bookings
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start" asChild>
-                <Link to="/student/certificates">
-                  <Award className="h-4 w-4 mr-2" />
-                  Certificates
+                  Course Recipes
                 </Link>
               </Button>
             </div>

@@ -30,6 +30,8 @@ import Resume from "./pages/student/Resume";
 import Jobs from "./pages/student/Jobs";
 import Onboarding from "./pages/student/Onboarding";
 import AwaitingApproval from "./pages/student/AwaitingApproval";
+import ChangePassword from "./pages/student/ChangePassword";
+import AccountOnHold from "./pages/student/AccountOnHold";
 import Leads from "./pages/admin/Leads";
 import Students from "./pages/admin/Students";
 import AdminCourses from "./pages/admin/Courses";
@@ -83,6 +85,9 @@ const App = () => (
           <Route path="/advance-payment" element={<ProtectedRoute><AdvancePayment /></ProtectedRoute>} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/student/awaiting-approval" element={<ProtectedRoute><AwaitingApproval /></ProtectedRoute>} />
+          <Route path="/student/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
+          <Route path="/student/account-hold" element={<ProtectedRoute><AccountOnHold status="on_hold" /></ProtectedRoute>} />
+          <Route path="/student/account-rejected" element={<ProtectedRoute><AccountOnHold status="rejected" /></ProtectedRoute>} />
           
           <Route path="/student" element={<ProtectedRoute requiredRole="student"><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/my-course" element={<ProtectedRoute requiredRole="student"><MyCourse /></ProtectedRoute>} />

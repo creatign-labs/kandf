@@ -41,7 +41,7 @@ const MyBookings = () => {
     }
   });
 
-  // Fetch batches for the enrolled course
+  // Fetch batches for the enrolled course (only booking_enabled batches)
   const { data: batches, isLoading: batchesLoading } = useQuery({
     queryKey: ['available-batches', enrollment?.course_id],
     queryFn: async () => {
@@ -51,6 +51,7 @@ const MyBookings = () => {
         .from('batches')
         .select('*')
         .eq('course_id', enrollment.course_id)
+        .eq('booking_enabled', true)
         .gt('available_seats', 0);
       
       if (error) throw error;

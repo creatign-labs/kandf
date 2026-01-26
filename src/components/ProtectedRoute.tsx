@@ -10,6 +10,8 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<string | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,18 +27,42 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
         return;
       }
 
-      // Check profile account_status for students
-      if (requiredRole === 'student') {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('account_status')
-          .eq('id', session.user.id)
-          .single();
+      // Fetch profile for status checks
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('account_status, must_change_password')
+        .eq('id', session.user.id)
+        .single();
 
-        // If student account is not active, redirect to awaiting page
-        if (profile && profile.account_status !== 'active') {
-          navigate('/student/awaiting-approval');
-          return;
+      if (profile) {
+        setAccountStatus(profile.account_status);
+        setMustChangePassword(profile.must_change_password || false);
+
+        // Handle account status redirects for students
+        if (requiredRole === 'student') {
+          // Handle on_hold status
+          if (profile.account_status === 'on_hold') {
+            navigate('/student/account-hold');
+            return;
+          }
+
+          // Handle rejected status
+          if (profile.account_status === 'rejected') {
+            navigate('/student/account-rejected');
+            return;
+          }
+
+          // Handle pending/advance_paid status - redirect to awaiting page
+          if (profile.account_status !== 'active') {
+            navigate('/student/awaiting-approval');
+            return;
+          }
+
+          // Check if password change is required (for active accounts)
+          if (profile.must_change_password) {
+            navigate('/student/change-password');
+            return;
+          }
         }
       }
 

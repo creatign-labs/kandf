@@ -64,6 +64,21 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
             return;
           }
         }
+
+        // Handle vendor approval status
+        if (requiredRole === 'vendor') {
+          // Check vendor profile approval status
+          const { data: vendorProfile } = await supabase
+            .from('vendor_profiles')
+            .select('approval_status, is_active')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (vendorProfile && vendorProfile.approval_status !== 'approved') {
+            navigate('/vendor/awaiting-approval');
+            return;
+          }
+        }
       }
 
       if (requiredRole) {

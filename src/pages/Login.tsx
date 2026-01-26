@@ -99,13 +99,26 @@ const Login = () => {
           description: "You have successfully logged in.",
         });
 
-        // Redirect based on role priority: super_admin > admin > chef > student
+        // Redirect based on role priority: super_admin > admin > chef > vendor > student
         if (roles?.some(r => r.role === 'super_admin')) {
           navigate('/admin');
         } else if (roles?.some(r => r.role === 'admin')) {
           navigate('/admin');
         } else if (roles?.some(r => r.role === 'chef')) {
           navigate('/chef');
+        } else if (roles?.some(r => r.role === 'vendor')) {
+          // Check vendor approval status
+          const { data: vendorProfile } = await supabase
+            .from('vendor_profiles')
+            .select('approval_status')
+            .eq('user_id', data.user.id)
+            .single();
+          
+          if (vendorProfile?.approval_status !== 'approved') {
+            navigate('/vendor/awaiting-approval');
+          } else {
+            navigate('/vendor');
+          }
         } else {
           // For students, check account_status
           if (profile?.account_status !== 'active') {
@@ -194,7 +207,13 @@ const Login = () => {
             <p className="text-center text-sm text-muted-foreground mt-6">
               Don't have an account?{" "}
               <Link to="/signup" className="text-primary font-medium hover:underline">
-                Sign up
+                Sign up as Student
+              </Link>
+            </p>
+            <p className="text-center text-sm text-muted-foreground mt-2">
+              Are you a hiring partner?{" "}
+              <Link to="/vendor/signup" className="text-primary font-medium hover:underline">
+                Register as Vendor
               </Link>
             </p>
           </Card>

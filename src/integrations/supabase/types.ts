@@ -1898,8 +1898,56 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_access_approvals: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          credentials_sent_at: string | null
+          generated_password: string | null
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+          vendor_profile_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          credentials_sent_at?: string | null
+          generated_password?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          vendor_profile_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          credentials_sent_at?: string | null
+          generated_password?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vendor_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_access_approvals_vendor_profile_id_fkey"
+            columns: ["vendor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_profiles: {
         Row: {
+          approval_status: string
           company_description: string | null
           company_name: string
           contact_email: string | null
@@ -1910,9 +1958,11 @@ export type Database = {
           logo_url: string | null
           updated_at: string
           user_id: string
+          vendor_code: string | null
           website: string | null
         }
         Insert: {
+          approval_status?: string
           company_description?: string | null
           company_name: string
           contact_email?: string | null
@@ -1923,9 +1973,11 @@ export type Database = {
           logo_url?: string | null
           updated_at?: string
           user_id: string
+          vendor_code?: string | null
           website?: string | null
         }
         Update: {
+          approval_status?: string
           company_description?: string | null
           company_name?: string
           contact_email?: string | null
@@ -1936,6 +1988,7 @@ export type Database = {
           logo_url?: string | null
           updated_at?: string
           user_id?: string
+          vendor_code?: string | null
           website?: string | null
         }
         Relationships: []
@@ -2059,6 +2112,7 @@ export type Database = {
       generate_invoice_number: { Args: never; Returns: string }
       generate_random_password: { Args: never; Returns: string }
       generate_student_id: { Args: { p_course_id: string }; Returns: string }
+      generate_vendor_id: { Args: never; Returns: string }
       get_available_recipe_slots: {
         Args: { p_course_id: string; p_from_date?: string; p_recipe_id: string }
         Returns: {
@@ -2073,6 +2127,7 @@ export type Database = {
       get_current_vendor_profile: {
         Args: never
         Returns: {
+          approval_status: string
           company_description: string | null
           company_name: string
           contact_email: string | null
@@ -2083,6 +2138,7 @@ export type Database = {
           logo_url: string | null
           updated_at: string
           user_id: string
+          vendor_code: string | null
           website: string | null
         }
         SetofOptions: {

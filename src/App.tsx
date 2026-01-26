@@ -66,6 +66,9 @@ import VendorJobs from "./pages/vendor/VendorJobs";
 import JobForm from "./pages/vendor/JobForm";
 import JobApplications from "./pages/vendor/JobApplications";
 import VendorProfile from "./pages/vendor/VendorProfile";
+import VendorSignup from "./pages/vendor/VendorSignup";
+import VendorAwaitingApproval from "./pages/vendor/VendorAwaitingApproval";
+import VendorApprovals from "./pages/admin/VendorApprovals";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +84,8 @@ const App = () => (
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/vendor/signup" element={<VendorSignup />} />
+          <Route path="/vendor/awaiting-approval" element={<VendorAwaitingApproval />} />
           <Route path="/flow-walkthrough" element={<FlowWalkthrough />} />
           <Route path="/feature-report" element={<FeatureReport />} />
           <Route path="/courses" element={<Courses />} />
@@ -130,6 +135,7 @@ const App = () => (
           <Route path="/admin/recipe-batches" element={<ProtectedRoute requiredRole="admin"><RecipeBatchManagement /></ProtectedRoute>} />
           <Route path="/admin/enrollments" element={<ProtectedRoute requiredRole="admin"><AdminEnrollments /></ProtectedRoute>} />
           <Route path="/admin/job-applications" element={<ProtectedRoute requiredRole="admin"><JobApplicationsReview /></ProtectedRoute>} />
+          <Route path="/admin/vendor-approvals" element={<ProtectedRoute requiredRole="admin"><VendorApprovals /></ProtectedRoute>} />
           
           <Route path="/chef" element={<ProtectedRoute requiredRole="chef"><ChefDashboard /></ProtectedRoute>} />
           <Route path="/chef/attendance" element={<ProtectedRoute requiredRole="chef"><Attendance /></ProtectedRoute>} />

@@ -254,6 +254,30 @@ const Feedback = () => {
             </Button>
           </form>
 
+          {/* Google Review Section */}
+          <Card className="p-6 border-border/60 mt-6 bg-gradient-to-r from-primary/5 to-transparent">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-primary/10">
+                <Star className="h-6 w-6 text-primary fill-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold mb-1">Love learning with us?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Share your experience with others by leaving a Google Review!
+                </p>
+              </div>
+              <Button variant="outline" asChild>
+                <a 
+                  href="https://g.page/r/YOUR_GOOGLE_BUSINESS_ID/review" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  Leave a Review
+                </a>
+              </Button>
+            </div>
+          </Card>
+
           {recentFeedback && recentFeedback.length > 0 && (
             <Card className="p-6 border-border/60 mt-8">
               <h3 className="font-semibold mb-4">Your Recent Feedback</h3>

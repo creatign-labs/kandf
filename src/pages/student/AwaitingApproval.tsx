@@ -3,10 +3,11 @@ import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Clock, Loader2, LogOut } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { CheckCircle, Clock, Loader2, LogOut, FileText } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { DocumentUploadSection } from "@/components/student/DocumentUploadSection";
 
 const AwaitingApproval = () => {
   const navigate = useNavigate();
@@ -37,14 +38,15 @@ const AwaitingApproval = () => {
     enabled: !!user,
   });
 
-  // Fetch account status from profiles table (single source of truth)
+  // Fetch account status and KYC docs from profiles table (single source of truth)
+  const queryClient = useQueryClient();
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["my-profile-status", user?.id],
     queryFn: async () => {
       if (!user) return null;
       const { data, error } = await supabase
         .from("profiles")
-        .select("account_status, first_name, last_name")
+        .select("account_status, first_name, last_name, passport_photo_url, address_proof_url, marksheet_url, documents_verified")
         .eq("id", user.id)
         .single();
 
@@ -54,6 +56,10 @@ const AwaitingApproval = () => {
     enabled: !!user,
     refetchInterval: 10000, // Poll every 10 seconds
   });
+
+  const handleDocumentUploadComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ["my-profile-status", user?.id] });
+  };
 
   // Check if approved and redirect
   useEffect(() => {
@@ -152,13 +158,23 @@ const AwaitingApproval = () => {
               </div>
             </div>
 
+            {/* KYC Document Upload Section */}
+            <DocumentUploadSection
+              passportPhotoUrl={profile?.passport_photo_url || null}
+              addressProofUrl={profile?.address_proof_url || null}
+              marksheetUrl={profile?.marksheet_url || null}
+              documentsVerified={profile?.documents_verified || false}
+              onUploadComplete={handleDocumentUploadComplete}
+            />
+
             {/* Info Box */}
             <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
               <h4 className="font-medium text-sm mb-2">What happens next?</h4>
               <ul className="text-sm text-muted-foreground space-y-2">
-                <li>1. Our Super Admin will review your enrollment</li>
-                <li>2. You will receive login credentials via email</li>
-                <li>3. Use those credentials to access the student portal</li>
+                <li>1. Upload your KYC documents above (if not already done)</li>
+                <li>2. Our Super Admin will review your enrollment</li>
+                <li>3. You will receive login credentials via email</li>
+                <li>4. Use those credentials to access the student portal</li>
               </ul>
             </div>
 

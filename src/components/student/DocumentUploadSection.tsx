@@ -74,16 +74,16 @@ export const DocumentUploadSection = ({
       const fileExt = file.name.split(".").pop();
       const fileName = `${user.id}/${docKey}_${Date.now()}.${fileExt}`;
 
-      // Upload to storage
+      // Upload to storage (using kyc-documents bucket)
       const { error: uploadError } = await supabase.storage
-        .from("student-documents")
+        .from("kyc-documents")
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from("student-documents")
+        .from("kyc-documents")
         .getPublicUrl(fileName);
 
       // Update profile

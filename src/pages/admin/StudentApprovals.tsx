@@ -117,7 +117,7 @@ const StudentApprovals = () => {
     },
   });
 
-  // Fetch batches for selected course
+  // Fetch batches for selected course - include all batches with available seats
   const { data: batches } = useQuery({
     queryKey: ["course-batches", selectedCourseId],
     queryFn: async () => {
@@ -126,9 +126,8 @@ const StudentApprovals = () => {
         .from("batches")
         .select("id, batch_name, start_date, time_slot, available_seats")
         .eq("course_id", selectedCourseId)
-        .gte("start_date", new Date().toISOString().split("T")[0])
         .gt("available_seats", 0)
-        .order("start_date");
+        .order("start_date", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -648,23 +647,31 @@ const StudentApprovals = () => {
 
               {selectedCourseId && (
                 <div>
-                  <Label className="text-sm font-medium">Assign to Batch (Optional)</Label>
+                  <Label className="text-sm font-medium">Assign to Batch <span className="text-destructive">*</span></Label>
                   <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select a batch (optional)" />
+                      <SelectValue placeholder="Select a batch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No specific batch</SelectItem>
-                      {batches?.map((batch) => (
-                        <SelectItem key={batch.id} value={batch.id}>
-                          {batch.batch_name} - {format(new Date(batch.start_date), "MMM d")} ({batch.available_seats} seats)
-                        </SelectItem>
-                      ))}
+                      {batches && batches.length > 0 ? (
+                        batches.map((batch) => (
+                          <SelectItem key={batch.id} value={batch.id}>
+                            {batch.batch_name} - {batch.start_date ? format(new Date(batch.start_date), "MMM d, yyyy") : "No date"} ({batch.available_seats} seats)
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>No batches with available seats</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Optionally assign to a specific batch with available seats
+                    Select a batch with available seats for enrollment
                   </p>
+                  {batches && batches.length === 0 && (
+                    <p className="text-xs text-destructive mt-1">
+                      No batches available for this course. Please create a batch first.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -674,7 +681,7 @@ const StudentApprovals = () => {
                 <Button 
                   className="flex-1" 
                   onClick={handleApproveWithEnrollment}
-                  disabled={approveMutation.isPending || !selectedCourseId}
+                  disabled={approveMutation.isPending || !selectedCourseId || !selectedBatchId}
                 >
                   {approveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />

@@ -155,13 +155,41 @@ Deno.serve(async (req) => {
     if (enrollmentCourseId) {
       console.log(`Creating enrollment for student ${student_id} in course ${enrollmentCourseId}`);
       
+      // batch_id is required - if not provided, get the first available batch for this course
+      let enrollmentBatchId = batch_id;
+      
+      if (!enrollmentBatchId) {
+        // Find an available batch for this course
+        const { data: availableBatch } = await supabaseAdmin
+          .from("batches")
+          .select("id")
+          .eq("course_id", enrollmentCourseId)
+          .gt("available_seats", 0)
+          .order("start_date", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        
+        if (availableBatch) {
+          enrollmentBatchId = availableBatch.id;
+          console.log(`Auto-selected batch ${enrollmentBatchId} for enrollment`);
+        } else {
+          console.error("No available batch found for course, cannot create enrollment");
+          return new Response(JSON.stringify({ 
+            error: "No available batch found for this course. Please create a batch first or select one with available seats." 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      
       // Check if enrollment already exists
       const { data: existingEnrollment } = await supabaseAdmin
         .from("enrollments")
         .select("id")
         .eq("student_id", student_id)
         .eq("course_id", enrollmentCourseId)
-        .single();
+        .maybeSingle();
 
       if (!existingEnrollment) {
         // Generate student ID
@@ -175,7 +203,7 @@ Deno.serve(async (req) => {
           .insert({
             student_id: student_id,
             course_id: enrollmentCourseId,
-            batch_id: batch_id || null,
+            batch_id: enrollmentBatchId,
             status: "active",
             progress: 0,
             student_code: studentCode || null,
@@ -186,19 +214,23 @@ Deno.serve(async (req) => {
 
         if (enrollmentError) {
           console.error("Failed to create enrollment:", enrollmentError);
+          return new Response(JSON.stringify({ 
+            error: "Failed to create enrollment: " + enrollmentError.message 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         } else {
-          console.log(`Enrollment created successfully for course ${enrollmentCourseId}`);
+          console.log(`Enrollment created successfully for course ${enrollmentCourseId} in batch ${enrollmentBatchId}`);
           
-          // If batch_id provided, decrement available seats
-          if (batch_id) {
-            const { error: batchError } = await supabaseAdmin.rpc("decrement_batch_seats", {
-              batch_id: batch_id,
-            });
-            if (batchError) {
-              console.error("Failed to decrement batch seats:", batchError);
-            } else {
-              console.log(`Decremented seats for batch ${batch_id}`);
-            }
+          // Decrement available seats for the batch
+          const { error: batchError } = await supabaseAdmin.rpc("decrement_batch_seats", {
+            batch_id: enrollmentBatchId,
+          });
+          if (batchError) {
+            console.error("Failed to decrement batch seats:", batchError);
+          } else {
+            console.log(`Decremented seats for batch ${enrollmentBatchId}`);
           }
         }
       } else {

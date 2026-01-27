@@ -3,11 +3,35 @@ import { StatsCard } from "@/components/StatsCard";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, CheckCircle2, Clock, Loader2, ChefHat, XCircle } from "lucide-react";
+import { Calendar, Users, CheckCircle2, Clock, Loader2, ChefHat, XCircle, Lock } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+
+// Helper to check if a time slot has passed
+const isTimeSlotPassed = (timeSlot: string): boolean => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // Extract end time from slot (e.g., "9:00 AM - 12:00 PM" -> "12:00 PM")
+  const endTimeMatch = timeSlot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i);
+  if (!endTimeMatch) return false;
+  
+  let hour = parseInt(endTimeMatch[1]);
+  const minute = parseInt(endTimeMatch[2]);
+  const period = endTimeMatch[3].toUpperCase();
+  
+  // Convert to 24-hour format
+  if (period === "PM" && hour !== 12) hour += 12;
+  if (period === "AM" && hour === 12) hour = 0;
+  
+  // Compare with current time
+  if (currentHour > hour) return true;
+  if (currentHour === hour && currentMinute > minute) return true;
+  return false;
+};
 
 const ChefDashboard = () => {
   const queryClient = useQueryClient();
@@ -101,7 +125,8 @@ const ChefDashboard = () => {
           return {
             ...batch,
             enrollments: enrollments || [],
-            attendance: attendance || []
+            attendance: attendance || [],
+            isLocked: isTimeSlotPassed(batch.time_slot)
           };
         })
       );
@@ -110,7 +135,7 @@ const ChefDashboard = () => {
     }
   });
 
-  // Fetch inventory items with low stock
+  // Fetch low stock items for quick visibility
   const { data: lowStockItems } = useQuery({
     queryKey: ['low-stock-items'],
     queryFn: async () => {
@@ -185,6 +210,10 @@ const ChefDashboard = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todays-batches'] });
+      toast({
+        title: "Attendance marked",
+        description: "The attendance has been recorded successfully.",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -195,7 +224,15 @@ const ChefDashboard = () => {
     }
   });
 
-  const handleMarkAttendance = (studentId: string, batchId: string, status: 'present' | 'no_show') => {
+  const handleMarkAttendance = (studentId: string, batchId: string, status: 'present' | 'absent', isLocked: boolean) => {
+    if (isLocked) {
+      toast({
+        title: "Attendance Locked",
+        description: "This class has ended. Attendance can no longer be modified.",
+        variant: "destructive",
+      });
+      return;
+    }
     attendanceMutation.mutate({ studentId, batchId, status });
   };
 
@@ -206,6 +243,7 @@ const ChefDashboard = () => {
 
   const totalStudents = batchesData?.reduce((sum, batch) => sum + batch.enrollments.length, 0) || 0;
   const totalBatches = batchesData?.length || 0;
+  const lockedClasses = batchesData?.filter(b => b.isLocked).length || 0;
 
   const firstName = profile?.first_name || 'Chef';
   const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
@@ -229,7 +267,9 @@ const ChefDashboard = () => {
         {/* Welcome Section */}
         <div className="mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold mb-2">{greeting}, Chef {firstName} 👨‍🍳</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Manage your classes and track student attendance</p>
+          <p className="text-sm md:text-base text-muted-foreground">
+            {format(new Date(), "EEEE, MMMM d, yyyy")} • Manage your classes and mark attendance
+          </p>
         </div>
 
         {/* Stats Grid */}
@@ -247,16 +287,16 @@ const ChefDashboard = () => {
             variant="success"
           />
           <StatsCard
+            title="Classes Ended"
+            value={String(lockedClasses)}
+            icon={Lock}
+            variant="default"
+          />
+          <StatsCard
             title="Low Stock Items"
             value={String(lowStockItems?.length || 0)}
             icon={CheckCircle2}
-            variant="warning"
-          />
-          <StatsCard
-            title="Today"
-            value={format(new Date(), 'MMM d')}
-            icon={Clock}
-            variant="default"
+            variant={lowStockItems && lowStockItems.length > 0 ? "warning" : "default"}
           />
         </div>
 
@@ -270,7 +310,14 @@ const ChefDashboard = () => {
             <div className="space-y-4">
               {Object.entries(groupedBySlotAndRecipe).map(([slot, recipes]) => (
                 <div key={slot} className="border rounded-lg p-4">
-                  <Badge variant="outline" className="mb-3">{slot}</Badge>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="outline">{slot}</Badge>
+                    {isTimeSlotPassed(slot) && (
+                      <Badge variant="secondary" className="gap-1">
+                        <Lock className="h-3 w-3" /> Ended
+                      </Badge>
+                    )}
+                  </div>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {Object.entries(recipes).map(([recipeId, data]) => (
                       <div 
@@ -306,13 +353,16 @@ const ChefDashboard = () => {
           </Card>
         )}
 
-        {/* Classes Schedule */}
+        {/* Classes Schedule with Attendance */}
         <div className="space-y-4 md:space-y-6">
+          <h2 className="text-xl font-semibold">Mark Attendance</h2>
+          
           {batchesData?.map((batch) => {
             const presentCount = batch.attendance.filter((a: any) => a.status === 'present').length;
+            const absentCount = batch.attendance.filter((a: any) => a.status === 'absent').length;
             
             return (
-              <Card key={batch.id} className="p-4 md:p-6">
+              <Card key={batch.id} className={`p-4 md:p-6 ${batch.isLocked ? 'opacity-75' : ''}`}>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 md:mb-6 gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -320,9 +370,24 @@ const ChefDashboard = () => {
                         {batch.time_slot}
                       </Badge>
                       <span className="text-xs md:text-sm font-medium text-muted-foreground">{batch.days}</span>
+                      {batch.isLocked && (
+                        <Badge variant="secondary" className="gap-1">
+                          <Lock className="h-3 w-3" /> Locked
+                        </Badge>
+                      )}
                     </div>
                     <h2 className="text-lg md:text-xl font-semibold mb-1">{batch.courses?.title}</h2>
                     <p className="text-xs md:text-sm text-muted-foreground">{batch.batch_name}</p>
+                  </div>
+                  <div className="flex gap-4 text-sm">
+                    <div className="text-center">
+                      <div className="text-green-500 font-bold text-lg">{presentCount}</div>
+                      <div className="text-muted-foreground text-xs">Present</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-red-500 font-bold text-lg">{absentCount}</div>
+                      <div className="text-muted-foreground text-xs">Absent</div>
+                    </div>
                   </div>
                 </div>
 
@@ -330,9 +395,6 @@ const ChefDashboard = () => {
                 <div>
                   <div className="flex items-center justify-between mb-3 md:mb-4">
                     <h3 className="font-semibold text-sm md:text-base">Student Roster ({batch.enrollments.length})</h3>
-                    <span className="text-xs md:text-sm text-muted-foreground">
-                      Present: {presentCount}/{batch.enrollments.length}
-                    </span>
                   </div>
                   
                   {batch.enrollments.length > 0 ? (
@@ -343,7 +405,7 @@ const ChefDashboard = () => {
                         return (
                           <div
                             key={enrollment.id}
-                            className="flex items-center gap-3 p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                            className={`flex items-center gap-3 p-4 rounded-lg border bg-card transition-colors ${batch.isLocked ? '' : 'hover:bg-accent/5'}`}
                           >
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
@@ -352,6 +414,9 @@ const ChefDashboard = () => {
                                 </span>
                                 {status === 'present' && (
                                   <Badge className="bg-green-500 text-white">Present</Badge>
+                                )}
+                                {status === 'absent' && (
+                                  <Badge className="bg-red-500 text-white">Absent</Badge>
                                 )}
                                 {status === 'no_show' && (
                                   <Badge className="bg-orange-500 text-white">No Show</Badge>
@@ -363,19 +428,21 @@ const ChefDashboard = () => {
                                 size="sm"
                                 variant={status === 'present' ? 'default' : 'outline'}
                                 className={status === 'present' ? 'bg-green-500 hover:bg-green-600' : ''}
-                                onClick={() => handleMarkAttendance(enrollment.student_id, batch.id, 'present')}
+                                onClick={() => handleMarkAttendance(enrollment.student_id, batch.id, 'present', batch.isLocked)}
+                                disabled={batch.isLocked || attendanceMutation.isPending}
                               >
                                 <CheckCircle2 className="h-4 w-4 mr-1" />
                                 Present
                               </Button>
                               <Button
                                 size="sm"
-                                variant={status === 'no_show' ? 'default' : 'outline'}
-                                className={status === 'no_show' ? 'bg-orange-500 hover:bg-orange-600' : ''}
-                                onClick={() => handleMarkAttendance(enrollment.student_id, batch.id, 'no_show')}
+                                variant={status === 'absent' ? 'default' : 'outline'}
+                                className={status === 'absent' ? 'bg-red-500 hover:bg-red-600' : ''}
+                                onClick={() => handleMarkAttendance(enrollment.student_id, batch.id, 'absent', batch.isLocked)}
+                                disabled={batch.isLocked || attendanceMutation.isPending}
                               >
                                 <XCircle className="h-4 w-4 mr-1" />
-                                No Show
+                                Absent
                               </Button>
                             </div>
                           </div>
@@ -394,23 +461,25 @@ const ChefDashboard = () => {
 
           {(!batchesData || batchesData.length === 0) && (
             <Card className="p-8 text-center">
-              <p className="text-muted-foreground">No classes scheduled</p>
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Classes Today</h3>
+              <p className="text-muted-foreground">You don't have any classes scheduled for today.</p>
             </Card>
           )}
         </div>
 
         {/* Low Stock Alert */}
         {lowStockItems && lowStockItems.length > 0 && (
-          <Card className="p-6 mt-8">
-            <h3 className="font-semibold mb-4 text-warning">Low Stock Ingredients</h3>
-            <div className="grid md:grid-cols-2 gap-4">
+          <Card className="p-6 mt-8 border-yellow-500/50 bg-yellow-500/5">
+            <h3 className="font-semibold mb-4 text-yellow-600 dark:text-yellow-400">Low Stock Alert</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
               {lowStockItems.map((item) => (
-                <div key={item.id} className="flex justify-between p-3 border rounded-lg">
+                <div key={item.id} className="flex justify-between p-3 border rounded-lg bg-background">
                   <div>
                     <span className="font-medium">{item.name}</span>
                     <span className="text-sm text-muted-foreground ml-2">({item.category})</span>
                   </div>
-                  <span className="text-warning font-medium">
+                  <span className="text-yellow-600 dark:text-yellow-400 font-medium">
                     {item.current_stock} {item.unit}
                   </span>
                 </div>

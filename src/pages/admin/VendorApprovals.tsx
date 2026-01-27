@@ -15,6 +15,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -35,8 +37,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Search, CheckCircle, Clock, Loader2, Building2, Mail, Copy, Eye, EyeOff, Trash2, Pencil } from "lucide-react";
+import { Search, CheckCircle, Clock, Loader2, Building2, Mail, Copy, Eye, EyeOff, Trash2, Pencil, XCircle, Ban } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -44,7 +47,9 @@ import { format } from "date-fns";
 
 const VendorApprovals = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [selectedVendor, setSelectedVendor] = useState<any>(null);
+  const [rejectingVendor, setRejectingVendor] = useState<any>(null);
   const [editingApproval, setEditingApproval] = useState<any>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editStatus, setEditStatus] = useState<string>("");
@@ -170,11 +175,16 @@ const VendorApprovals = () => {
     },
   });
 
-  const filteredApprovals = vendorApprovals?.filter(approval =>
-    approval.vendor_profiles?.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    approval.profile?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    approval.profile?.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredApprovals = vendorApprovals?.filter(approval => {
+    const matchesSearch = 
+      approval.vendor_profiles?.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      approval.profile?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      approval.profile?.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === "all" || approval.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -202,8 +212,54 @@ const VendorApprovals = () => {
     }
   };
 
+  // Reject vendor mutation
+  const rejectMutation = useMutation({
+    mutationFn: async (vendorUserId: string) => {
+      // Update vendor_access_approvals status to rejected
+      const { error: approvalError } = await supabase
+        .from("vendor_access_approvals")
+        .update({ 
+          status: "rejected",
+          updated_at: new Date().toISOString()
+        })
+        .eq("user_id", vendorUserId);
+
+      if (approvalError) throw approvalError;
+
+      // Update vendor_profiles approval_status
+      const { error: profileError } = await supabase
+        .from("vendor_profiles")
+        .update({ 
+          approval_status: "rejected",
+          updated_at: new Date().toISOString()
+        })
+        .eq("user_id", vendorUserId);
+
+      if (profileError) throw profileError;
+
+      // Create notification for the vendor
+      await supabase.from("notifications").insert({
+        user_id: vendorUserId,
+        title: "Application Rejected",
+        message: "Your application has been rejected. Please contact Admin for more details.",
+        type: "error",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vendor-approvals"] });
+      toast({
+        title: "Application Rejected",
+        description: "The vendor has been notified.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const pendingCount = vendorApprovals?.filter(a => a.status === "pending").length || 0;
   const approvedCount = vendorApprovals?.filter(a => a.status === "approved").length || 0;
+  const rejectedCount = vendorApprovals?.filter(a => a.status === "rejected").length || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -221,7 +277,7 @@ const VendorApprovals = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-3 md:grid-cols-3 gap-4 mb-6">
           <Card className="p-4">
             <div className="text-sm text-muted-foreground">Pending</div>
             <div className="text-2xl font-bold text-yellow-500">{pendingCount}</div>
@@ -230,10 +286,22 @@ const VendorApprovals = () => {
             <div className="text-sm text-muted-foreground">Approved</div>
             <div className="text-2xl font-bold text-green-500">{approvedCount}</div>
           </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground">Rejected</div>
+            <div className="text-2xl font-bold text-red-500">{rejectedCount}</div>
+          </Card>
         </div>
 
-        {/* Search */}
+        {/* Tabs and Search */}
         <Card className="p-4 mb-6">
+          <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)} className="mb-4">
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
+              <TabsTrigger value="approved">Approved ({approvedCount})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected ({rejectedCount})</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
@@ -281,11 +349,24 @@ const VendorApprovals = () => {
                       {approval.vendor_profiles?.contact_email || approval.profile?.email}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={approval.status === "approved" ? "default" : "outline"}>
+                      <Badge 
+                        variant={
+                          approval.status === "approved" 
+                            ? "default" 
+                            : approval.status === "rejected" 
+                            ? "destructive" 
+                            : "outline"
+                        }
+                      >
                         {approval.status === "approved" ? (
                           <>
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Approved
+                          </>
+                        ) : approval.status === "rejected" ? (
+                          <>
+                            <XCircle className="h-3 w-3 mr-1" />
+                            Rejected
                           </>
                         ) : (
                           <>
@@ -301,16 +382,27 @@ const VendorApprovals = () => {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {approval.status === "pending" && isSuperAdmin ? (
-                          <Button
-                            size="sm"
-                            onClick={() => approveMutation.mutate(approval)}
-                            disabled={approveMutation.isPending}
-                          >
-                            {approveMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : null}
-                            Approve & Activate
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => approveMutation.mutate(approval)}
+                              disabled={approveMutation.isPending || rejectMutation.isPending}
+                            >
+                              {approveMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : null}
+                              Approve & Activate
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => setRejectingVendor(approval)}
+                              disabled={approveMutation.isPending || rejectMutation.isPending}
+                            >
+                              <Ban className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                          </>
                         ) : approval.status === "approved" ? (
                           <Button
                             size="sm"
@@ -319,10 +411,15 @@ const VendorApprovals = () => {
                           >
                             View Credentials
                           </Button>
-                        ) : (
+                        ) : approval.status === "rejected" ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <XCircle className="h-3 w-3" />
+                            Application Rejected
+                          </Badge>
+                        ) : !isSuperAdmin ? (
                           <span className="text-sm text-muted-foreground">Super Admin only</span>
-                        )}
-                        {isSuperAdmin && (
+                        ) : null}
+                        {isSuperAdmin && approval.status !== "rejected" && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -497,6 +594,52 @@ const VendorApprovals = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Rejection Confirmation Dialog */}
+        <Dialog open={!!rejectingVendor} onOpenChange={() => setRejectingVendor(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Ban className="h-5 w-5" />
+                Reject Application
+              </DialogTitle>
+              <DialogDescription>
+                Are you sure you want to reject the application for{" "}
+                <strong>{rejectingVendor?.vendor_profiles?.company_name}</strong>?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Card className="p-4 bg-destructive/5 border-destructive/20">
+                <p className="text-sm text-muted-foreground">
+                  The vendor will be notified that their application has been rejected and will see:
+                </p>
+                <p className="text-sm font-medium mt-2 text-destructive">
+                  "Your application has been rejected. Please contact Admin for more details."
+                </p>
+              </Card>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRejectingVendor(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  rejectMutation.mutate(rejectingVendor.user_id);
+                  setRejectingVendor(null);
+                }}
+                disabled={rejectMutation.isPending}
+              >
+                {rejectMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Ban className="h-4 w-4 mr-2" />
+                )}
+                Reject Application
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

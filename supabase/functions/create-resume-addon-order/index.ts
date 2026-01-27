@@ -47,6 +47,10 @@ serve(async (req) => {
     }
 
     // Create Razorpay order
+    // Note: receipt must be <= 40 characters
+    const shortUserId = user.id.substring(0, 8);
+    const receipt = `res_${shortUserId}_${Date.now().toString().slice(-8)}`;
+    
     const orderResponse = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
       headers: {
@@ -56,7 +60,7 @@ serve(async (req) => {
       body: JSON.stringify({
         amount: RESUME_ADDON_PRICE * 100, // Razorpay expects amount in paise
         currency: 'INR',
-        receipt: `resume_${user.id}_${Date.now()}`,
+        receipt: receipt,
         notes: {
           student_id: user.id,
           addon_type: 'resume_builder',

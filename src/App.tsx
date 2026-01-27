@@ -68,6 +68,7 @@ import VendorDashboard from "./pages/vendor/VendorDashboard";
 import VendorJobs from "./pages/vendor/VendorJobs";
 import JobForm from "./pages/vendor/JobForm";
 import JobApplications from "./pages/vendor/JobApplications";
+import ReleasedApplications from "./pages/vendor/ReleasedApplications";
 import VendorProfile from "./pages/vendor/VendorProfile";
 import VendorSignup from "./pages/vendor/VendorSignup";
 import VendorAwaitingApproval from "./pages/vendor/VendorAwaitingApproval";
@@ -156,6 +157,7 @@ const App = () => (
           <Route path="/vendor/jobs/new" element={<ProtectedRoute requiredRole="vendor"><JobForm /></ProtectedRoute>} />
           <Route path="/vendor/jobs/:id/edit" element={<ProtectedRoute requiredRole="vendor"><JobForm /></ProtectedRoute>} />
           <Route path="/vendor/jobs/:id/applications" element={<ProtectedRoute requiredRole="vendor"><JobApplications /></ProtectedRoute>} />
+          <Route path="/vendor/applications" element={<ProtectedRoute requiredRole="vendor"><ReleasedApplications /></ProtectedRoute>} />
           <Route path="/vendor/profile" element={<ProtectedRoute requiredRole="vendor"><VendorProfile /></ProtectedRoute>} />
           
           <Route path="*" element={<NotFound />} />

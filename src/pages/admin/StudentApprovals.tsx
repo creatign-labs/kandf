@@ -15,10 +15,13 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, CheckCircle, Clock, Loader2, UserCheck, Mail, Copy, Eye, EyeOff, Trash2, Pencil } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, CheckCircle, Clock, Loader2, UserCheck, Mail, Copy, Eye, EyeOff, Trash2, Pencil, XCircle, Ban } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -45,7 +48,9 @@ import { format } from "date-fns";
 
 const StudentApprovals = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [rejectingStudent, setRejectingStudent] = useState<any>(null);
   const [editingApproval, setEditingApproval] = useState<any>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editStatus, setEditStatus] = useState<string>("");
@@ -198,11 +203,16 @@ const StudentApprovals = () => {
     },
   });
 
-  const filteredApprovals = pendingApprovals?.filter(approval =>
-    approval.profile?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    approval.profile?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    approval.profile?.phone?.includes(searchQuery)
-  );
+  const filteredApprovals = pendingApprovals?.filter(approval => {
+    const matchesSearch = 
+      approval.profile?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      approval.profile?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      approval.profile?.phone?.includes(searchQuery);
+    
+    const matchesStatus = statusFilter === "all" || approval.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -239,8 +249,54 @@ const StudentApprovals = () => {
     });
   };
 
+  // Reject student mutation
+  const rejectMutation = useMutation({
+    mutationFn: async (studentId: string) => {
+      // Update student_access_approvals status to rejected
+      const { error: approvalError } = await supabase
+        .from("student_access_approvals")
+        .update({ 
+          status: "rejected",
+          updated_at: new Date().toISOString()
+        })
+        .eq("student_id", studentId);
+
+      if (approvalError) throw approvalError;
+
+      // Update profile account_status to rejected
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ 
+          account_status: "rejected",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", studentId);
+
+      if (profileError) throw profileError;
+
+      // Create notification for the student
+      await supabase.from("notifications").insert({
+        user_id: studentId,
+        title: "Application Rejected",
+        message: "Your application has been rejected. Please contact Admin for more details.",
+        type: "error",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
+      toast({
+        title: "Application Rejected",
+        description: "The student has been notified.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const pendingCount = pendingApprovals?.filter(a => a.status === "pending").length || 0;
   const approvedCount = pendingApprovals?.filter(a => a.status === "approved").length || 0;
+  const rejectedCount = pendingApprovals?.filter(a => a.status === "rejected").length || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -258,7 +314,7 @@ const StudentApprovals = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-3 md:grid-cols-3 gap-4 mb-6">
           <Card className="p-4">
             <div className="text-sm text-muted-foreground">Pending</div>
             <div className="text-2xl font-bold text-yellow-500">{pendingCount}</div>
@@ -267,10 +323,22 @@ const StudentApprovals = () => {
             <div className="text-sm text-muted-foreground">Approved</div>
             <div className="text-2xl font-bold text-green-500">{approvedCount}</div>
           </Card>
+          <Card className="p-4">
+            <div className="text-sm text-muted-foreground">Rejected</div>
+            <div className="text-2xl font-bold text-red-500">{rejectedCount}</div>
+          </Card>
         </div>
 
-        {/* Search */}
+        {/* Tabs and Search */}
         <Card className="p-4 mb-6">
+          <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)} className="mb-4">
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
+              <TabsTrigger value="approved">Approved ({approvedCount})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected ({rejectedCount})</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
@@ -281,8 +349,6 @@ const StudentApprovals = () => {
             />
           </div>
         </Card>
-
-        {/* Table */}
         <Card className="p-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -329,11 +395,24 @@ const StudentApprovals = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={approval.status === "approved" ? "default" : "outline"}>
+                      <Badge 
+                        variant={
+                          approval.status === "approved" 
+                            ? "default" 
+                            : approval.status === "rejected" 
+                            ? "destructive" 
+                            : "outline"
+                        }
+                      >
                         {approval.status === "approved" ? (
                           <>
                             <UserCheck className="h-3 w-3 mr-1" />
                             Approved
+                          </>
+                        ) : approval.status === "rejected" ? (
+                          <>
+                            <XCircle className="h-3 w-3 mr-1" />
+                            Rejected
                           </>
                         ) : (
                           <>
@@ -349,16 +428,27 @@ const StudentApprovals = () => {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {approval.status === "pending" && isSuperAdmin ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleApproveStudent(approval)}
-                            disabled={approveMutation.isPending}
-                          >
-                            {approveMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : null}
-                            Approve & Enroll
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveStudent(approval)}
+                              disabled={approveMutation.isPending || rejectMutation.isPending}
+                            >
+                              {approveMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : null}
+                              Approve & Enroll
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => setRejectingStudent(approval)}
+                              disabled={approveMutation.isPending || rejectMutation.isPending}
+                            >
+                              <Ban className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                          </>
                         ) : approval.status === "approved" ? (
                           <Button
                             size="sm"
@@ -367,10 +457,15 @@ const StudentApprovals = () => {
                           >
                             View Credentials
                           </Button>
-                        ) : (
+                        ) : approval.status === "rejected" ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <XCircle className="h-3 w-3" />
+                            Application Rejected
+                          </Badge>
+                        ) : !isSuperAdmin ? (
                           <span className="text-sm text-muted-foreground">Super Admin only</span>
-                        )}
-                        {isSuperAdmin && (
+                        ) : null}
+                        {isSuperAdmin && approval.status !== "rejected" && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -386,7 +481,7 @@ const StudentApprovals = () => {
                 {(!filteredApprovals || filteredApprovals.length === 0) && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No pending approvals
+                      No approvals found
                     </TableCell>
                   </TableRow>
                 )}
@@ -580,6 +675,52 @@ const StudentApprovals = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Rejection Confirmation Dialog */}
+        <Dialog open={!!rejectingStudent} onOpenChange={() => setRejectingStudent(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Ban className="h-5 w-5" />
+                Reject Application
+              </DialogTitle>
+              <DialogDescription>
+                Are you sure you want to reject the application for{" "}
+                <strong>{rejectingStudent?.profile?.first_name} {rejectingStudent?.profile?.last_name}</strong>?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Card className="p-4 bg-destructive/5 border-destructive/20">
+                <p className="text-sm text-muted-foreground">
+                  The student will be notified that their application has been rejected and will see:
+                </p>
+                <p className="text-sm font-medium mt-2 text-destructive">
+                  "Your application has been rejected. Please contact Admin for more details."
+                </p>
+              </Card>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRejectingStudent(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  rejectMutation.mutate(rejectingStudent.student_id);
+                  setRejectingStudent(null);
+                }}
+                disabled={rejectMutation.isPending}
+              >
+                {rejectMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Ban className="h-4 w-4 mr-2" />
+                )}
+                Reject Application
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

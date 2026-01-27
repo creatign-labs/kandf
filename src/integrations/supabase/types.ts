@@ -286,6 +286,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          assigned_chef_id: string | null
           booking_date: string
           course_id: string
           created_at: string
@@ -297,6 +298,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_chef_id?: string | null
           booking_date: string
           course_id: string
           created_at?: string
@@ -308,6 +310,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_chef_id?: string | null
           booking_date?: string
           course_id?: string
           created_at?: string
@@ -319,6 +322,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_assigned_chef_id_fkey"
+            columns: ["assigned_chef_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_course_id_fkey"
             columns: ["course_id"]

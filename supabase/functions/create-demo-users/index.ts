@@ -66,6 +66,24 @@ Deno.serve(async (req) => {
         needsEnrollment: false
       },
       {
+        email: "chef2@demo.com",
+        password: "Chef123!",
+        firstName: "Maria",
+        lastName: "Pastry",
+        roles: ['chef'],
+        accountStatus: 'active',
+        needsEnrollment: false
+      },
+      {
+        email: "chef3@demo.com",
+        password: "Chef123!",
+        firstName: "Pierre",
+        lastName: "Baker",
+        roles: ['chef'],
+        accountStatus: 'active',
+        needsEnrollment: false
+      },
+      {
         email: "admin@demo.com",
         password: "Admin@123",
         firstName: "Demo",

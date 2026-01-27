@@ -50,6 +50,7 @@ import DailyInventoryRequirements from "./pages/admin/DailyInventoryRequirements
 import RecipeIngredients from "./pages/admin/RecipeIngredients";
 import AdminRecipes from "./pages/admin/AdminRecipes";
 import SuperAdminManagement from "./pages/admin/SuperAdminManagement";
+import StudentPaymentStatus from "./pages/admin/StudentPaymentStatus";
 import BookingRecipeAssignment from "./pages/admin/BookingRecipeAssignment";
 import RecipeBatchManagement from "./pages/admin/RecipeBatchManagement";
 import AdminEnrollments from "./pages/admin/Enrollments";
@@ -140,6 +141,7 @@ const App = () => (
           <Route path="/admin/enrollments" element={<ProtectedRoute requiredRole="admin"><AdminEnrollments /></ProtectedRoute>} />
           <Route path="/admin/job-applications" element={<ProtectedRoute requiredRole="admin"><JobApplicationsReview /></ProtectedRoute>} />
           <Route path="/admin/vendor-approvals" element={<ProtectedRoute requiredRole="admin"><VendorApprovals /></ProtectedRoute>} />
+          <Route path="/admin/student-payments" element={<ProtectedRoute requiredRole="admin"><StudentPaymentStatus /></ProtectedRoute>} />
           
           <Route path="/chef" element={<ProtectedRoute requiredRole="chef"><ChefDashboard /></ProtectedRoute>} />
           <Route path="/chef/attendance" element={<ProtectedRoute requiredRole="chef"><Attendance /></ProtectedRoute>} />

@@ -66,11 +66,28 @@ const Resume = () => {
   });
 
   const handlePayment = async () => {
+    // Check if Razorpay is loaded
+    if (!(window as any).Razorpay) {
+      toast({
+        title: "Payment gateway not loaded",
+        description: "Please refresh the page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessingPayment(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-resume-addon-order');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to create order');
+      }
+
+      if (!data || !data.orderId) {
+        throw new Error(data?.error || 'Failed to create payment order');
+      }
 
       const options = {
         key: data.keyId,
@@ -116,9 +133,10 @@ const Resume = () => {
       const razorpay = new (window as any).Razorpay(options);
       razorpay.open();
     } catch (err: any) {
+      console.error('Payment error:', err);
       toast({
         title: "Payment failed",
-        description: err.message,
+        description: err.message || 'Something went wrong. Please try again.',
         variant: "destructive",
       });
     } finally {

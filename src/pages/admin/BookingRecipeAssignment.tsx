@@ -48,7 +48,7 @@ const BookingRecipeAssignment = () => {
 
       if (error) throw error;
 
-      // Fetch profile data for each booking
+      // Fetch profile data for each booking (student and assigned chef)
       const bookingsWithProfiles = await Promise.all(
         (bookingsData || []).map(async (booking) => {
           const { data: profile } = await supabase
@@ -57,7 +57,17 @@ const BookingRecipeAssignment = () => {
             .eq('id', booking.student_id)
             .single();
           
-          return { ...booking, profile };
+          let assignedChef = null;
+          if (booking.assigned_chef_id) {
+            const { data: chefProfile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('id', booking.assigned_chef_id)
+              .single();
+            assignedChef = chefProfile;
+          }
+          
+          return { ...booking, profile, assignedChef };
         })
       );
 
@@ -132,6 +142,28 @@ const BookingRecipeAssignment = () => {
     onError: (error: Error) => {
       toast({
         title: "Failed to assign recipe",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const assignChefMutation = useMutation({
+    mutationFn: async ({ bookingId, chefId }: { bookingId: string; chefId: string | null }) => {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ assigned_chef_id: chefId })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+      toast({ title: "Chef assigned successfully" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to assign chef",
         description: error.message,
         variant: "destructive",
       });
@@ -426,6 +458,7 @@ const BookingRecipeAssignment = () => {
                     <TableHead>Time Slot</TableHead>
                     <TableHead>Course</TableHead>
                     <TableHead>Assigned Recipe</TableHead>
+                    <TableHead>Assigned Chef</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -450,14 +483,37 @@ const BookingRecipeAssignment = () => {
                             })
                           }
                         >
-                          <SelectTrigger className="w-[200px]">
+                          <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Select recipe" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-background border shadow-lg z-50">
                             <SelectItem value="none">No Recipe</SelectItem>
                             {recipes?.map((recipe) => (
                               <SelectItem key={recipe.id} value={recipe.id}>
                                 {recipe.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={booking.assigned_chef_id || "none"}
+                          onValueChange={(value) => 
+                            assignChefMutation.mutate({
+                              bookingId: booking.id,
+                              chefId: value === "none" ? null : value
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select chef" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            <SelectItem value="none">No Chef</SelectItem>
+                            {chefsWithSpecializations?.map((chef) => (
+                              <SelectItem key={chef.id} value={chef.id}>
+                                {chef.first_name} {chef.last_name}
                               </SelectItem>
                             ))}
                           </SelectContent>

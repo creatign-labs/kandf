@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, FileSpreadsheet, UserCheck, ClipboardList, UtensilsCrossed, Crown, Briefcase, CalendarCheck } from "lucide-react";
+import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, FileSpreadsheet, UserCheck, ClipboardList, UtensilsCrossed, Crown, Briefcase, CalendarCheck, Store, CreditCard, Shield } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -343,16 +343,10 @@ const AdminDashboard = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Quick Actions */}
+          {/* Quick Actions */}
             <Card className="p-6">
               <h3 className="font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/admin/students">
-                    <Users className="h-4 w-4 mr-2" />
-                    View Students
-                  </Link>
-                </Button>
                 {isSuperAdmin && (
                   <Button variant="outline" className="w-full justify-start relative" asChild>
                     <Link to="/admin/student-approvals">
@@ -366,6 +360,14 @@ const AdminDashboard = () => {
                     </Link>
                   </Button>
                 )}
+                {isSuperAdmin && (
+                  <Button variant="outline" className="w-full justify-start" asChild>
+                    <Link to="/admin/vendor-approvals">
+                      <Store className="h-4 w-4 mr-2" />
+                      Vendor Approvals
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/leads">
                     <TrendingUp className="h-4 w-4 mr-2" />
@@ -375,13 +377,7 @@ const AdminDashboard = () => {
                 <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/recipes">
                     <UtensilsCrossed className="h-4 w-4 mr-2" />
-                    Recipes
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/admin/inventory">
-                    <Package className="h-4 w-4 mr-2" />
-                    Inventory
+                    Recipe Library
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
@@ -392,14 +388,14 @@ const AdminDashboard = () => {
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/staff">
-                    <ChefHat className="h-4 w-4 mr-2" />
-                    Manage Staff
+                    <Shield className="h-4 w-4 mr-2" />
+                    Users and Access Management
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/data-template">
                     <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Data Management
+                    Data Management Centre
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
@@ -408,14 +404,12 @@ const AdminDashboard = () => {
                     Job Applications
                   </Link>
                 </Button>
-                {isSuperAdmin && (
-                  <Button variant="outline" className="w-full justify-start text-amber-600 hover:text-amber-700" asChild>
-                    <Link to="/admin/super-admins">
-                      <Crown className="h-4 w-4 mr-2" />
-                      Super Admin Management
-                    </Link>
-                  </Button>
-                )}
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/student-payments">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Student Payment Status
+                  </Link>
+                </Button>
               </div>
             </Card>
 

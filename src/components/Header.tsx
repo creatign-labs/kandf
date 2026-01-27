@@ -92,10 +92,7 @@ const superAdminNavItems = [
 const chefNavItems = [
   { to: "/chef", label: "Today's Classes", icon: Home, end: true },
   { to: "/chef/attendance", label: "Attendance", icon: ClipboardList },
-  { to: "/chef/my-recipes", label: "My Recipes", icon: ChefHat },
-  { to: "/chef/recipes", label: "All Recipes", icon: BookOpen },
-  { to: "/chef/daily-ingredients", label: "Daily Ingredients", icon: Calendar },
-  { to: "/chef/inventory-usage", label: "Inventory", icon: Package },
+  { to: "/chef/required-stock", label: "Required Stock", icon: Package },
 ];
 
 export const Header = ({ role = "public", userName }: HeaderProps) => {

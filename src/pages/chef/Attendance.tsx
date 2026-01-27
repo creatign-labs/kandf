@@ -18,17 +18,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Download, CheckCircle, XCircle, Loader2, BarChart3 } from "lucide-react";
+import { Calendar, CheckCircle, XCircle, Loader2, BarChart3, Lock, Users, TrendingUp, AlertTriangle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { AttendanceStatsWidget } from "@/components/chef/AttendanceStatsWidget";
 
+// Helper to check if a time slot has passed
+const isTimeSlotPassed = (timeSlot: string): boolean => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // Extract end time from slot (e.g., "9:00 AM - 12:00 PM" -> "12:00 PM")
+  const endTimeMatch = timeSlot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i);
+  if (!endTimeMatch) return false;
+  
+  let hour = parseInt(endTimeMatch[1]);
+  const minute = parseInt(endTimeMatch[2]);
+  const period = endTimeMatch[3].toUpperCase();
+  
+  // Convert to 24-hour format
+  if (period === "PM" && hour !== 12) hour += 12;
+  if (period === "AM" && hour === 12) hour = 0;
+  
+  // Compare with current time
+  if (currentHour > hour) return true;
+  if (currentHour === hour && currentMinute > minute) return true;
+  return false;
+};
+
 const Attendance = () => {
   const [courseFilter, setCourseFilter] = useState("all");
   const [showStats, setShowStats] = useState(true);
   const queryClient = useQueryClient();
+  const todayStr = format(new Date(), "yyyy-MM-dd");
 
   const { data: courses } = useQuery({
     queryKey: ["courses"],
@@ -40,7 +65,7 @@ const Attendance = () => {
   });
 
   const { data: batches } = useQuery({
-    queryKey: ["batches"],
+    queryKey: ["batches-with-locking"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("batches")
@@ -49,7 +74,10 @@ const Attendance = () => {
           courses (title)
         `);
       if (error) throw error;
-      return data;
+      return data?.map(batch => ({
+        ...batch,
+        isLocked: isTimeSlotPassed(batch.time_slot)
+      }));
     },
   });
 
@@ -121,9 +149,33 @@ const Attendance = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
-      toast({ title: "Attendance marked" });
+      toast({ title: "Attendance marked successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     },
   });
+
+  const handleMarkAttendance = (studentId: string, batchId: string, status: string, isLocked: boolean) => {
+    if (isLocked) {
+      toast({
+        title: "Attendance Locked",
+        description: "This class has ended. Attendance can no longer be modified.",
+        variant: "destructive",
+      });
+      return;
+    }
+    markAttendanceMutation.mutate({
+      studentId,
+      batchId,
+      classDate: todayStr,
+      status,
+    });
+  };
 
   // Group attendance by date and batch
   const attendanceByDateBatch = attendance?.reduce((acc, record) => {
@@ -160,16 +212,16 @@ const Attendance = () => {
     return Math.round((present / students.length) * 100);
   };
 
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-
   return (
     <div className="min-h-screen bg-background">
-      <Header role="chef" userName="Chef" />
+      <Header role="chef" />
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Attendance Management</h1>
-          <p className="text-muted-foreground">Mark and view attendance records</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Attendance Management</h1>
+          <p className="text-muted-foreground">
+            Mark today's attendance and view historical records
+          </p>
         </div>
 
         <div className="flex items-center justify-between mb-6">
@@ -191,44 +243,82 @@ const Attendance = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">Total Classes</div>
-            <div className="text-3xl font-bold text-foreground">{totalClasses}</div>
+            <div className="flex items-center gap-3">
+              <Calendar className="h-8 w-8 text-primary" />
+              <div>
+                <div className="text-2xl font-bold">{totalClasses}</div>
+                <div className="text-sm text-muted-foreground">Total Classes</div>
+              </div>
+            </div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">Average Attendance</div>
-            <div className="text-3xl font-bold text-green-500">{avgAttendance}%</div>
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-8 w-8 text-green-500" />
+              <div>
+                <div className="text-2xl font-bold text-green-500">{avgAttendance}%</div>
+                <div className="text-sm text-muted-foreground">Avg Attendance</div>
+              </div>
+            </div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">Active Batches</div>
-            <div className="text-3xl font-bold text-blue-500">{batches?.length || 0}</div>
+            <div className="flex items-center gap-3">
+              <Users className="h-8 w-8 text-blue-500" />
+              <div>
+                <div className="text-2xl font-bold text-blue-500">{batches?.length || 0}</div>
+                <div className="text-sm text-muted-foreground">Active Batches</div>
+              </div>
+            </div>
           </Card>
           <Card className="p-4">
-            <div className="text-sm text-muted-foreground mb-1">Students Enrolled</div>
-            <div className="text-3xl font-bold text-purple-500">{enrollments?.length || 0}</div>
+            <div className="flex items-center gap-3">
+              <Users className="h-8 w-8 text-purple-500" />
+              <div>
+                <div className="text-2xl font-bold text-purple-500">{enrollments?.length || 0}</div>
+                <div className="text-sm text-muted-foreground">Students</div>
+              </div>
+            </div>
           </Card>
         </div>
 
         {/* Mark Today's Attendance */}
         {enrollments && enrollments.length > 0 && (
           <Card className="p-6 mb-6">
-            <h2 className="text-xl font-bold mb-4">Mark Today's Attendance</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">Mark Today's Attendance</h2>
+              <Badge variant="outline">{format(new Date(), "MMMM d, yyyy")}</Badge>
+            </div>
+            
             <div className="space-y-4">
               {batches?.map(batch => {
                 const batchEnrollments = enrollments.filter(e => e.batch_id === batch.id);
                 if (batchEnrollments.length === 0) return null;
 
                 return (
-                  <Card key={batch.id} className="p-4">
+                  <Card key={batch.id} className={`p-4 ${batch.isLocked ? 'opacity-75' : ''}`}>
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="font-semibold">{batch.batch_name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{batch.batch_name}</h3>
+                          {batch.isLocked && (
+                            <Badge variant="secondary" className="gap-1">
+                              <Lock className="h-3 w-3" /> Locked
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {batch.courses?.title} • {batch.time_slot}
                         </p>
                       </div>
-                      <Badge>{format(new Date(), "MMM d, yyyy")}</Badge>
+                      {batch.isLocked && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <AlertTriangle className="h-4 w-4" />
+                          Class ended
+                        </div>
+                      )}
                     </div>
                     <Table>
                       <TableHeader>
@@ -249,7 +339,23 @@ const Attendance = () => {
                           return (
                             <TableRow key={enrollment.id}>
                               <TableCell>
-                                {profile?.first_name} {profile?.last_name}
+                                <div className="flex items-center gap-2">
+                                  <span>{profile?.first_name} {profile?.last_name}</span>
+                                  {existingAttendance && (
+                                    <Badge 
+                                      className={
+                                        existingAttendance.status === "present" 
+                                          ? "bg-green-500" 
+                                          : existingAttendance.status === "absent"
+                                          ? "bg-red-500"
+                                          : "bg-orange-500"
+                                      }
+                                    >
+                                      {existingAttendance.status === "present" ? "Present" : 
+                                       existingAttendance.status === "absent" ? "Absent" : "No Show"}
+                                    </Badge>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
@@ -257,12 +363,13 @@ const Attendance = () => {
                                     size="sm"
                                     variant={existingAttendance?.status === "present" ? "default" : "outline"}
                                     className={existingAttendance?.status === "present" ? "bg-green-500 hover:bg-green-600" : ""}
-                                    onClick={() => markAttendanceMutation.mutate({
-                                      studentId: enrollment.student_id,
-                                      batchId: batch.id,
-                                      classDate: todayStr,
-                                      status: "present",
-                                    })}
+                                    onClick={() => handleMarkAttendance(
+                                      enrollment.student_id, 
+                                      batch.id, 
+                                      "present",
+                                      batch.isLocked
+                                    )}
+                                    disabled={batch.isLocked || markAttendanceMutation.isPending}
                                   >
                                     <CheckCircle className="h-4 w-4 mr-1" />
                                     Present
@@ -271,29 +378,16 @@ const Attendance = () => {
                                     size="sm"
                                     variant={existingAttendance?.status === "absent" ? "default" : "outline"}
                                     className={existingAttendance?.status === "absent" ? "bg-red-500 hover:bg-red-600" : ""}
-                                    onClick={() => markAttendanceMutation.mutate({
-                                      studentId: enrollment.student_id,
-                                      batchId: batch.id,
-                                      classDate: todayStr,
-                                      status: "absent",
-                                    })}
+                                    onClick={() => handleMarkAttendance(
+                                      enrollment.student_id, 
+                                      batch.id, 
+                                      "absent",
+                                      batch.isLocked
+                                    )}
+                                    disabled={batch.isLocked || markAttendanceMutation.isPending}
                                   >
                                     <XCircle className="h-4 w-4 mr-1" />
                                     Absent
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={existingAttendance?.status === "no_show" ? "default" : "outline"}
-                                    className={existingAttendance?.status === "no_show" ? "bg-orange-500 hover:bg-orange-600" : ""}
-                                    onClick={() => markAttendanceMutation.mutate({
-                                      studentId: enrollment.student_id,
-                                      batchId: batch.id,
-                                      classDate: todayStr,
-                                      status: "no_show",
-                                    })}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-1" />
-                                    No Show
                                   </Button>
                                 </div>
                               </TableCell>
@@ -309,7 +403,8 @@ const Attendance = () => {
           </Card>
         )}
 
-        <Card className="p-6 mb-6">
+        {/* Attendance History */}
+        <Card className="p-6">
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <Select value={courseFilter} onValueChange={setCourseFilter}>
               <SelectTrigger className="w-full md:w-48">
@@ -322,10 +417,6 @@ const Attendance = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" className="gap-2 ml-auto">
-              <Download className="h-4 w-4" />
-              Export Report
-            </Button>
           </div>
 
           <h2 className="text-xl font-bold mb-4">Attendance History</h2>
@@ -336,7 +427,7 @@ const Attendance = () => {
             </div>
           ) : filteredRecords.length > 0 ? (
             <div className="space-y-4">
-              {filteredRecords.map((record, index) => (
+              {filteredRecords.slice(0, 10).map((record, index) => (
                 <Card key={index} className="p-4">
                   <div className="flex justify-between items-start mb-4">
                     <div>

@@ -73,14 +73,32 @@ serve(async (req) => {
     const order = await orderResponse.json();
 
     // Create pending addon purchase record
-    await supabase
+    // First check if there's an existing pending record
+    const { data: existingPending } = await supabase
       .from('addon_purchases')
-      .upsert({
-        student_id: user.id,
-        addon_type: 'resume_builder',
-        amount: RESUME_ADDON_PRICE,
-        status: 'pending',
-      }, { onConflict: 'student_id,addon_type' });
+      .select('id')
+      .eq('student_id', user.id)
+      .eq('addon_type', 'resume_builder')
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (existingPending) {
+      // Update existing pending record
+      await supabase
+        .from('addon_purchases')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', existingPending.id);
+    } else {
+      // Insert new pending record
+      await supabase
+        .from('addon_purchases')
+        .insert({
+          student_id: user.id,
+          addon_type: 'resume_builder',
+          amount: RESUME_ADDON_PRICE,
+          status: 'pending',
+        });
+    }
 
     console.log('Created Razorpay order for resume addon:', order.id);
 

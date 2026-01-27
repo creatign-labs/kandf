@@ -50,33 +50,36 @@ const JobApplications = () => {
   });
 
   // Get released applications (vendor can only see these with student details)
+  // Using a direct query that bypasses RLS issues by fetching profiles separately
   const { data: releasedApplications, isLoading } = useQuery({
     queryKey: ["released-applications", jobId],
     enabled: !!jobId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get released applications
+      const { data: applications, error } = await supabase
         .from("job_applications")
-        .select(`
-          id,
-          status,
-          created_at,
-          released_at,
-          cover_letter,
-          student_id,
-          resume_url,
-          profiles:student_id (
-            first_name,
-            last_name,
-            email,
-            phone
-          )
-        `)
+        .select("id, status, created_at, released_at, cover_letter, student_id, resume_url")
         .eq("job_id", jobId)
         .eq("released_to_vendor", true)
         .order("released_at", { ascending: false });
       
       if (error) throw error;
-      return data;
+      if (!applications || applications.length === 0) return [];
+      
+      // Then get profiles for these students
+      const studentIds = applications.map(app => app.student_id);
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, email, phone")
+        .in("id", studentIds);
+      
+      if (profileError) throw profileError;
+      
+      // Merge the data
+      return applications.map(app => ({
+        ...app,
+        profiles: profiles?.find(p => p.id === app.student_id) || null
+      }));
     },
   });
 

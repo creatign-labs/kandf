@@ -65,32 +65,17 @@ const VendorDashboard = () => {
     },
   });
 
+  // Get released applications that the vendor can see (platform-wide)
   const { data: applicationStats } = useQuery({
-    queryKey: ["vendor-application-stats", vendorProfile?.id],
-    enabled: !!vendorProfile?.id,
+    queryKey: ["vendor-application-stats"],
     queryFn: async () => {
-      // Get application counts for vendor's jobs
-      const { data: jobs } = await supabase
-        .from("jobs")
-        .select("id")
-        .eq("vendor_id", vendorProfile!.id);
-      
-      if (!jobs || jobs.length === 0) return { total: 0, released: 0 };
-      
-      const jobIds = jobs.map(j => j.id);
-      
-      const { count: total } = await supabase
-        .from("job_applications")
-        .select("*", { count: "exact", head: true })
-        .in("job_id", jobIds);
-      
+      // Get all released applications the vendor can see
       const { count: released } = await supabase
         .from("job_applications")
         .select("*", { count: "exact", head: true })
-        .in("job_id", jobIds)
         .eq("released_to_vendor", true);
       
-      return { total: total || 0, released: released || 0 };
+      return { released: released || 0 };
     },
   });
 
@@ -105,40 +90,34 @@ const VendorDashboard = () => {
               Welcome, {vendorProfile?.company_name || "Vendor"}
             </h1>
             <p className="text-muted-foreground">
-              Manage your job postings and track applications
+              Manage your job postings and view released applicants
             </p>
           </div>
 
           {/* Stats Grid */}
-          <div className="grid md:grid-cols-4 gap-6 mb-8">
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
             <VendorStatsCard
-              title="Active Jobs"
+              title="Your Active Jobs"
               value={jobStats?.activeJobs || 0}
               icon={Briefcase}
-              description={`${jobStats?.totalJobs || 0} total`}
+              description={`${jobStats?.totalJobs || 0} total posted`}
             />
             <VendorStatsCard
-              title="Total Applications"
-              value={applicationStats?.total || 0}
-              icon={Users}
-              description="All time"
-            />
-            <VendorStatsCard
-              title="Released to You"
+              title="Released Applicants"
               value={applicationStats?.released || 0}
               icon={Eye}
-              description="Viewable applicants"
+              description="Viewable candidates"
             />
             <VendorStatsCard
-              title="Pending Review"
-              value={(applicationStats?.total || 0) - (applicationStats?.released || 0)}
+              title="Platform Jobs"
+              value="Browse"
               icon={TrendingUp}
-              description="By platform admins"
+              description="View all job applications"
             />
           </div>
 
           {/* Quick Actions */}
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
             <Card className="p-6 border-border/60">
               <div className="flex items-start gap-4">
                 <div className="p-3 rounded-lg bg-primary/10">
@@ -147,10 +126,30 @@ const VendorDashboard = () => {
                 <div className="flex-1">
                   <h3 className="font-semibold mb-1">Post a New Job</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Create a new job listing to reach qualified baking professionals
+                    Create a job listing to reach professionals
                   </p>
                   <Button asChild>
                     <Link to="/vendor/jobs/new">Create Job Posting</Link>
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 border-border/60">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-lg bg-green-500/10">
+                  <Eye className="h-6 w-6 text-green-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold mb-1">View Released Applicants</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Browse candidates approved by admins
+                  </p>
+                  <Button variant="default" asChild>
+                    <Link to="/vendor/applications">
+                      <Users className="h-4 w-4 mr-2" />
+                      View Applicants ({applicationStats?.released || 0})
+                    </Link>
                   </Button>
                 </div>
               </div>
@@ -164,7 +163,7 @@ const VendorDashboard = () => {
                 <div className="flex-1">
                   <h3 className="font-semibold mb-1">Manage Job Listings</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    View, edit, or deactivate your current job postings
+                    View, edit, or deactivate your jobs
                   </p>
                   <Button variant="outline" asChild>
                     <Link to="/vendor/jobs">View All Jobs</Link>

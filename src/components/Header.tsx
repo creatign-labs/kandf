@@ -30,6 +30,7 @@ type AppRole = "admin" | "student" | "chef" | "vendor";
 
 const vendorNavItems: NavItem[] = [
   { to: "/vendor", label: "Dashboard", icon: Home, end: true },
+  { to: "/vendor/applications", label: "Released Applicants", icon: Users },
   { to: "/vendor/jobs", label: "Job Listings", icon: Briefcase },
   { to: "/vendor/profile", label: "Company Profile", icon: Settings },
 ];

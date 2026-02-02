@@ -106,7 +106,7 @@ const AdminEnrollments = () => {
         (data || []).map(async (payment) => {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("id, first_name, last_name, phone, account_status")
+            .select("id, first_name, last_name, phone, enrollment_status")
             .eq("id", payment.student_id)
             .maybeSingle();
           return { ...payment, profile };
@@ -211,8 +211,8 @@ const AdminEnrollments = () => {
     );
   });
 
-  const getStatusBadge = (status: string, accountStatus?: string) => {
-    if (accountStatus === "active") {
+  const getStatusBadge = (status: string, enrollmentStatus?: string) => {
+    if (enrollmentStatus === "active") {
       return <Badge className="bg-green-500">Enrolled</Badge>;
     }
     if (status === "completed") {
@@ -463,7 +463,7 @@ const AdminEnrollments = () => {
             <CardContent>
               <div className="text-2xl font-bold">
                 {pendingEnrollments?.filter(
-                  (e) => e.status === "completed" && e.profile?.account_status !== "active"
+                  (e) => e.status === "completed" && e.profile?.enrollment_status !== "active"
                 ).length || 0}
               </div>
             </CardContent>
@@ -476,7 +476,7 @@ const AdminEnrollments = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {pendingEnrollments?.filter((e) => e.profile?.account_status === "active")
+                {pendingEnrollments?.filter((e) => e.profile?.enrollment_status === "active")
                   .length || 0}
               </div>
             </CardContent>
@@ -532,7 +532,7 @@ const AdminEnrollments = () => {
                       </TableCell>
                       <TableCell>{enrollment.courses?.title}</TableCell>
                       <TableCell>
-                        {getStatusBadge(enrollment.status, enrollment.profile?.account_status)}
+                        {getStatusBadge(enrollment.status, enrollment.profile?.enrollment_status)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {format(new Date(enrollment.created_at), "MMM d, yyyy")}

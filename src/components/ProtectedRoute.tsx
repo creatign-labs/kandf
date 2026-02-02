@@ -58,7 +58,11 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
             return;
           }
 
-          // For active students - allow access to dashboard
+          // Handle completed status - read-only access to dashboard
+          // Students with 'completed' status can still view their course materials
+          // but cannot book new slots (handled at component level)
+          
+          // For active and completed students - allow access to dashboard
           // Password change is OPTIONAL - no forced redirect
         }
 

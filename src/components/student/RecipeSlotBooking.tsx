@@ -13,21 +13,35 @@ import {
   Lock,
   ChefHat
 } from "lucide-react";
-import { format, addDays, parseISO } from "date-fns";
+import { format, addDays } from "date-fns";
 import { 
   useBookingEligibility, 
   useAvailableRecipeSlots, 
   useBookRecipeSlot 
 } from "@/hooks/useRecipeBooking";
 
-export function RecipeSlotBooking() {
+interface RecipeSlotBookingProps {
+  courseId?: string;
+  recipeId?: string;
+  recipeTitle?: string;
+  onBooked?: () => void;
+}
+
+export function RecipeSlotBooking({ courseId, recipeId, recipeTitle, onBooked }: RecipeSlotBookingProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSlot, setSelectedSlot] = useState<{ timeSlot: string; batchId: string | null } | null>(null);
 
+  // Use provided props or fall back to eligibility check
   const { data: eligibility, isLoading: eligibilityLoading } = useBookingEligibility();
+  
+  // Determine which course/recipe to use
+  const effectiveCourseId = courseId || eligibility?.course_id || null;
+  const effectiveRecipeId = recipeId || eligibility?.next_recipe_id || null;
+  const effectiveRecipeTitle = recipeTitle || eligibility?.next_recipe_title || 'Recipe';
+
   const { data: availableSlots, isLoading: slotsLoading } = useAvailableRecipeSlots(
-    eligibility?.course_id || null,
-    eligibility?.next_recipe_id || null
+    effectiveCourseId,
+    effectiveRecipeId
   );
   const bookMutation = useBookRecipeSlot();
 
@@ -39,17 +53,22 @@ export function RecipeSlotBooking() {
     : [];
 
   const handleBooking = () => {
-    if (!selectedDate || !selectedSlot || !eligibility?.course_id || !eligibility?.next_recipe_id) return;
+    if (!selectedDate || !selectedSlot || !effectiveCourseId || !effectiveRecipeId) return;
 
     bookMutation.mutate({
-      courseId: eligibility.course_id,
-      recipeId: eligibility.next_recipe_id,
+      courseId: effectiveCourseId,
+      recipeId: effectiveRecipeId,
       batchDate: format(selectedDate, 'yyyy-MM-dd'),
       timeSlot: selectedSlot.timeSlot
+    }, {
+      onSuccess: () => {
+        onBooked?.();
+      }
     });
   };
 
-  if (eligibilityLoading) {
+  // If no props provided and using eligibility, show loading
+  if (!courseId && eligibilityLoading) {
     return (
       <Card className="p-8">
         <div className="flex items-center justify-center">
@@ -59,7 +78,8 @@ export function RecipeSlotBooking() {
     );
   }
 
-  if (!eligibility?.is_eligible) {
+  // If no props and not eligible
+  if (!courseId && !eligibility?.is_eligible) {
     return (
       <Card className="p-6 border-border/60">
         <div className="flex items-start gap-4">
@@ -76,22 +96,24 @@ export function RecipeSlotBooking() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Current Recipe Info */}
-      <Card className="p-6 border-border/60 bg-primary/5">
-        <div className="flex items-start gap-4">
-          <div className="p-3 rounded-full bg-primary/10">
-            <ChefHat className="h-6 w-6 text-primary" />
+    <div className="space-y-4">
+      {/* Only show recipe info card if not using inline mode (no recipeId prop) */}
+      {!recipeId && (
+        <Card className="p-6 border-border/60 bg-primary/5">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-full bg-primary/10">
+              <ChefHat className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Your Next Recipe</p>
+              <h3 className="font-semibold text-xl">{effectiveRecipeTitle}</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Book a slot below to attend this recipe session
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">Your Next Recipe</p>
-            <h3 className="font-semibold text-xl">{eligibility.next_recipe_title}</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Book a slot below to attend this recipe session
-            </p>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* Booking Rules */}
       <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
@@ -197,7 +219,7 @@ export function RecipeSlotBooking() {
           <div className="space-y-2 mb-4">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Recipe</span>
-              <span className="font-medium">{eligibility.next_recipe_title}</span>
+              <span className="font-medium">{effectiveRecipeTitle}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Date</span>

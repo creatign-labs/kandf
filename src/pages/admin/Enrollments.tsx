@@ -31,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Search, UserPlus, Mail, Phone, Copy, Check } from "lucide-react";
+import { Loader2, Plus, Search, UserPlus, Phone, Calendar } from "lucide-react";
 import { format } from "date-fns";
 
 const AdminEnrollments = () => {
@@ -39,12 +39,6 @@ const AdminEnrollments = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [createdCredentials, setCreatedCredentials] = useState<{
-    email: string;
-    password: string;
-    studentName: string;
-  } | null>(null);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Form state for new enrollment
   const [formData, setFormData] = useState({
@@ -54,6 +48,7 @@ const AdminEnrollments = () => {
     phone: "",
     courseId: "",
     batchId: "",
+    dateOfJoining: "",
   });
 
   // Fetch courses
@@ -117,49 +112,40 @@ const AdminEnrollments = () => {
     },
   });
 
-  // Create student mutation
+  // Create student mutation using edge function
   const createStudentMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // Generate a random password
-      const password = Math.random().toString(36).slice(-8) + "A1!";
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        throw new Error("Not authenticated");
+      }
 
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: password,
-        options: {
-          data: {
-            first_name: data.firstName,
-            last_name: data.lastName,
-            phone: data.phone,
-          },
+      const response = await supabase.functions.invoke("admin-create-student", {
+        body: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          courseId: data.courseId,
+          dateOfJoining: data.dateOfJoining,
         },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Failed to create user");
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to create student");
+      }
 
-      // Create advance payment record (admin-assisted flow)
-      const selectedCourse = courses?.find((c) => c.id === data.courseId);
-      const { error: paymentError } = await supabase
-        .from("advance_payments")
-        .insert({
-          student_id: authData.user.id,
-          course_id: data.courseId,
-          amount: 2000,
-          status: "pending",
-        });
-
-      if (paymentError) throw paymentError;
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
 
       return {
         email: data.email,
-        password: password,
         studentName: `${data.firstName} ${data.lastName}`,
+        studentId: response.data.studentId,
       };
     },
-    onSuccess: (credentials) => {
-      setCreatedCredentials(credentials);
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["admin-pending-enrollments"] });
       setFormData({
         firstName: "",
@@ -168,10 +154,12 @@ const AdminEnrollments = () => {
         phone: "",
         courseId: "",
         batchId: "",
+        dateOfJoining: "",
       });
+      setIsCreateDialogOpen(false);
       toast({
-        title: "Student Created",
-        description: "Student account created. Share credentials and payment link.",
+        title: "Student Enrolled",
+        description: `${result.studentName} has been enrolled. They will receive credentials upon approval.`,
       });
     },
     onError: (error: Error) => {
@@ -195,11 +183,6 @@ const AdminEnrollments = () => {
     createStudentMutation.mutate(formData);
   };
 
-  const copyToClipboard = async (text: string, field: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
 
   const filteredEnrollments = pendingEnrollments?.filter((enrollment) => {
     const name = `${enrollment.profile?.first_name || ""} ${enrollment.profile?.last_name || ""}`.toLowerCase();
@@ -256,186 +239,141 @@ const AdminEnrollments = () => {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Create New Student</DialogTitle>
+                <DialogTitle>Enroll New Student</DialogTitle>
                 <DialogDescription>
-                  Create a student account and send them credentials for advance payment.
+                  Create a student enrollment. Credentials will be generated upon approval.
                 </DialogDescription>
               </DialogHeader>
 
-              {createdCredentials ? (
-                <div className="space-y-4">
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">
-                      ✓ Student Created Successfully
-                    </h4>
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      Share these credentials with {createdCredentials.studentName}
-                    </p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input
+                      id="firstName"
+                      value={formData.firstName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, firstName: e.target.value })
+                      }
+                      placeholder="John"
+                    />
                   </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Email</Label>
-                      <div className="flex items-center gap-2">
-                        <Input value={createdCredentials.email} readOnly />
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => copyToClipboard(createdCredentials.email, "email")}
-                        >
-                          {copiedField === "email" ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Password</Label>
-                      <div className="flex items-center gap-2">
-                        <Input value={createdCredentials.password} readOnly />
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => copyToClipboard(createdCredentials.password, "password")}
-                        >
-                          {copiedField === "password" ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Input
+                      id="lastName"
+                      value={formData.lastName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lastName: e.target.value })
+                      }
+                      placeholder="Doe"
+                    />
                   </div>
-
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      setCreatedCredentials(null);
-                      setIsCreateDialogOpen(false);
-                    }}
-                  >
-                    Done
-                  </Button>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">First Name *</Label>
-                      <Input
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, firstName: e.target.value })
-                        }
-                        placeholder="John"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Last Name *</Label>
-                      <Input
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lastName: e.target.value })
-                        }
-                        placeholder="Doe"
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      placeholder="john@example.com"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    placeholder="john@example.com"
+                  />
+                </div>
 
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
-                      placeholder="+91 9876543210"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    placeholder="+91 9876543210"
+                  />
+                </div>
 
+                <div>
+                  <Label htmlFor="course">Course *</Label>
+                  <Select
+                    value={formData.courseId}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, courseId: value, batchId: "" })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses?.map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.title} - ₹{course.base_fee?.toLocaleString()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.courseId && batches && batches.length > 0 && (
                   <div>
-                    <Label htmlFor="course">Course *</Label>
+                    <Label htmlFor="batch">Preferred Batch (Optional)</Label>
                     <Select
-                      value={formData.courseId}
+                      value={formData.batchId}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, courseId: value, batchId: "" })
+                        setFormData({ ...formData, batchId: value })
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select course" />
+                        <SelectValue placeholder="Select batch" />
                       </SelectTrigger>
                       <SelectContent>
-                        {courses?.map((course) => (
-                          <SelectItem key={course.id} value={course.id}>
-                            {course.title} - ₹{course.base_fee?.toLocaleString()}
+                        {batches.map((batch) => (
+                          <SelectItem key={batch.id} value={batch.id}>
+                            {batch.batch_name} - {batch.available_seats} seats
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+                )}
 
-                  {formData.courseId && batches && batches.length > 0 && (
-                    <div>
-                      <Label htmlFor="batch">Preferred Batch (Optional)</Label>
-                      <Select
-                        value={formData.batchId}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, batchId: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select batch" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {batches.map((batch) => (
-                            <SelectItem key={batch.id} value={batch.id}>
-                              {batch.batch_name} - {batch.available_seats} seats
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  <Button
-                    className="w-full"
-                    onClick={handleCreateStudent}
-                    disabled={createStudentMutation.isPending}
-                  >
-                    {createStudentMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Student Account
-                      </>
-                    )}
-                  </Button>
+                <div>
+                  <Label htmlFor="dateOfJoining">Date of Joining</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="dateOfJoining"
+                      type="date"
+                      className="pl-10"
+                      value={formData.dateOfJoining}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dateOfJoining: e.target.value })
+                      }
+                    />
+                  </div>
                 </div>
-              )}
+
+                <Button
+                  className="w-full"
+                  onClick={handleCreateStudent}
+                  disabled={createStudentMutation.isPending}
+                >
+                  {createStudentMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Enrolling...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Enroll Student
+                    </>
+                  )}
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>

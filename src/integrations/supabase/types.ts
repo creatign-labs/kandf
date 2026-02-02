@@ -525,7 +525,7 @@ export type Database = {
       }
       enrollment_status_logs: {
         Row: {
-          changed_by: string
+          changed_by: string | null
           created_at: string | null
           id: string
           new_enrollment_status: string
@@ -534,7 +534,7 @@ export type Database = {
           student_id: string
         }
         Insert: {
-          changed_by: string
+          changed_by?: string | null
           created_at?: string | null
           id?: string
           new_enrollment_status: string
@@ -543,7 +543,7 @@ export type Database = {
           student_id: string
         }
         Update: {
-          changed_by?: string
+          changed_by?: string | null
           created_at?: string | null
           id?: string
           new_enrollment_status?: string

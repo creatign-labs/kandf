@@ -132,6 +132,20 @@ const AdminEnrollments = () => {
     },
   });
 
+  // Check if current user is super admin (only super admins can approve students)
+  const { data: isSuperAdmin } = useQuery({
+    queryKey: ["is-super-admin"],
+    queryFn: async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (!userId) return false;
+
+      const { data, error } = await supabase.rpc("is_super_admin", { _user_id: userId });
+      if (error) throw error;
+      return data === true;
+    },
+  });
+
   // Create student mutation using edge function
   const createStudentMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -541,7 +555,7 @@ const AdminEnrollments = () => {
                 ) : (
                   filteredEnrollments?.map((enrollment) => {
                     const canApprove =
-                      enrollment.profile?.enrollment_status === "enrolled";
+                      isSuperAdmin === true && enrollment.profile?.enrollment_status === "enrolled";
                     return (
                       <TableRow key={enrollment.id}>
                         <TableCell className="font-medium">

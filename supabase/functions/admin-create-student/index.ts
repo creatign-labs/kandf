@@ -41,15 +41,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if requesting user is admin or super_admin
-    const { data: requestingProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("id")
-      .eq("id", requestingUser.id)
-      .single();
+    // Check if requesting user is admin or super_admin by checking user_roles table
+    const { data: userRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", requestingUser.id);
 
-    const requestingUserRole = requestingUser.user_metadata?.role;
-    if (!requestingProfile || (requestingUserRole !== "admin" && requestingUserRole !== "super_admin")) {
+    const roles = userRoles?.map(r => r.role) || [];
+    const isAdmin = roles.includes("admin") || roles.includes("super_admin");
+    
+    if (!isAdmin) {
       return new Response(
         JSON.stringify({ error: "Only admins can create students" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }

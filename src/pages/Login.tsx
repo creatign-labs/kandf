@@ -235,9 +235,9 @@ const Login = () => {
             </form>
 
             <p className="text-center text-sm text-muted-foreground mt-6">
-              Don't have an account?{" "}
-              <Link to="/signup" className="text-primary font-medium hover:underline">
-                Sign up as Student
+              New student?{" "}
+              <Link to="/enquiry" className="text-primary font-medium hover:underline">
+                Contact Admissions
               </Link>
             </p>
             <p className="text-center text-sm text-muted-foreground mt-2">

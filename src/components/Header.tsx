@@ -236,7 +236,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
                   <Link to="/login">Log In</Link>
                 </Button>
                 <Button size="sm" asChild>
-                  <Link to="/signup">Sign Up</Link>
+                  <Link to="/enquiry">Enquire Now</Link>
                 </Button>
               </>
             )
@@ -359,7 +359,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
                         </SheetClose>
                         <SheetClose asChild>
                           <Button className="w-full" asChild>
-                            <Link to="/signup">Sign Up</Link>
+                            <Link to="/enquiry">Enquire Now</Link>
                           </Button>
                         </SheetClose>
                       </div>

@@ -270,31 +270,31 @@ const CourseDetail = () => {
                     </div>
                   </div>
 
-                  {/* Advance Payment Option */}
-                  <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
-                    <h4 className="font-semibold text-sm mb-1">Reserve Your Spot</h4>
+                  {/* Contact Admissions */}
+                  <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                    <h4 className="font-semibold text-sm mb-1">Interested in this course?</h4>
                     <p className="text-xs text-muted-foreground mb-3">
-                      Pay ₹2,000 advance to secure your seat. Remaining fee payable upon approval.
+                      Contact our admissions team to learn more and enroll in this program.
                     </p>
                     <Button 
                       size="lg" 
                       className="w-full"
-                      onClick={() => navigate('/advance-payment', { 
+                      onClick={() => navigate('/enquiry', { 
                         state: { course: course.title, courseId: course.id } 
                       })}
                     >
-                      Apply Now - ₹2,000
+                      Contact Admissions
                     </Button>
                   </div>
 
                   <div className="text-center pt-2">
                     <Link to="/enquiry" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                      Have questions? Contact us
+                      Have questions? Send an enquiry
                     </Link>
                   </div>
 
                   <p className="text-xs text-muted-foreground text-center mt-2">
-                    After advance payment, our team will contact you for enrollment completion.
+                    Our team will contact you to complete your enrollment.
                   </p>
                 </CardContent>
               </Card>

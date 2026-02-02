@@ -11,7 +11,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ChefDashboard from "./pages/ChefDashboard";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
+import SignupDisabled from "./pages/SignupDisabled";
 import Courses from "./pages/Courses";
 import CourseDetail from "./pages/CourseDetail";
 import Enroll from "./pages/Enroll";
@@ -88,7 +88,7 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/signup" element={<SignupDisabled />} />
           <Route path="/vendor/signup" element={<VendorSignup />} />
           <Route path="/vendor/awaiting-approval" element={<VendorAwaitingApproval />} />
           <Route path="/flow-walkthrough" element={<FlowWalkthrough />} />

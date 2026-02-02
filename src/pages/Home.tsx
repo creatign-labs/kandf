@@ -66,7 +66,7 @@ const Home = () => {
                 <Link to="/courses">Explore Courses</Link>
               </Button>
               <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
-                <Link to="/signup">Get Started Free</Link>
+                <Link to="/enquiry">Contact Admissions</Link>
               </Button>
             </div>
           </div>
@@ -180,7 +180,7 @@ const Home = () => {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
               <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
-                <Link to="/signup">Enroll Now</Link>
+                <Link to="/enquiry">Contact Admissions</Link>
               </Button>
               <Button size="lg" variant="outline" className="w-full sm:w-auto bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" asChild>
                 <Link to="/courses">Browse Courses</Link>

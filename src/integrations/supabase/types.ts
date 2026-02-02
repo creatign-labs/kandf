@@ -579,6 +579,8 @@ export type Database = {
           student_id: string
           total_classes: number | null
           updated_at: string
+          visiting_discount_type: string | null
+          visiting_discount_value: number | null
         }
         Insert: {
           attendance_completed?: boolean | null
@@ -597,6 +599,8 @@ export type Database = {
           student_id: string
           total_classes?: number | null
           updated_at?: string
+          visiting_discount_type?: string | null
+          visiting_discount_value?: number | null
         }
         Update: {
           attendance_completed?: boolean | null
@@ -615,6 +619,8 @@ export type Database = {
           student_id?: string
           total_classes?: number | null
           updated_at?: string
+          visiting_discount_type?: string | null
+          visiting_discount_value?: number | null
         }
         Relationships: [
           {

@@ -143,12 +143,25 @@ Deno.serve(async (req) => {
         reason: `Admin-created enrollment for course. Date of joining: ${dateOfJoining || 'Not specified'}`,
       });
 
+    // Create student_access_approvals record so they appear in approvals dashboard
+    const { error: approvalRecordError } = await supabaseAdmin
+      .from("student_access_approvals")
+      .insert({
+        student_id: newUser.user.id,
+        advance_payment_id: null,
+        status: "pending",
+      });
+
+    if (approvalRecordError) {
+      console.error("Error creating student_access_approvals:", approvalRecordError);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         studentId: newUser.user.id,
         email: email,
-        message: "Student created successfully. Awaiting payment and approval.",
+        message: "Student created successfully. Awaiting approval.",
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

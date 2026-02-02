@@ -30,36 +30,30 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
       // Fetch profile for status checks
       const { data: profile } = await supabase
         .from('profiles')
-        .select('account_status, must_change_password')
+        .select('enrollment_status, must_change_password')
         .eq('id', session.user.id)
         .single();
 
       if (profile) {
-        setAccountStatus(profile.account_status);
+        setAccountStatus(profile.enrollment_status);
         setMustChangePassword(profile.must_change_password || false);
 
-        // Handle account status redirects for students - STATE-BASED ROUTING
+        // Handle enrollment status redirects for students - STATE-BASED ROUTING
         if (requiredRole === 'student') {
           // Handle on_hold status
-          if (profile.account_status === 'on_hold') {
+          if (profile.enrollment_status === 'on_hold') {
             navigate('/student/account-hold');
             return;
           }
 
-          // Handle rejected status
-          if (profile.account_status === 'rejected') {
+          // Handle cancelled status (previously rejected)
+          if (profile.enrollment_status === 'cancelled') {
             navigate('/student/account-rejected');
             return;
           }
 
-          // Handle pending status (signed up, no payment yet) - redirect to advance payment
-          if (profile.account_status === 'pending') {
-            navigate('/advance-payment');
-            return;
-          }
-
-          // Handle advance_paid status - redirect to awaiting approval
-          if (profile.account_status === 'advance_paid') {
+          // Handle enrolled status (not yet activated) - redirect to awaiting approval
+          if (profile.enrollment_status === 'enrolled') {
             navigate('/student/awaiting-approval');
             return;
           }

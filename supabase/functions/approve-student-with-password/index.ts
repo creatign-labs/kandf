@@ -95,10 +95,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get current account status
+    // Get current enrollment status
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("account_status")
+      .select("enrollment_status")
       .eq("id", student_id)
       .single();
 
@@ -109,8 +109,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (profile.account_status !== "advance_paid") {
-      return new Response(JSON.stringify({ error: "Only students with advance_paid status can be approved" }), {
+    if (profile.enrollment_status !== "enrolled") {
+      return new Response(JSON.stringify({ error: "Only students with enrolled status can be activated" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     const { error: updateProfileError } = await supabaseAdmin
       .from("profiles")
       .update({ 
-        account_status: "active", 
+        enrollment_status: "active", 
         must_change_password: false,
         updated_at: new Date().toISOString() 
       })

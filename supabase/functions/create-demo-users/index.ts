@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       firstName: string;
       lastName: string;
       roles: string[];
-      accountStatus: string;
+      enrollmentStatus: string;
       needsEnrollment: boolean;
     }> = [
       {
@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
         firstName: "Demo",
         lastName: "Student",
         roles: ['student'],
-        accountStatus: 'active', // Set to active for immediate testing
+        enrollmentStatus: 'active', // Set to active for immediate testing
         needsEnrollment: true
       },
       {
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
         firstName: "Test",
         lastName: "Student2",
         roles: ['student'],
-        accountStatus: 'pending', // For Flow 1 testing
+        enrollmentStatus: 'enrolled', // For Flow 1 testing (awaiting activation)
         needsEnrollment: false
       },
       {
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
         firstName: "Demo",
         lastName: "Chef",
         roles: ['chef'],
-        accountStatus: 'active',
+        enrollmentStatus: 'active',
         needsEnrollment: false
       },
       {
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
         firstName: "Maria",
         lastName: "Pastry",
         roles: ['chef'],
-        accountStatus: 'active',
+        enrollmentStatus: 'active',
         needsEnrollment: false
       },
       {
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
         firstName: "Pierre",
         lastName: "Baker",
         roles: ['chef'],
-        accountStatus: 'active',
+        enrollmentStatus: 'active',
         needsEnrollment: false
       },
       {
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
         firstName: "Demo",
         lastName: "Admin",
         roles: ['admin'],
-        accountStatus: 'active',
+        enrollmentStatus: 'active',
         needsEnrollment: false
       },
       {
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
         firstName: "Super",
         lastName: "Admin",
         roles: ['admin', 'super_admin'],
-        accountStatus: 'active',
+        enrollmentStatus: 'active',
         needsEnrollment: false
       },
       {
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
         firstName: "Demo",
         lastName: "Vendor",
         roles: ['vendor'],
-        accountStatus: 'active',
+        enrollmentStatus: 'active',
         needsEnrollment: false
       }
     ];
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
       password: string; 
       userId?: string; 
       roles: readonly string[]; 
-      accountStatus: string 
+      enrollmentStatus: string 
     }> = [];
 
     const courseId = 'a1111111-1111-1111-1111-111111111111'; // Foundation Baking
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
           first_name: user.firstName,
           last_name: user.lastName,
           email: user.email,
-          account_status: user.accountStatus
+          enrollment_status: user.enrollmentStatus
         }, { onConflict: 'id' });
 
         // Assign roles
@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
           password: user.password,
           userId: authData.user.id,
           roles: user.roles,
-          accountStatus: user.accountStatus
+          enrollmentStatus: user.enrollmentStatus
         });
       }
     }

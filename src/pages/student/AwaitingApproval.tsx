@@ -38,7 +38,7 @@ const AwaitingApproval = () => {
     enabled: !!user,
   });
 
-  // Fetch account status and KYC docs from profiles table (single source of truth)
+  // Fetch enrollment status and KYC docs from profiles table (single source of truth)
   const queryClient = useQueryClient();
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["my-profile-status", user?.id],
@@ -46,7 +46,7 @@ const AwaitingApproval = () => {
       if (!user) return null;
       const { data, error } = await supabase
         .from("profiles")
-        .select("account_status, first_name, last_name, passport_photo_url, address_proof_url, marksheet_url, documents_verified")
+        .select("enrollment_status, first_name, last_name, passport_photo_url, address_proof_url, marksheet_url, documents_verified")
         .eq("id", user.id)
         .single();
 
@@ -63,7 +63,7 @@ const AwaitingApproval = () => {
 
   // Check if approved and redirect
   useEffect(() => {
-    if (profile?.account_status === "active") {
+    if (profile?.enrollment_status === "active") {
       navigate("/student");
     }
   }, [profile, navigate]);
@@ -132,10 +132,10 @@ const AwaitingApproval = () => {
               </div>
             </div>
 
-            {/* Approval Status - using profile.account_status */}
+            {/* Approval Status - using profile.enrollment_status */}
             <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
-              <div className={`p-2 rounded-full ${profile?.account_status === 'active' ? 'bg-green-100' : 'bg-yellow-100'}`}>
-                {profile?.account_status === 'active' ? (
+              <div className={`p-2 rounded-full ${profile?.enrollment_status === 'active' ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                {profile?.enrollment_status === 'active' ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 ) : (
                   <Clock className="h-5 w-5 text-yellow-600" />
@@ -143,17 +143,17 @@ const AwaitingApproval = () => {
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Account Status</h3>
-                  <Badge variant={profile?.account_status === 'active' ? "default" : "secondary"}>
-                    {profile?.account_status === 'active' ? "Active" : 
-                     profile?.account_status === 'advance_paid' ? "Awaiting Approval" :
-                     profile?.account_status === 'approved' ? "Approved" : "Pending"}
+                  <h3 className="font-semibold">Enrollment Status</h3>
+                  <Badge variant={profile?.enrollment_status === 'active' ? "default" : "secondary"}>
+                    {profile?.enrollment_status === 'active' ? "Active" : 
+                     profile?.enrollment_status === 'enrolled' ? "Awaiting Approval" :
+                     profile?.enrollment_status === 'completed' ? "Completed" : "Pending"}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {profile?.account_status === 'active' 
+                  {profile?.enrollment_status === 'active' 
                     ? "Your account is active. Redirecting to dashboard..."
-                    : "Your account is being reviewed by our admin team. You will receive your login credentials via email once approved."}
+                    : "Your enrollment is being reviewed by our admin team. You will receive your login credentials via email once approved."}
                 </p>
               </div>
             </div>

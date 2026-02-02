@@ -14,44 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      account_status_logs: {
-        Row: {
-          changed_by: string
-          created_at: string | null
-          id: string
-          new_status: string
-          old_status: string
-          reason: string | null
-          student_id: string
-        }
-        Insert: {
-          changed_by: string
-          created_at?: string | null
-          id?: string
-          new_status: string
-          old_status: string
-          reason?: string | null
-          student_id: string
-        }
-        Update: {
-          changed_by?: string
-          created_at?: string | null
-          id?: string
-          new_status?: string
-          old_status?: string
-          reason?: string | null
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "account_status_logs_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       addon_purchases: {
         Row: {
           addon_type: string
@@ -560,6 +522,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      enrollment_status_logs: {
+        Row: {
+          changed_by: string
+          created_at: string | null
+          id: string
+          new_enrollment_status: string
+          old_enrollment_status: string
+          reason: string | null
+          student_id: string
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string | null
+          id?: string
+          new_enrollment_status: string
+          old_enrollment_status: string
+          reason?: string | null
+          student_id: string
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string | null
+          id?: string
+          new_enrollment_status?: string
+          old_enrollment_status?: string
+          reason?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_status_logs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       enrollments: {
         Row: {
@@ -1264,13 +1264,13 @@ export type Database = {
       }
       profiles: {
         Row: {
-          account_status: string
           address_proof_url: string | null
           avatar_url: string | null
           bio: string | null
           created_at: string
           documents_verified: boolean | null
           email: string | null
+          enrollment_status: string
           first_name: string
           id: string
           last_name: string
@@ -1281,13 +1281,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_status?: string
           address_proof_url?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
           documents_verified?: boolean | null
           email?: string | null
+          enrollment_status?: string
           first_name: string
           id: string
           last_name: string
@@ -1298,13 +1298,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          account_status?: string
           address_proof_url?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
           documents_verified?: boolean | null
           email?: string | null
+          enrollment_status?: string
           first_name?: string
           id?: string
           last_name?: string

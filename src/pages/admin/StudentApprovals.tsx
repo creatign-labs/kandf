@@ -263,11 +263,11 @@ const StudentApprovals = () => {
 
       if (approvalError) throw approvalError;
 
-      // Update profile account_status to rejected
+      // Update profile enrollment_status to cancelled
       const { error: profileError } = await supabase
         .from("profiles")
         .update({ 
-          account_status: "rejected",
+          enrollment_status: "cancelled",
           updated_at: new Date().toISOString()
         })
         .eq("id", studentId);

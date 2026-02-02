@@ -41,28 +41,17 @@ Deno.serve(async (req) => {
 
     console.log("User authenticated:", user.id);
 
-    // Check if caller is super_admin or admin
+    // Check if caller is super_admin
     const { data: isSuperAdmin } = await supabaseUser.rpc("is_super_admin", { _user_id: user.id });
-    
-    // Also check for admin role if not super_admin
-    let isAdmin = false;
     if (!isSuperAdmin) {
-      const { data: hasAdminRole } = await supabaseUser.rpc("has_role", { 
-        _user_id: user.id, 
-        _role: "admin" 
-      });
-      isAdmin = hasAdminRole === true;
-    }
-    
-    if (!isSuperAdmin && !isAdmin) {
-      console.error("User is not admin or super admin:", user.id);
-      return new Response(JSON.stringify({ error: "Only admins can approve students" }), {
+      console.error("User is not super admin:", user.id);
+      return new Response(JSON.stringify({ error: "Only super admins can approve students" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("Admin/Super admin verified");
+    console.log("Super admin verified");
 
     const { student_id, course_id, batch_id } = await req.json();
     console.log("Request params:", { student_id, course_id, batch_id });

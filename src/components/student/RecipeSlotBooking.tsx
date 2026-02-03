@@ -123,7 +123,6 @@ export function RecipeSlotBooking({ courseId, recipeId, recipeTitle, onBooked }:
           <ul className="text-amber-800 dark:text-amber-200 space-y-1">
             <li>• Slots must be booked at least one day in advance</li>
             <li>• Cancellations allowed before 11:59 PM the previous day</li>
-            <li>• You will be grouped with other students learning the same recipe</li>
           </ul>
         </div>
       </div>
@@ -229,12 +228,6 @@ export function RecipeSlotBooking({ courseId, recipeId, recipeTitle, onBooked }:
               <span className="text-muted-foreground">Time</span>
               <span className="font-medium">{selectedSlot.timeSlot}</span>
             </div>
-          </div>
-          <div className="bg-muted/50 rounded-lg p-3 mb-4">
-            <p className="text-sm text-muted-foreground">
-              <CheckCircle className="h-4 w-4 inline mr-1 text-green-600" />
-              You will be auto-grouped with other students learning this recipe
-            </p>
           </div>
           <Button 
             size="lg" 

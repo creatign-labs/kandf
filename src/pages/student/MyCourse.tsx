@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, CheckCircle, Lock, Loader2, Calendar, CalendarCheck } from "lucide-react";
+import { Clock, CheckCircle, Loader2, Calendar, CalendarCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RecipeSlotBooking } from "@/components/student/RecipeSlotBooking";
@@ -191,12 +191,6 @@ const MyCourse = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link to={`/student/recipes/${recipe.id}`}>
-                            <BookOpen className="h-4 w-4 mr-1" />
-                            View
-                          </Link>
-                        </Button>
                         {!isCompleted && !existingBooking && (
                           <Button
                             variant={isBookingOpen ? "secondary" : "outline"}

@@ -53,8 +53,8 @@ Deno.serve(async (req) => {
 
     console.log("Super admin verified");
 
-    const { student_id, course_id, batch_id } = await req.json();
-    console.log("Request params:", { student_id, course_id, batch_id });
+    const { student_id, course_id, batch_id, payment_schedule } = await req.json();
+    console.log("Request params:", { student_id, course_id, batch_id, payment_schedule });
 
     if (!student_id) {
       console.error("No student_id provided");
@@ -261,7 +261,47 @@ Deno.serve(async (req) => {
             .eq("id", enrollmentCourseId)
             .single();
 
-          if (courseData?.base_fee) {
+          // Create custom payment schedule if provided, otherwise use defaults
+          if (payment_schedule && payment_schedule.balance1Amount && payment_schedule.balance2Amount) {
+            console.log("Using custom payment schedule:", payment_schedule);
+            
+            // Insert registration fee (already paid)
+            const { error: regError } = await supabaseAdmin.from("payment_schedules").insert({
+              enrollment_id: newEnrollment.id,
+              student_id: student_id,
+              payment_stage: "registration",
+              amount: 2000,
+              due_date: new Date().toISOString().split('T')[0],
+              status: "paid",
+              paid_at: new Date().toISOString(),
+            });
+            if (regError) console.error("Failed to insert registration payment:", regError);
+
+            // Insert Balance 1
+            const { error: bal1Error } = await supabaseAdmin.from("payment_schedules").insert({
+              enrollment_id: newEnrollment.id,
+              student_id: student_id,
+              payment_stage: "balance_1",
+              amount: payment_schedule.balance1Amount,
+              due_date: payment_schedule.balance1DueDate,
+              status: "pending",
+            });
+            if (bal1Error) console.error("Failed to insert balance 1 payment:", bal1Error);
+
+            // Insert Balance 2
+            const { error: bal2Error } = await supabaseAdmin.from("payment_schedules").insert({
+              enrollment_id: newEnrollment.id,
+              student_id: student_id,
+              payment_stage: "balance_2",
+              amount: payment_schedule.balance2Amount,
+              due_date: payment_schedule.balance2DueDate,
+              status: "pending",
+            });
+            if (bal2Error) console.error("Failed to insert balance 2 payment:", bal2Error);
+
+            console.log(`Custom payment schedule created for enrollment ${newEnrollment.id}`);
+          } else if (courseData?.base_fee) {
+            // Use default payment schedule via RPC
             const { error: scheduleError } = await supabaseAdmin.rpc("create_payment_schedule", {
               p_enrollment_id: newEnrollment.id,
               p_student_id: student_id,
@@ -274,7 +314,7 @@ Deno.serve(async (req) => {
             if (scheduleError) {
               console.error("Failed to create payment schedule:", scheduleError);
             } else {
-              console.log(`Payment schedule created for enrollment ${newEnrollment.id}`);
+              console.log(`Default payment schedule created for enrollment ${newEnrollment.id}`);
             }
           }
         }

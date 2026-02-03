@@ -19,6 +19,7 @@ import Enquiry from "./pages/Enquiry";
 import Payment from "./pages/Payment";
 import AdvancePayment from "./pages/AdvancePayment";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import PublicPayment from "./pages/PublicPayment";
 import MyCourse from "./pages/student/MyCourse";
 import RecipeDetail from "./pages/student/RecipeDetail";
 import MyBookings from "./pages/student/MyBookings";
@@ -101,6 +102,7 @@ const App = () => (
           <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
           <Route path="/payment/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
           <Route path="/advance-payment" element={<ProtectedRoute><AdvancePayment /></ProtectedRoute>} />
+          <Route path="/pay/:scheduleId" element={<PublicPayment />} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/student/awaiting-approval" element={<ProtectedRoute><AwaitingApproval /></ProtectedRoute>} />
           <Route path="/student/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />

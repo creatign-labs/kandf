@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.admin-create-student]
 verify_jwt = false
+
+[functions.create-public-payment-order]
+verify_jwt = false
+
+[functions.verify-public-payment]
+verify_jwt = false

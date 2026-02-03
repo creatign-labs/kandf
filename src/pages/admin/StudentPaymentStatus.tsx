@@ -19,12 +19,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, CreditCard, Loader2, CheckCircle, Clock, AlertTriangle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Search, CreditCard, Loader2, CheckCircle, Clock, AlertTriangle, Copy, Link2, ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { toast } from "@/hooks/use-toast";
 
 const StudentPaymentStatus = () => {
+  const BASE_URL = window.location.origin;
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -98,6 +105,15 @@ const StudentPaymentStatus = () => {
       return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Overdue</Badge>;
     }
     return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+  };
+
+  const copyPaymentLink = (scheduleId: string) => {
+    const link = `${BASE_URL}/pay/${scheduleId}`;
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Payment link copied!",
+      description: "Share this link with the student to collect payment.",
+    });
   };
 
   const formatStage = (stage: string) => {
@@ -188,6 +204,7 @@ const StudentPaymentStatus = () => {
                 <TableHead>Due Date</TableHead>
                 <TableHead>Paid On</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -211,11 +228,41 @@ const StudentPaymentStatus = () => {
                     {payment.paid_at ? format(new Date(payment.paid_at), "dd MMM yyyy") : "-"}
                   </TableCell>
                   <TableCell>{getStatusBadge(payment.status, payment.due_date)}</TableCell>
+                  <TableCell className="text-right">
+                    {payment.status !== "paid" && (
+                      <div className="flex items-center justify-end gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyPaymentLink(payment.id)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Copy Payment Link</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`${BASE_URL}/pay/${payment.id}`, '_blank')}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Open Payment Page</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               {(!filteredData || filteredData.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No payment records found</p>
                   </TableCell>

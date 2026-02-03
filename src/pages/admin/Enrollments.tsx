@@ -54,11 +54,20 @@ const AdminEnrollments = () => {
     id: string;
     name: string;
     courseId: string;
+    courseFee: number;
   } | null>(null);
   const [approvalResult, setApprovalResult] = useState<{
     password: string;
     studentCode: string;
   } | null>(null);
+
+  // Custom payment schedule state
+  const [customPaymentSchedule, setCustomPaymentSchedule] = useState({
+    balance1Amount: 0,
+    balance1DueDate: "",
+    balance2Amount: 0,
+    balance2DueDate: "",
+  });
 
   // Form state for new enrollment
   const [formData, setFormData] = useState({
@@ -207,9 +216,26 @@ const AdminEnrollments = () => {
 
   // Approve student mutation
   const approveStudentMutation = useMutation({
-    mutationFn: async ({ studentId, courseId }: { studentId: string; courseId: string }) => {
+    mutationFn: async ({ 
+      studentId, 
+      courseId,
+      paymentSchedule 
+    }: { 
+      studentId: string; 
+      courseId: string;
+      paymentSchedule: {
+        balance1Amount: number;
+        balance1DueDate: string;
+        balance2Amount: number;
+        balance2DueDate: string;
+      };
+    }) => {
       const response = await supabase.functions.invoke("approve-student-with-password", {
-        body: { student_id: studentId, course_id: courseId },
+        body: { 
+          student_id: studentId, 
+          course_id: courseId,
+          payment_schedule: paymentSchedule,
+        },
       });
 
       if (response.error) {
@@ -245,10 +271,29 @@ const AdminEnrollments = () => {
   });
 
   const handleApproveClick = (enrollment: any) => {
+    const courseFee = enrollment.courses?.base_fee || 0;
+    const remainingAmount = courseFee - 2000; // After registration fee
+    const defaultBalance1 = Math.round(remainingAmount / 2);
+    const defaultBalance2 = remainingAmount - defaultBalance1;
+    
+    // Calculate default dates (7 and 30 days from now)
+    const today = new Date();
+    const balance1Date = new Date(today);
+    balance1Date.setDate(balance1Date.getDate() + 7);
+    const balance2Date = new Date(today);
+    balance2Date.setDate(balance2Date.getDate() + 30);
+
     setSelectedStudent({
       id: enrollment.student_id,
       name: `${enrollment.profile?.first_name} ${enrollment.profile?.last_name}`,
       courseId: enrollment.course_id,
+      courseFee: courseFee,
+    });
+    setCustomPaymentSchedule({
+      balance1Amount: defaultBalance1,
+      balance1DueDate: balance1Date.toISOString().split('T')[0],
+      balance2Amount: defaultBalance2,
+      balance2DueDate: balance2Date.toISOString().split('T')[0],
     });
     setApprovalResult(null);
     setApproveDialogOpen(true);
@@ -259,6 +304,7 @@ const AdminEnrollments = () => {
       approveStudentMutation.mutate({
         studentId: selectedStudent.id,
         courseId: selectedStudent.courseId,
+        paymentSchedule: customPaymentSchedule,
       });
     }
   };
@@ -655,10 +701,87 @@ const AdminEnrollments = () => {
                     </p>
                   </div>
                 ) : (
-                  <>
-                    Are you sure you want to approve <strong>{selectedStudent?.name}</strong>? 
-                    This will activate their account and generate login credentials.
-                  </>
+                  <div className="space-y-4 mt-4">
+                    <p>
+                      Are you sure you want to approve <strong>{selectedStudent?.name}</strong>? 
+                      This will activate their account and generate login credentials.
+                    </p>
+                    
+                    {/* Payment Schedule Customization */}
+                    <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-sm">Payment Schedule</h4>
+                        <span className="text-xs text-muted-foreground">
+                          Course Fee: ₹{selectedStudent?.courseFee?.toLocaleString()} (₹2,000 registration already paid)
+                        </span>
+                      </div>
+                      
+                      {/* Balance 1 */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="balance1Amount" className="text-xs">Balance Payment 1 (₹)</Label>
+                          <Input
+                            id="balance1Amount"
+                            type="number"
+                            value={customPaymentSchedule.balance1Amount}
+                            onChange={(e) => setCustomPaymentSchedule(prev => ({
+                              ...prev,
+                              balance1Amount: Number(e.target.value)
+                            }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="balance1DueDate" className="text-xs">Due Date</Label>
+                          <Input
+                            id="balance1DueDate"
+                            type="date"
+                            value={customPaymentSchedule.balance1DueDate}
+                            onChange={(e) => setCustomPaymentSchedule(prev => ({
+                              ...prev,
+                              balance1DueDate: e.target.value
+                            }))}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Balance 2 */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="balance2Amount" className="text-xs">Balance Payment 2 (₹)</Label>
+                          <Input
+                            id="balance2Amount"
+                            type="number"
+                            value={customPaymentSchedule.balance2Amount}
+                            onChange={(e) => setCustomPaymentSchedule(prev => ({
+                              ...prev,
+                              balance2Amount: Number(e.target.value)
+                            }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="balance2DueDate" className="text-xs">Due Date</Label>
+                          <Input
+                            id="balance2DueDate"
+                            type="date"
+                            value={customPaymentSchedule.balance2DueDate}
+                            onChange={(e) => setCustomPaymentSchedule(prev => ({
+                              ...prev,
+                              balance2DueDate: e.target.value
+                            }))}
+                          />
+                        </div>
+                      </div>
+                      
+                      <p className="text-xs text-muted-foreground">
+                        Total: ₹{(2000 + customPaymentSchedule.balance1Amount + customPaymentSchedule.balance2Amount).toLocaleString()} 
+                        {selectedStudent?.courseFee && (2000 + customPaymentSchedule.balance1Amount + customPaymentSchedule.balance2Amount) !== selectedStudent.courseFee && (
+                          <span className="text-amber-600 ml-2">
+                            (differs from course fee by ₹{Math.abs((2000 + customPaymentSchedule.balance1Amount + customPaymentSchedule.balance2Amount) - selectedStudent.courseFee).toLocaleString()})
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>

@@ -81,6 +81,8 @@ import VendorProfile from "./pages/vendor/VendorProfile";
 import VendorSignup from "./pages/vendor/VendorSignup";
 import VendorAwaitingApproval from "./pages/vendor/VendorAwaitingApproval";
 import VendorApprovals from "./pages/admin/VendorApprovals";
+import PurchaseOrders from "./pages/admin/PurchaseOrders";
+import BatchCalendar from "./pages/admin/BatchCalendar";
 
 const queryClient = new QueryClient();
 
@@ -157,6 +159,8 @@ const App = () => (
           <Route path="/admin/audit-logs" element={<ProtectedRoute requiredRole="admin"><AuditLogs /></ProtectedRoute>} />
           <Route path="/admin/executive" element={<ProtectedRoute requiredRole="admin"><SuperAdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/financials" element={<ProtectedRoute requiredRole="admin"><Financials /></ProtectedRoute>} />
+          <Route path="/admin/purchase-orders" element={<ProtectedRoute requiredRole="admin"><PurchaseOrders /></ProtectedRoute>} />
+          <Route path="/admin/batch-calendar" element={<ProtectedRoute requiredRole="admin"><BatchCalendar /></ProtectedRoute>} />
           
           <Route path="/chef" element={<ProtectedRoute requiredRole="chef"><ChefDashboard /></ProtectedRoute>} />
           <Route path="/chef/schedule" element={<ProtectedRoute requiredRole="chef"><Schedule /></ProtectedRoute>} />

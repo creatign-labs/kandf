@@ -1514,6 +1514,107 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_id: string
+          ordered_quantity: number
+          purchase_order_id: string
+          received_quantity: number
+          unit_cost: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_id: string
+          ordered_quantity?: number
+          purchase_order_id: string
+          received_quantity?: number
+          unit_cost?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_id?: string
+          ordered_quantity?: number
+          purchase_order_id?: string
+          received_quantity?: number
+          unit_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          received_at: string | null
+          received_by: string | null
+          requirement_id: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+          vendor_name: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          requirement_id?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          vendor_name: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          requirement_id?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "daily_inventory_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           assessment_id: string
@@ -2350,6 +2451,14 @@ export type Database = {
           success: boolean
         }[]
       }
+      book_recipe_slot_safe: {
+        Args: {
+          p_booking_id?: string
+          p_recipe_batch_id: string
+          p_student_id: string
+        }
+        Returns: undefined
+      }
       cancel_recipe_booking: {
         Args: { p_booking_id: string; p_student_id: string }
         Returns: {
@@ -2472,6 +2581,7 @@ export type Database = {
         Args: { p_recipe_id: string; p_student_id: string }
         Returns: boolean
       }
+      receive_purchase_order: { Args: { p_po_id: string }; Returns: undefined }
       release_application_to_vendor: {
         Args: { p_application_id: string }
         Returns: boolean

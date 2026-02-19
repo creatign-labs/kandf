@@ -97,6 +97,51 @@ export type Database = {
           },
         ]
       }
+      approval_requests: {
+        Row: {
+          created_at: string
+          details: Json | null
+          entity_id: string
+          entity_type: string
+          id: string
+          request_type: string
+          requested_by: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          request_type: string
+          requested_by: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          request_type?: string
+          requested_by?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       assessments: {
         Row: {
           course_id: string
@@ -195,6 +240,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          user_id?: string
+        }
+        Relationships: []
       }
       batches: {
         Row: {
@@ -915,6 +993,7 @@ export type Database = {
           status: string
           student_id: string
           updated_at: string
+          vendor_status: string | null
         }
         Insert: {
           cover_letter?: string | null
@@ -928,6 +1007,7 @@ export type Database = {
           status?: string
           student_id: string
           updated_at?: string
+          vendor_status?: string | null
         }
         Update: {
           cover_letter?: string | null
@@ -941,6 +1021,7 @@ export type Database = {
           status?: string
           student_id?: string
           updated_at?: string
+          vendor_status?: string | null
         }
         Relationships: [
           {
@@ -1521,6 +1602,10 @@ export type Database = {
           id: string
           is_manually_adjusted: boolean
           recipe_id: string
+          session_notes: string | null
+          session_notes_at: string | null
+          session_notes_by: string | null
+          status: string
           time_slot: string
           updated_at: string
         }
@@ -1532,6 +1617,10 @@ export type Database = {
           id?: string
           is_manually_adjusted?: boolean
           recipe_id: string
+          session_notes?: string | null
+          session_notes_at?: string | null
+          session_notes_by?: string | null
+          status?: string
           time_slot: string
           updated_at?: string
         }
@@ -1543,6 +1632,10 @@ export type Database = {
           id?: string
           is_manually_adjusted?: boolean
           recipe_id?: string
+          session_notes?: string | null
+          session_notes_at?: string | null
+          session_notes_by?: string | null
+          status?: string
           time_slot?: string
           updated_at?: string
         }

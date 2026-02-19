@@ -52,6 +52,9 @@ import DailyInventoryRequirements from "./pages/admin/DailyInventoryRequirements
 import RecipeIngredients from "./pages/admin/RecipeIngredients";
 import AdminRecipes from "./pages/admin/AdminRecipes";
 import SuperAdminManagement from "./pages/admin/SuperAdminManagement";
+import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
+import ApprovalCenter from "./pages/admin/ApprovalCenter";
+import AuditLogs from "./pages/admin/AuditLogs";
 import StudentPaymentStatus from "./pages/admin/StudentPaymentStatus";
 import BookingRecipeAssignment from "./pages/admin/BookingRecipeAssignment";
 import RecipeBatchManagement from "./pages/admin/RecipeBatchManagement";
@@ -63,6 +66,7 @@ import MySpecializations from "./pages/chef/MySpecializations";
 import InventoryUsage from "./pages/chef/InventoryUsage";
 import DailyIngredients from "./pages/chef/DailyIngredients";
 import RequiredStock from "./pages/chef/RequiredStock";
+import Schedule from "./pages/chef/Schedule";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/student/Profile";
 import FlowWalkthrough from "./pages/FlowWalkthrough";
@@ -148,12 +152,17 @@ const App = () => (
           <Route path="/admin/job-applications" element={<ProtectedRoute requiredRole="admin"><JobApplicationsReview /></ProtectedRoute>} />
           <Route path="/admin/vendor-approvals" element={<ProtectedRoute requiredRole="admin"><VendorApprovals /></ProtectedRoute>} />
           <Route path="/admin/student-payments" element={<ProtectedRoute requiredRole="admin"><StudentPaymentStatus /></ProtectedRoute>} />
+          <Route path="/admin/approvals" element={<ProtectedRoute requiredRole="admin"><ApprovalCenter /></ProtectedRoute>} />
+          <Route path="/admin/audit-logs" element={<ProtectedRoute requiredRole="admin"><AuditLogs /></ProtectedRoute>} />
+          <Route path="/admin/executive" element={<ProtectedRoute requiredRole="admin"><SuperAdminDashboard /></ProtectedRoute>} />
           
           <Route path="/chef" element={<ProtectedRoute requiredRole="chef"><ChefDashboard /></ProtectedRoute>} />
+          <Route path="/chef/schedule" element={<ProtectedRoute requiredRole="chef"><Schedule /></ProtectedRoute>} />
           <Route path="/chef/attendance" element={<ProtectedRoute requiredRole="chef"><Attendance /></ProtectedRoute>} />
           <Route path="/chef/required-stock" element={<ProtectedRoute requiredRole="chef"><RequiredStock /></ProtectedRoute>} />
-          <Route path="/chef/my-recipes" element={<ProtectedRoute requiredRole="chef"><MySpecializations /></ProtectedRoute>} />
           <Route path="/chef/recipes" element={<ProtectedRoute requiredRole="chef"><ChefRecipes /></ProtectedRoute>} />
+          <Route path="/chef/daily-ingredients" element={<ProtectedRoute requiredRole="chef"><DailyIngredients /></ProtectedRoute>} />
+          <Route path="/chef/profile" element={<ProtectedRoute requiredRole="chef"><Profile /></ProtectedRoute>} />
           <Route path="/chef/inventory-usage" element={<ProtectedRoute requiredRole="chef"><InventoryUsage /></ProtectedRoute>} />
           <Route path="/chef/daily-ingredients" element={<ProtectedRoute requiredRole="chef"><DailyIngredients /></ProtectedRoute>} />
           <Route path="/chef/profile" element={<ProtectedRoute requiredRole="chef"><Profile /></ProtectedRoute>} />

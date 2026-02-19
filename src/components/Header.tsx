@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText, LayoutDashboard, ChevronDown, MoreHorizontal } from "lucide-react";
+import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText, LayoutDashboard, ChevronDown, MoreHorizontal, CreditCard } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -51,11 +51,11 @@ const studentMainNavItems: NavItem[] = [
 
 // More dropdown items for student
 const studentMoreNavItems: NavItem[] = [
-  { to: "/student/assessments", label: "Assessments", icon: FileText },
   { to: "/student/certificates", label: "Certificates", icon: Award },
   { to: "/student/jobs", label: "Jobs", icon: Briefcase },
   { to: "/student/resume", label: "Resume", icon: FileText },
   { to: "/student/feedback", label: "Feedback", icon: MessageSquare },
+  { to: "/student/course-payment", label: "Payments", icon: CreditCard },
 ];
 
 // Combined for mobile menu

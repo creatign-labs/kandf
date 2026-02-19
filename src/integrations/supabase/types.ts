@@ -641,7 +641,9 @@ export type Database = {
       }
       feedback: {
         Row: {
+          batch_id: string | null
           category: string
+          chef_id: string | null
           created_at: string
           feedback_text: string
           id: string
@@ -650,7 +652,9 @@ export type Database = {
           suggestions: string | null
         }
         Insert: {
+          batch_id?: string | null
           category: string
+          chef_id?: string | null
           created_at?: string
           feedback_text: string
           id?: string
@@ -659,7 +663,9 @@ export type Database = {
           suggestions?: string | null
         }
         Update: {
+          batch_id?: string | null
           category?: string
+          chef_id?: string | null
           created_at?: string
           feedback_text?: string
           id?: string
@@ -668,6 +674,13 @@ export type Database = {
           suggestions?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "feedback_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "feedback_student_id_fkey"
             columns: ["student_id"]

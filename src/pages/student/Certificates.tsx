@@ -89,14 +89,14 @@ const Certificates = () => {
     const courseTitle = cert.courses?.title || "Course";
     const issueDate = format(new Date(cert.issueDate), "MMMM d, yyyy");
 
-    // Create PDF content using canvas
+    // Create a high-quality canvas for PDF-like output
     const canvas = document.createElement("canvas");
     canvas.width = 1056;
     canvas.height = 816;
     const ctx = canvas.getContext("2d");
 
     if (!ctx) {
-      toast({ title: "Error generating PDF", variant: "destructive" });
+      toast({ title: "Error generating certificate", variant: "destructive" });
       return;
     }
 
@@ -111,8 +111,6 @@ const Certificates = () => {
     ctx.strokeStyle = "#c4a574";
     ctx.lineWidth = 12;
     ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
-
-    // Inner border
     ctx.strokeStyle = "#d4b896";
     ctx.lineWidth = 2;
     ctx.strokeRect(50, 50, canvas.width - 100, canvas.height - 100);
@@ -131,37 +129,30 @@ const Certificates = () => {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // "This is to certify that"
     ctx.fillStyle = "#5c4033";
     ctx.font = "italic 24px Georgia, serif";
     ctx.fillText("This is to certify that", canvas.width / 2, 260);
 
-    // Student name
     ctx.fillStyle = "#2d1810";
     ctx.font = "bold 48px Georgia, serif";
     ctx.fillText(studentName, canvas.width / 2, 340);
 
-    // "has successfully completed"
     ctx.fillStyle = "#5c4033";
     ctx.font = "italic 24px Georgia, serif";
     ctx.fillText("has successfully completed the course", canvas.width / 2, 410);
 
-    // Course title
     ctx.fillStyle = "#8b4513";
     ctx.font = "bold 36px Georgia, serif";
     ctx.fillText(courseTitle, canvas.width / 2, 480);
 
-    // Institution
     ctx.fillStyle = "#5c4033";
     ctx.font = "italic 22px Georgia, serif";
     ctx.fillText("at Knead & Frost Baking Academy", canvas.width / 2, 530);
 
-    // Date
     ctx.fillStyle = "#5c4033";
     ctx.font = "20px Georgia, serif";
     ctx.fillText(`Issued on ${issueDate}`, canvas.width / 2, 610);
 
-    // Certificate number
     ctx.fillStyle = "#8b7355";
     ctx.font = "16px Georgia, serif";
     ctx.fillText(`Certificate #: ${cert.certificateNumber}`, canvas.width / 2, 650);
@@ -173,18 +164,17 @@ const Certificates = () => {
     ctx.strokeStyle = "#5c4033";
     ctx.lineWidth = 1;
     ctx.stroke();
-
     ctx.fillStyle = "#5c4033";
     ctx.font = "16px Georgia, serif";
     ctx.fillText("Director, Knead & Frost Academy", canvas.width / 2, 750);
 
-    // Convert to blob and download
+    // Convert canvas to PDF-like download using data URL
     canvas.toBlob((blob) => {
       if (blob) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${courseTitle.replace(/\s+/g, "_")}_Certificate.png`;
+        a.download = `${courseTitle.replace(/\s+/g, "_")}_Certificate.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -371,12 +361,12 @@ const Certificates = () => {
           )}
 
           <Card className="p-6 border-border/60 mt-8 bg-accent/20">
-            <h3 className="font-semibold mb-2">Certificate Information</h3>
+            <h3 className="font-semibold mb-2">Certificate Eligibility</h3>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Certificates are issued upon successful completion of module assessments</li>
-              <li>• All certificates are digitally signed and verifiable</li>
-              <li>• Share your certificates on LinkedIn and other professional networks</li>
-              <li>• Certificates can be downloaded as high-quality images</li>
+              <li>• Complete all recipe sessions (100% progress)</li>
+              <li>• Clear all outstanding payments (₹0 balance)</li>
+              <li>• Certificates are auto-generated once both conditions are met</li>
+              <li>• Download as a high-quality PDF</li>
             </ul>
           </Card>
         </div>

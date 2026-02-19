@@ -7,26 +7,114 @@ import {
   X, 
   Loader2,
   ChefHat,
-  Users
+  Users,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle
 } from "lucide-react";
 import { format, parseISO, isAfter, startOfDay, addDays } from "date-fns";
 import { useMyRecipeBookings, useCancelRecipeBooking } from "@/hooks/useRecipeBooking";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export function MyRecipeBookings() {
   const { data: bookings, isLoading } = useMyRecipeBookings();
   const cancelMutation = useCancelRecipeBooking();
 
+  // Fetch booking statuses from bookings table for accurate status display
+  const { data: bookingStatuses } = useQuery({
+    queryKey: ['my-booking-statuses'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return {};
+      const { data } = await supabase
+        .from('bookings')
+        .select('id, status')
+        .eq('student_id', user.id);
+      const map: Record<string, string> = {};
+      data?.forEach(b => { map[b.id] = b.status; });
+      return map;
+    }
+  });
+
+  // Fetch attendance records for status mapping
+  const { data: attendanceRecords } = useQuery({
+    queryKey: ['my-attendance-records'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return {};
+      const { data } = await supabase
+        .from('attendance')
+        .select('student_id, class_date, status')
+        .eq('student_id', user.id);
+      const map: Record<string, string> = {};
+      data?.forEach(a => { map[a.class_date] = a.status; });
+      return map;
+    }
+  });
+
+  // Fetch no-show count for warnings
+  const { data: noShowCount } = useQuery({
+    queryKey: ['my-no-show-count'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return 0;
+      const { count } = await supabase
+        .from('attendance')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', user.id)
+        .eq('status', 'no_show');
+      return count || 0;
+    }
+  });
+
   const today = startOfDay(new Date());
   const tomorrow = addDays(today, 1);
+
+  const getBookingStatus = (booking: any): { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode } => {
+    const batch = booking.recipe_batches;
+    if (!batch) return { label: "Unknown", variant: "outline", icon: null };
+    
+    const bookingId = booking.booking_id;
+    const bookingStatus = bookingId && bookingStatuses ? bookingStatuses[bookingId] : null;
+    const batchDate = batch.batch_date;
+    const attendanceStatus = attendanceRecords?.[batchDate];
+
+    // If cancelled
+    if (bookingStatus === 'cancelled') {
+      return { label: "Cancelled", variant: "outline", icon: <XCircle className="h-3 w-3" /> };
+    }
+
+    // If attendance recorded
+    if (attendanceStatus === 'present') {
+      return { label: "Attended", variant: "default", icon: <CheckCircle2 className="h-3 w-3" /> };
+    }
+    if (attendanceStatus === 'no_show') {
+      return { label: "No Show", variant: "destructive", icon: <AlertTriangle className="h-3 w-3" /> };
+    }
+
+    // Future booking
+    const batchDateParsed = parseISO(batchDate);
+    if (isAfter(batchDateParsed, today) || format(batchDateParsed, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')) {
+      return { label: "Booked", variant: "secondary", icon: <CalendarIcon className="h-3 w-3" /> };
+    }
+
+    // Past with no attendance record — likely completed
+    return { label: "Completed", variant: "default", icon: <CheckCircle2 className="h-3 w-3" /> };
+  };
 
   // Split into upcoming and past
   const upcomingBookings = bookings?.filter(b => {
     const batchDate = parseISO(b.recipe_batches?.batch_date || '');
+    const bookingStatus = b.booking_id && bookingStatuses ? bookingStatuses[b.booking_id] : null;
+    if (bookingStatus === 'cancelled') return false;
     return isAfter(batchDate, today) || format(batchDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
   }) || [];
 
   const pastBookings = bookings?.filter(b => {
     const batchDate = parseISO(b.recipe_batches?.batch_date || '');
+    const bookingStatus = b.booking_id && bookingStatuses ? bookingStatuses[b.booking_id] : null;
+    if (bookingStatus === 'cancelled') return true; // show cancelled in past
     return !isAfter(batchDate, today) && format(batchDate, 'yyyy-MM-dd') !== format(today, 'yyyy-MM-dd');
   }) || [];
 
@@ -45,6 +133,21 @@ export function MyRecipeBookings() {
 
   return (
     <div className="space-y-8">
+      {/* No-show warning */}
+      {(noShowCount || 0) >= 2 && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-destructive mb-1">No-Show Warning</p>
+            <p className="text-destructive/80">
+              You have {noShowCount} no-show(s). {(noShowCount || 0) >= 3 
+                ? "Your booking access has been locked. Contact admin."
+                : "One more no-show will lock your booking access."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Upcoming */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Upcoming Sessions</h2>
@@ -53,6 +156,7 @@ export function MyRecipeBookings() {
             {upcomingBookings.map((booking) => {
               const batch = booking.recipe_batches;
               if (!batch) return null;
+              const status = getBookingStatus(booking);
 
               return (
                 <Card key={booking.id} className="p-4 md:p-6 border-border/60">
@@ -63,7 +167,10 @@ export function MyRecipeBookings() {
                           <ChefHat className="h-5 w-5 text-primary" />
                           {batch.recipes?.title}
                         </h3>
-                        <Badge>Confirmed</Badge>
+                        <Badge variant={status.variant} className="gap-1">
+                          {status.icon}
+                          {status.label}
+                        </Badge>
                         {booking.is_manual_assignment && (
                           <Badge variant="outline">Manually Assigned</Badge>
                         )}
@@ -130,6 +237,7 @@ export function MyRecipeBookings() {
             {pastBookings.map((booking) => {
               const batch = booking.recipe_batches;
               if (!batch) return null;
+              const status = getBookingStatus(booking);
 
               return (
                 <Card key={booking.id} className="p-4 md:p-6 border-border/60 opacity-75">
@@ -140,7 +248,10 @@ export function MyRecipeBookings() {
                           <ChefHat className="h-4 w-4 text-muted-foreground" />
                           {batch.recipes?.title}
                         </h3>
-                        <Badge variant="secondary">Completed</Badge>
+                        <Badge variant={status.variant} className="gap-1">
+                          {status.icon}
+                          {status.label}
+                        </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground">
                         <span>{format(parseISO(batch.batch_date), 'MMMM d, yyyy')}</span>

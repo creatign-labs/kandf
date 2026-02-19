@@ -3,8 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { MessageSquare, Star, Loader2, CheckCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MessageSquare, Star, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,10 +12,77 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Feedback = () => {
   const [rating, setRating] = useState("5");
-  const [category, setCategory] = useState("course");
+  const [selectedBatchId, setSelectedBatchId] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
   const [suggestions, setSuggestions] = useState("");
   const queryClient = useQueryClient();
+
+  // Fetch completed batches (past bookings with attendance)
+  const { data: completedBatches, isLoading: batchesLoading } = useQuery({
+    queryKey: ['completed-batches-for-feedback'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      // Get bookings that are in the past and attended
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          booking_date,
+          time_slot,
+          recipe_id,
+          assigned_chef_id,
+          course_id,
+          recipes (title),
+          courses (title)
+        `)
+        .eq('student_id', user.id)
+        .eq('status', 'confirmed')
+        .lt('booking_date', new Date().toISOString().split('T')[0])
+        .order('booking_date', { ascending: false });
+
+      if (!bookings) return [];
+
+      // Get existing feedback to filter out already reviewed batches
+      const { data: existingFeedback } = await supabase
+        .from('feedback')
+        .select('batch_id')
+        .eq('student_id', user.id)
+        .not('batch_id', 'is', null);
+
+      const reviewedBatchIds = new Set(existingFeedback?.map(f => f.batch_id) || []);
+
+      // Get batch info for each booking
+      const { data: memberships } = await supabase
+        .from('recipe_batch_memberships')
+        .select('booking_id, recipe_batch_id, recipe_batches(id, batch_date, time_slot)')
+        .eq('student_id', user.id);
+
+      const bookingToBatch: Record<string, string> = {};
+      memberships?.forEach(m => {
+        if (m.booking_id && m.recipe_batch_id) {
+          bookingToBatch[m.booking_id] = m.recipe_batch_id;
+        }
+      });
+
+      // Filter: only show batches not yet reviewed  
+      // Use enrollment batch_id from the booking's course batches
+      return bookings
+        .filter(b => {
+          // We use the booking ID as the batch identifier for feedback linking
+          return !reviewedBatchIds.has(b.id);
+        })
+        .map(b => ({
+          bookingId: b.id,
+          date: b.booking_date,
+          timeSlot: b.time_slot,
+          recipeName: (b.recipes as any)?.title || 'Unknown Recipe',
+          courseName: (b.courses as any)?.title || 'Unknown Course',
+          chefId: b.assigned_chef_id,
+        }));
+    }
+  });
 
   const { data: recentFeedback, isLoading } = useQuery({
     queryKey: ['my-feedback'],
@@ -40,28 +107,40 @@ const Feedback = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      if (!selectedBatchId) throw new Error('Please select a batch');
+
+      const selectedBatch = completedBatches?.find(b => b.bookingId === selectedBatchId);
+
       const { error } = await supabase
         .from('feedback')
         .insert({
           student_id: user.id,
-          category,
+          category: 'batch',
           rating: parseInt(rating),
           feedback_text: feedbackText,
-          suggestions: suggestions || null
+          suggestions: suggestions || null,
+          batch_id: selectedBatchId,
+          chef_id: selectedBatch?.chefId || null,
         });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('You have already submitted feedback for this batch');
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
         title: "Feedback submitted!",
-        description: "Thank you for helping us improve. Your feedback is valuable to us.",
+        description: "Thank you for your feedback. It cannot be edited after submission.",
       });
       setFeedbackText("");
       setSuggestions("");
       setRating("5");
-      setCategory("course");
+      setSelectedBatchId("");
       queryClient.invalidateQueries({ queryKey: ['my-feedback'] });
+      queryClient.invalidateQueries({ queryKey: ['completed-batches-for-feedback'] });
     },
     onError: (error: Error) => {
       toast({
@@ -75,28 +154,17 @@ const Feedback = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!feedbackText.trim()) {
-      toast({
-        title: "Feedback required",
-        description: "Please enter your feedback before submitting.",
-        variant: "destructive",
-      });
+      toast({ title: "Feedback required", description: "Please enter your feedback.", variant: "destructive" });
+      return;
+    }
+    if (!selectedBatchId) {
+      toast({ title: "Batch required", description: "Please select a batch to review.", variant: "destructive" });
       return;
     }
     submitMutation.mutate();
   };
 
-  const getCategoryLabel = (cat: string) => {
-    const labels: Record<string, string> = {
-      course: "Course Content",
-      instructor: "Instructor",
-      facilities: "Facilities",
-      platform: "Platform",
-      other: "Other"
-    };
-    return labels[cat] || cat;
-  };
-
-  if (isLoading) {
+  if (isLoading || batchesLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header role="student" />
@@ -114,147 +182,89 @@ const Feedback = () => {
       <div className="container px-6 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Share Your Feedback</h1>
+            <h1 className="text-3xl font-bold mb-2">Batch Feedback</h1>
             <p className="text-muted-foreground">
-              Help us improve your learning experience. Your feedback matters!
+              Submit feedback for completed sessions. One feedback per batch, cannot be edited after submission.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <Card className="p-6 border-border/60 mb-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold">Feedback Form</h2>
-                  <p className="text-sm text-muted-foreground">
-                    All fields are required
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label>Feedback Category</Label>
-                  <RadioGroup value={category} onValueChange={setCategory}>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="course"
-                        className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-accent/50"
-                      >
-                        <RadioGroupItem value="course" id="course" />
-                        <span>Course Content & Structure</span>
-                      </Label>
-                      <Label
-                        htmlFor="instructor"
-                        className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-accent/50"
-                      >
-                        <RadioGroupItem value="instructor" id="instructor" />
-                        <span>Instructor Teaching Style</span>
-                      </Label>
-                      <Label
-                        htmlFor="facilities"
-                        className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-accent/50"
-                      >
-                        <RadioGroupItem value="facilities" id="facilities" />
-                        <span>Facilities & Equipment</span>
-                      </Label>
-                      <Label
-                        htmlFor="platform"
-                        className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-accent/50"
-                      >
-                        <RadioGroupItem value="platform" id="platform" />
-                        <span>Online Platform & Booking System</span>
-                      </Label>
-                      <Label
-                        htmlFor="other"
-                        className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-accent/50"
-                      >
-                        <RadioGroupItem value="other" id="other" />
-                        <span>Other</span>
-                      </Label>
-                    </div>
-                  </RadioGroup>
+          {completedBatches && completedBatches.length > 0 ? (
+            <form onSubmit={handleSubmit}>
+              <Card className="p-6 border-border/60 mb-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-3 rounded-xl bg-primary/10">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold">Feedback Form</h2>
+                    <p className="text-sm text-muted-foreground">Select a completed batch to review</p>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  <Label>Overall Rating</Label>
-                  <RadioGroup value={rating} onValueChange={setRating}>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Select Batch</Label>
+                    <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a batch to review" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {completedBatches.map((batch) => (
+                          <SelectItem key={batch.bookingId} value={batch.bookingId}>
+                            {batch.recipeName} — {new Date(batch.date).toLocaleDateString()} ({batch.timeSlot})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Rating (1–5)</Label>
                     <div className="flex gap-2">
                       {[1, 2, 3, 4, 5].map((value) => (
-                        <Label
-                          key={value}
-                          htmlFor={`rating-${value}`}
-                          className="flex-1 cursor-pointer"
-                        >
-                          <div
-                            className={`flex flex-col items-center gap-2 p-3 border-2 rounded-lg transition-all ${
-                              rating === String(value)
-                                ? "border-primary bg-primary/10"
-                                : "border-border hover:border-primary/50"
-                            }`}
-                          >
-                            <RadioGroupItem
-                              value={String(value)}
-                              id={`rating-${value}`}
-                              className="sr-only"
-                            />
-                            <Star
-                              className={`h-6 w-6 ${
-                                rating === String(value)
-                                  ? "fill-primary text-primary"
-                                  : "text-muted-foreground"
-                              }`}
-                            />
+                        <Label key={value} htmlFor={`rating-${value}`} className="flex-1 cursor-pointer">
+                          <div className={`flex flex-col items-center gap-2 p-3 border-2 rounded-lg transition-all ${
+                            rating === String(value) ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                          }`}>
+                            <input type="radio" name="rating" value={String(value)} id={`rating-${value}`} className="sr-only"
+                              checked={rating === String(value)} onChange={() => setRating(String(value))} />
+                            <Star className={`h-6 w-6 ${rating === String(value) ? "fill-primary text-primary" : "text-muted-foreground"}`} />
                             <span className="text-sm font-medium">{value}</span>
                           </div>
                         </Label>
                       ))}
                     </div>
-                  </RadioGroup>
-                </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="feedback">Your Feedback</Label>
-                  <Textarea
-                    id="feedback"
-                    placeholder="Please share your detailed feedback here. What did you like? What can we improve?"
-                    rows={6}
-                    required
-                    value={feedbackText}
-                    onChange={(e) => setFeedbackText(e.target.value)}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="feedback">Your Feedback</Label>
+                    <Textarea id="feedback" placeholder="Share your experience..." rows={6} required
+                      value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="suggestions">Suggestions for Improvement</Label>
-                  <Textarea
-                    id="suggestions"
-                    placeholder="Any specific suggestions or recommendations?"
-                    rows={4}
-                    value={suggestions}
-                    onChange={(e) => setSuggestions(e.target.value)}
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="suggestions">Suggestions (optional)</Label>
+                    <Textarea id="suggestions" placeholder="Any suggestions for improvement?" rows={4}
+                      value={suggestions} onChange={(e) => setSuggestions(e.target.value)} />
+                  </div>
                 </div>
-              </div>
+              </Card>
+
+              <Button type="submit" size="lg" className="w-full" disabled={submitMutation.isPending}>
+                {submitMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</> : 'Submit Feedback'}
+              </Button>
+            </form>
+          ) : (
+            <Card className="p-8 text-center border-border/60">
+              <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <h3 className="font-semibold mb-1">No batches to review</h3>
+              <p className="text-sm text-muted-foreground">
+                You've already reviewed all your completed batches, or you have no completed sessions yet.
+              </p>
             </Card>
+          )}
 
-            <Button 
-              type="submit" 
-              size="lg" 
-              className="w-full"
-              disabled={submitMutation.isPending}
-            >
-              {submitMutation.isPending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</>
-              ) : (
-                'Submit Feedback'
-              )}
-            </Button>
-          </form>
-
-          {/* Google Review Section */}
+          {/* Google Review */}
           <Card className="p-6 border-border/60 mt-6 bg-gradient-to-r from-primary/5 to-transparent">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-primary/10">
@@ -262,17 +272,11 @@ const Feedback = () => {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold mb-1">Love learning with us?</h3>
-                <p className="text-sm text-muted-foreground">
-                  Share your experience with others by leaving a Google Review!
-                </p>
+                <p className="text-sm text-muted-foreground">Share your experience on Google!</p>
               </div>
               <Button variant="outline" asChild>
-                <a 
-                  href="https://www.google.com/search?sca_esv=449808707ab54592&biw=1366&bih=900&aic=0&sxsrf=ANbL-n7UB84FcOUPdgUfZgoubzBzZC_LBw:1769441886418&q=knead+and+frost+reviews&uds=ALYpb_ki1KN3s-C1tVGz67MlZjc7SHht-TiEoFx6UzpGViqgiFepV5oBkArte8Mk_7VhZO1lUe9-johu1y94nw-Hj9pplcJz3bQAxn6meqdBt7n6cFAPfK-j6uqL-CKX9xS-fvTTU-5B-jlp8lkaLkxCLc7yEr-WX2RClxepRb-zlE7HcEHm5f2Ye4NXkvfkaz6EVSopqZgktBf1yGbjT2cahC3EEYKpsuRuQgLp_bYSxnR67hEOh0ynNtcTtZkhrfrEYWbzLAqBi8-gTHkdHQt5JlG8YtwWLC5NeBsSesdwd8iM-eqtZzk4lDhB58t4YySPyv9F4ANOVcUiWz4s4HM_tyQZ0mztLKuYUmlSkXhe1OegysDMUxb9UM9oOR1SjCgs_hJU_XuE89MPQNSo1yk4e3M3IJNMI-h4aiKXEpB6AJ0MFImpBsC9Z6IcYC1YmTIVAZEG7mX4UzoTh1WW2NjVEZ3vYJHdD5Z3zTgSgITnAAHTd9haxiaFw1NPIIDgn-dZSr2RmR2DROF4kPzXiGYAZY8A48YD9g&si=AL3DRZEsmMGCryMMFSHJ3StBhOdZ2-6yYkXd_doETEE1OR-qOcQUKc7tifc1K8hIiHsbJfewgcIfpTXBuobNL0V11h10q7IFC5I2Z0OJHM85oUa1AExQUHnarQENSE4-gV19W7gsdvak&sa=X&ved=2ahUKEwjUwNzYxKmSAxUacGwGHQ05BUgQk8gLegQIGhAB&ictx=1&stq=1&cs=0&lei=Xop3adSZGZrgseMPjfKUwAQ#ebo=2" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                >
-                  Write a Review on Google
+                <a href="https://www.google.com/search?q=knead+and+frost+reviews" target="_blank" rel="noopener noreferrer">
+                  Write a Review
                 </a>
               </Button>
             </div>
@@ -285,7 +289,7 @@ const Feedback = () => {
                 {recentFeedback.map((fb) => (
                   <div key={fb.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">{getCategoryLabel(fb.category)}</span>
+                      <span className="text-sm font-medium">Batch Feedback</span>
                       <div className="flex items-center gap-1">
                         {[...Array(fb.rating)].map((_, i) => (
                           <Star key={i} className="h-4 w-4 fill-primary text-primary" />

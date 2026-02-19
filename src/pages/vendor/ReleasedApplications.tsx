@@ -11,49 +11,78 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Users, Eye, Loader2, Mail, Phone, Search, Briefcase, FileText } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
+
+const VENDOR_STATUSES = [
+  { value: "shortlisted", label: "Shortlisted" },
+  { value: "interview_scheduled", label: "Interview Scheduled" },
+  { value: "offered", label: "Offered" },
+  { value: "hired", label: "Hired" },
+  { value: "rejected", label: "Rejected" },
+];
 
 const ReleasedApplications = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const queryClient = useQueryClient();
 
-  // Get all released applications
   const { data: applications, isLoading } = useQuery({
     queryKey: ["all-released-applications"],
     queryFn: async () => {
-      // Get released applications
       const { data: apps, error } = await supabase
         .from("job_applications")
-        .select("id, job_id, status, created_at, released_at, cover_letter, student_id, resume_url")
+        .select("id, job_id, status, vendor_status, created_at, released_at, cover_letter, student_id, resume_url")
         .eq("released_to_vendor", true)
         .order("released_at", { ascending: false });
       
       if (error) throw error;
       if (!apps || apps.length === 0) return [];
       
-      // Get student profiles
       const studentIds = [...new Set(apps.map(app => app.student_id))];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, first_name, last_name, email, phone")
         .in("id", studentIds);
       
-      // Get job details
       const jobIds = [...new Set(apps.map(app => app.job_id))];
       const { data: jobs } = await supabase
         .from("jobs")
         .select("id, title, company, location")
         .in("id", jobIds);
       
-      // Merge data
       return apps.map(app => ({
         ...app,
         profile: profiles?.find(p => p.id === app.student_id) || null,
         job: jobs?.find(j => j.id === app.job_id) || null
       }));
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ applicationId, vendorStatus }: { applicationId: string; vendorStatus: string }) => {
+      const { error } = await supabase
+        .from("job_applications")
+        .update({ vendor_status: vendorStatus, updated_at: new Date().toISOString() })
+        .eq("id", applicationId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-released-applications"] });
+      toast({ title: "Status updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -68,6 +97,17 @@ const ReleasedApplications = () => {
     );
   });
 
+  const getStatusColor = (status: string | null) => {
+    switch (status) {
+      case "shortlisted": return "default";
+      case "interview_scheduled": return "secondary";
+      case "offered": return "default";
+      case "hired": return "default";
+      case "rejected": return "destructive";
+      default: return "outline";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header role="vendor" />
@@ -77,12 +117,11 @@ const ReleasedApplications = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Released Applicants</h1>
             <p className="text-muted-foreground">
-              View all candidates released to you by platform administrators
+              View and manage candidates released to you by platform administrators
             </p>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
             <Card className="p-6 border-border/60">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-lg bg-primary/10">
@@ -90,11 +129,10 @@ const ReleasedApplications = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{applications?.length || 0}</p>
-                  <p className="text-sm text-muted-foreground">Total Released Applicants</p>
+                  <p className="text-sm text-muted-foreground">Total Released</p>
                 </div>
               </div>
             </Card>
-
             <Card className="p-6 border-border/60">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-lg bg-green-500/10">
@@ -102,15 +140,27 @@ const ReleasedApplications = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">
-                    {[...new Set(applications?.map(a => a.job_id) || [])].length}
+                    {applications?.filter(a => a.vendor_status === 'hired').length || 0}
                   </p>
-                  <p className="text-sm text-muted-foreground">Jobs with Applicants</p>
+                  <p className="text-sm text-muted-foreground">Hired</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-6 border-border/60">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-amber-500/10">
+                  <Briefcase className="h-6 w-6 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {applications?.filter(a => a.vendor_status === 'interview_scheduled').length || 0}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Interviews Scheduled</p>
                 </div>
               </div>
             </Card>
           </div>
 
-          {/* Search */}
           <Card className="p-4 border-border/60 mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -123,12 +173,11 @@ const ReleasedApplications = () => {
             </div>
           </Card>
 
-          {/* Applications Table */}
           <Card className="border-border/60">
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold">All Released Applicants</h2>
               <p className="text-sm text-muted-foreground">
-                Contact these candidates directly for interview scheduling
+                Update application status as you progress through the hiring process
               </p>
             </div>
 
@@ -188,11 +237,25 @@ const ReleasedApplications = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={app.status === "shortlisted" ? "default" : "secondary"}>
-                          {app.status}
-                        </Badge>
+                        <Select
+                          value={app.vendor_status || ""}
+                          onValueChange={(value) =>
+                            updateStatusMutation.mutate({ applicationId: app.id, vendorStatus: value })
+                          }
+                        >
+                          <SelectTrigger className="w-[160px] h-8 text-xs">
+                            <SelectValue placeholder="Set status..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VENDOR_STATUSES.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-muted-foreground text-sm">
                         {app.released_at && formatDistanceToNow(new Date(app.released_at), { addSuffix: true })}
                       </TableCell>
                       <TableCell>
@@ -215,22 +278,9 @@ const ReleasedApplications = () => {
                 <h3 className="text-lg font-semibold mb-2">No applicants released yet</h3>
                 <p className="text-muted-foreground">
                   Platform administrators review applications before releasing candidate details to you.
-                  <br />
-                  Check back later for new candidates.
                 </p>
               </div>
             )}
-          </Card>
-
-          {/* Info Card */}
-          <Card className="p-6 border-border/60 mt-8 bg-accent/20">
-            <h3 className="font-semibold mb-2">Contacting Applicants</h3>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Click on email addresses to open your email client</li>
-              <li>• Click on phone numbers to initiate a call</li>
-              <li>• View resumes to understand candidate qualifications</li>
-              <li>• All contact details have been verified by platform admins</li>
-            </ul>
           </Card>
         </div>
       </div>

@@ -164,13 +164,64 @@ const AdminDashboard = () => {
       const { data, error } = await supabase
         .from('inventory')
         .select('*')
-        .lt('current_stock', supabase.rpc ? 10 : 10) // items below reorder level
         .order('current_stock')
-        .limit(5);
+        .limit(20);
       
       if (error) throw error;
-      // Filter items where current_stock < reorder_level
       return data?.filter(item => item.current_stock < item.reorder_level) || [];
+    }
+  });
+
+  // Fetch overdue payments
+  const { data: overduePayments } = useQuery({
+    queryKey: ['admin-overdue-payments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_schedules')
+        .select('id, student_id, amount, due_date, payment_stage')
+        .eq('status', 'overdue')
+        .order('due_date')
+        .limit(5);
+      if (error) throw error;
+      
+      if (!data?.length) return [];
+      const studentIds = [...new Set(data.map(p => p.student_id))];
+      const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name').in('id', studentIds);
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      return data.map(p => ({ ...p, profile: profileMap.get(p.student_id) }));
+    }
+  });
+
+  // Fetch students nearing course expiry (within 7 days)
+  const { data: expiringStudents } = useQuery({
+    queryKey: ['admin-expiring-students'],
+    queryFn: async () => {
+      const { data: enrollments, error } = await supabase
+        .from('enrollments')
+        .select('id, student_id, enrollment_date, courses(duration, title)')
+        .eq('status', 'active')
+        .limit(50);
+      if (error) throw error;
+
+      const now = new Date();
+      const sevenDaysFromNow = new Date();
+      sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+      const expiring = (enrollments || []).filter(e => {
+        const course = e.courses as any;
+        if (!course?.duration) return false;
+        const match = course.duration.match(/(\d+)/);
+        const months = match ? parseInt(match[1]) : 3;
+        const endDate = new Date(e.enrollment_date);
+        endDate.setMonth(endDate.getMonth() + months);
+        return endDate >= now && endDate <= sevenDaysFromNow;
+      });
+
+      if (!expiring.length) return [];
+      const studentIds = [...new Set(expiring.map(e => e.student_id))];
+      const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name').in('id', studentIds);
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      return expiring.map(e => ({ ...e, profile: profileMap.get(e.student_id) }));
     }
   });
 
@@ -413,15 +464,62 @@ const AdminDashboard = () => {
               </div>
             </Card>
 
+            {/* Overdue Payments Alert */}
+            {overduePayments && overduePayments.length > 0 && (
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <CreditCard className="h-5 w-5 text-destructive" />
+                  <h3 className="font-semibold">Overdue Payments</h3>
+                </div>
+                <div className="space-y-3">
+                  {overduePayments.map((item: any) => (
+                    <div key={item.id} className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <div className="font-medium text-sm">
+                        {item.profile?.first_name} {item.profile?.last_name}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        ₹{Number(item.amount).toLocaleString()} • Due: {new Date(item.due_date).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="link" size="sm" className="w-full" asChild>
+                    <Link to="/admin/student-payments">View All</Link>
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            {/* Students Nearing Course Expiry */}
+            {expiringStudents && expiringStudents.length > 0 && (
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertCircle className="h-5 w-5 text-warning" />
+                  <h3 className="font-semibold">Course Expiry Soon</h3>
+                </div>
+                <div className="space-y-3">
+                  {expiringStudents.map((item: any) => (
+                    <div key={item.id} className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                      <div className="font-medium text-sm">
+                        {item.profile?.first_name} {item.profile?.last_name}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {(item.courses as any)?.title}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
             {/* Stock to Purchase */}
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-4">
-                <AlertCircle className="h-5 w-5 text-warning" />
+                <Package className="h-5 w-5 text-warning" />
                 <h3 className="font-semibold">Stock to Purchase</h3>
               </div>
               {stockToPurchase && stockToPurchase.length > 0 ? (
                 <div className="space-y-3">
-                  {stockToPurchase.map((item) => (
+                  {stockToPurchase.slice(0, 5).map((item) => (
                     <div key={item.id} className="p-3 rounded-lg bg-warning/10 border border-warning/20">
                       <div className="font-medium text-sm">{item.name}</div>
                       <div className="text-sm text-muted-foreground">

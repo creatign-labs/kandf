@@ -41,7 +41,7 @@ const ApprovalCenter = () => {
   });
 
   const reviewMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: 'approved' | 'rejected' }) => {
+    mutationFn: async ({ id, status, request }: { id: string; status: 'approved' | 'rejected'; request: any }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -57,18 +57,81 @@ const ApprovalCenter = () => {
 
       if (error) throw error;
 
+      // Auto-execute the approved action
+      if (status === 'approved' && request) {
+        const details = request.details || {};
+        const entityId = request.entity_id;
+
+        switch (request.request_type) {
+          case 'reset_no_show':
+            // Reset no-show count by updating enrollment status back to active
+            await supabase.from('profiles')
+              .update({ enrollment_status: 'active', updated_at: new Date().toISOString() })
+              .eq('id', entityId);
+            await supabase.from('notifications').insert({
+              user_id: entityId,
+              title: 'Account Unlocked',
+              message: 'Your no-show count has been reset and account unlocked by admin.',
+              type: 'success'
+            });
+            break;
+
+          case 'unlock_account':
+            await supabase.from('profiles')
+              .update({ enrollment_status: 'active', updated_at: new Date().toISOString() })
+              .eq('id', entityId);
+            await supabase.from('notifications').insert({
+              user_id: entityId,
+              title: 'Account Unlocked',
+              message: 'Your account has been unlocked by admin.',
+              type: 'success'
+            });
+            break;
+
+          case 'extend_course':
+            // Update enrollment date to extend by the specified months
+            if (details.extend_months) {
+              const { data: enrollment } = await supabase
+                .from('enrollments')
+                .select('enrollment_date')
+                .eq('student_id', entityId)
+                .eq('status', 'active')
+                .maybeSingle();
+              
+              if (enrollment) {
+                const newDate = new Date(enrollment.enrollment_date);
+                newDate.setMonth(newDate.getMonth() + parseInt(details.extend_months));
+                await supabase.from('enrollments')
+                  .update({ enrollment_date: newDate.toISOString(), updated_at: new Date().toISOString() })
+                  .eq('student_id', entityId)
+                  .eq('status', 'active');
+              }
+            }
+            // Also unlock if locked
+            await supabase.from('profiles')
+              .update({ enrollment_status: 'active', updated_at: new Date().toISOString() })
+              .eq('id', entityId)
+              .in('enrollment_status', ['locked_course_expired']);
+            break;
+
+          case 'modify_fee':
+            // Fee modifications are complex - log only, admin handles manually
+            break;
+        }
+      }
+
       // Log audit
       await supabase.from('audit_logs').insert({
         user_id: user.id,
         action: `approval_${status}`,
         entity_type: 'approval_request',
         entity_id: id,
-        new_value: { status, note: reviewNote }
+        new_value: { status, note: reviewNote, auto_executed: status === 'approved' }
       });
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['approval-requests'] });
-      toast({ title: `Request ${status}` });
+      toast({ title: status === 'approved' ? 'Request approved & executed' : 'Request rejected' });
       setSelectedRequest(null);
       setReviewNote("");
     },
@@ -194,16 +257,16 @@ const ApprovalCenter = () => {
           <DialogFooter className="gap-2">
             <Button
               variant="destructive"
-              onClick={() => selectedRequest && reviewMutation.mutate({ id: selectedRequest.id, status: 'rejected' })}
+              onClick={() => selectedRequest && reviewMutation.mutate({ id: selectedRequest.id, status: 'rejected', request: selectedRequest })}
               disabled={reviewMutation.isPending}
             >
               <XCircle className="h-4 w-4 mr-1" /> Reject
             </Button>
             <Button
-              onClick={() => selectedRequest && reviewMutation.mutate({ id: selectedRequest.id, status: 'approved' })}
+              onClick={() => selectedRequest && reviewMutation.mutate({ id: selectedRequest.id, status: 'approved', request: selectedRequest })}
               disabled={reviewMutation.isPending}
             >
-              <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
+              <CheckCircle2 className="h-4 w-4 mr-1" /> Approve & Execute
             </Button>
           </DialogFooter>
         </DialogContent>

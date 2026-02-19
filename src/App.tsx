@@ -54,6 +54,7 @@ import AdminRecipes from "./pages/admin/AdminRecipes";
 import SuperAdminManagement from "./pages/admin/SuperAdminManagement";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import ApprovalCenter from "./pages/admin/ApprovalCenter";
+import Financials from "./pages/admin/Financials";
 import AuditLogs from "./pages/admin/AuditLogs";
 import StudentPaymentStatus from "./pages/admin/StudentPaymentStatus";
 import BookingRecipeAssignment from "./pages/admin/BookingRecipeAssignment";
@@ -155,6 +156,7 @@ const App = () => (
           <Route path="/admin/approvals" element={<ProtectedRoute requiredRole="admin"><ApprovalCenter /></ProtectedRoute>} />
           <Route path="/admin/audit-logs" element={<ProtectedRoute requiredRole="admin"><AuditLogs /></ProtectedRoute>} />
           <Route path="/admin/executive" element={<ProtectedRoute requiredRole="admin"><SuperAdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/financials" element={<ProtectedRoute requiredRole="admin"><Financials /></ProtectedRoute>} />
           
           <Route path="/chef" element={<ProtectedRoute requiredRole="chef"><ChefDashboard /></ProtectedRoute>} />
           <Route path="/chef/schedule" element={<ProtectedRoute requiredRole="chef"><Schedule /></ProtectedRoute>} />

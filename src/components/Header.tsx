@@ -13,6 +13,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface HeaderProps {
   role?: "public" | "student" | "admin" | "chef" | "super_admin" | "vendor";
@@ -243,14 +244,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
           ) : (
             <>
               {role !== 'vendor' && (
-                <Button variant="ghost" size="icon" className="relative" asChild>
-                  <Link to={`/${role === 'admin' || role === 'super_admin' ? 'admin' : 'student'}/notifications`}>
-                    <Bell className="h-5 w-5" />
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
-                      3
-                    </span>
-                  </Link>
-                </Button>
+                <NotificationBell role={role} />
               )}
               <ProfileDropdown role={role} />
             </>
@@ -259,15 +253,8 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
 
         {/* Mobile Menu Button */}
         <div className="flex items-center gap-2 lg:hidden">
-          {role !== "public" && (
-            <Button variant="ghost" size="icon" className="relative" asChild>
-              <Link to={`/${role === 'admin' || role === 'super_admin' ? 'admin' : 'student'}/notifications`}>
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
-                  3
-                </span>
-              </Link>
-            </Button>
+          {role !== "public" && role !== "vendor" && (
+            <NotificationBell role={role} />
           )}
           
           <Sheet open={isOpen} onOpenChange={setIsOpen}>

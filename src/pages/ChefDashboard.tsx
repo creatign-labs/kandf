@@ -162,152 +162,46 @@ const ChefDashboard = () => {
     }
   });
 
-  // Confirm batch completion mutation (atomic)
+  // Confirm batch completion mutation (atomic server-side RPC)
   const confirmBatchMutation = useMutation({
     mutationFn: async (batchKey: string) => {
       const batch = todaysBatches?.find((_, i) => `batch-${i}` === batchKey);
       if (!batch) throw new Error('Batch not found');
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
       const batchAttendance = attendanceState[batchKey] || {};
       
       // Ensure all students are marked
-      const unmarked = batch.students.filter(s => s.bookingStatus === 'confirmed' && !batchAttendance[s.id]);
+      const confirmedStudents = batch.students.filter(s => s.bookingStatus === 'confirmed');
+      const unmarked = confirmedStudents.filter(s => !batchAttendance[s.id]);
       if (unmarked.length > 0) {
         throw new Error(`Mark all students before confirming. ${unmarked.length} unmarked.`);
       }
 
-      // Check inventory sufficiency for present students
-      const presentStudents = batch.students.filter(s => batchAttendance[s.id] === 'present');
+      // Build attendance payload for atomic RPC
+      const attendancePayload = confirmedStudents.map(s => ({
+        student_id: s.id,
+        booking_id: s.bookingId,
+        status: batchAttendance[s.id]
+      }));
+
+      const { data, error } = await supabase.rpc('confirm_batch_completion', {
+        p_batch_date: today,
+        p_time_slot: batch.timeSlot,
+        p_recipe_id: batch.recipeId,
+        p_attendance: attendancePayload,
+        p_session_notes: sessionNotes[batchKey] || null
+      });
+
+      if (error) throw error;
       
-      if (batch.recipeId && presentStudents.length > 0) {
-        const { data: recipeIngs } = await supabase
-          .from('recipe_ingredients')
-          .select('inventory_id, quantity_per_student, inventory:inventory_id(name, current_stock, unit)')
-          .eq('recipe_id', batch.recipeId);
-
-        for (const ri of (recipeIngs || []) as any[]) {
-          const needed = ri.quantity_per_student * presentStudents.length;
-          if (ri.inventory && ri.inventory.current_stock < needed) {
-            throw new Error(`Insufficient inventory: ${ri.inventory.name}. Need ${needed} ${ri.inventory.unit}, have ${ri.inventory.current_stock}`);
-          }
-        }
-      }
-
-      // Process each student atomically
-      for (const student of batch.students) {
-        if (student.bookingStatus !== 'confirmed') continue;
-        
-        const status = batchAttendance[student.id];
-        if (!status) continue;
-
-        if (status === 'present') {
-          // Update booking status
-          await supabase.from('bookings').update({ status: 'attended' }).eq('id', student.bookingId);
-          
-          // Mark recipe completed via RPC
-          if (batch.recipeId) {
-            await supabase.rpc('mark_recipe_complete_by_chef', {
-              p_student_id: student.id,
-              p_recipe_id: batch.recipeId
-            });
-          }
-
-          // Mark attendance
-          await supabase.from('attendance').upsert({
-            student_id: student.id,
-            batch_id: student.bookingId, // Using booking as reference
-            class_date: today,
-            status: 'present',
-            marked_by: user.id
-          }, { onConflict: 'student_id,batch_id,class_date' });
-
-        } else {
-          // Absent → no_show
-          await supabase.from('bookings').update({ status: 'no_show' }).eq('id', student.bookingId);
-          
-          await supabase.from('attendance').upsert({
-            student_id: student.id,
-            batch_id: student.bookingId,
-            class_date: today,
-            status: 'no_show',
-            marked_by: user.id
-          }, { onConflict: 'student_id,batch_id,class_date' });
-
-          // Check no_show count and lock if >= 3
-          const { count } = await supabase
-            .from('attendance')
-            .select('*', { count: 'exact', head: true })
-            .eq('student_id', student.id)
-            .eq('status', 'no_show');
-
-          if ((count || 0) >= 3) {
-            await supabase.from('profiles')
-              .update({ enrollment_status: 'locked_no_show' })
-              .eq('id', student.id);
-
-            await supabase.from('notifications').insert({
-              user_id: student.id,
-              title: 'Account Locked',
-              message: 'Your account has been locked due to 3+ no-shows. Contact admin.',
-              type: 'warning'
-            });
-          }
-        }
-      }
-
-      // Deduct inventory for present students only
-      if (batch.recipeId && presentStudents.length > 0) {
-        const { data: recipeIngs } = await supabase
-          .from('recipe_ingredients')
-          .select('inventory_id, quantity_per_student')
-          .eq('recipe_id', batch.recipeId);
-
-        for (const ri of (recipeIngs || [])) {
-          const totalDeduct = ri.quantity_per_student * presentStudents.length;
-          // Get current stock
-          const { data: inv } = await supabase.from('inventory').select('current_stock').eq('id', ri.inventory_id).single();
-          if (inv) {
-            const newStock = Math.max(0, inv.current_stock - totalDeduct);
-            await supabase.from('inventory').update({ current_stock: newStock }).eq('id', ri.inventory_id);
-            
-            await supabase.from('inventory_usage').insert({
-              inventory_id: ri.inventory_id,
-              quantity_used: totalDeduct,
-              used_by: user.id,
-              notes: `Batch completion: ${batch.recipeTitle} (${presentStudents.length} students)`
-            });
-          }
-        }
-      }
-
-      // Save session notes if provided
-      const notes = sessionNotes[batchKey];
-      if (notes && batch.recipeId) {
-        // Find recipe_batch record
-        const { data: rb } = await supabase
-          .from('recipe_batches')
-          .select('id')
-          .eq('recipe_id', batch.recipeId)
-          .eq('batch_date', today)
-          .eq('time_slot', batch.timeSlot)
-          .maybeSingle();
-
-        if (rb) {
-          await supabase.from('recipe_batches').update({
-            session_notes: notes,
-            session_notes_by: user.id,
-            session_notes_at: new Date().toISOString(),
-            status: 'completed'
-          }).eq('id', rb.id);
-        }
+      const result = typeof data === 'string' ? JSON.parse(data) : data;
+      if (!result?.success) {
+        throw new Error(result?.message || 'Batch confirmation failed');
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chef-todays-batches'] });
-      toast({ title: "Batch Completed", description: "Attendance confirmed and inventory deducted." });
+      toast({ title: "Batch Completed", description: "Attendance confirmed and inventory deducted atomically." });
       setConfirmBatchId(null);
     },
     onError: (error: Error) => {

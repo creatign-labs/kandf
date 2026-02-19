@@ -2274,6 +2274,16 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: string
       }
+      confirm_batch_completion: {
+        Args: {
+          p_attendance: Json
+          p_batch_date: string
+          p_recipe_id: string
+          p_session_notes?: string
+          p_time_slot: string
+        }
+        Returns: Json
+      }
       create_payment_schedule: {
         Args: {
           p_due_days_1?: number
@@ -2364,6 +2374,15 @@ export type Database = {
       release_application_to_vendor: {
         Args: { p_application_id: string }
         Returns: boolean
+      }
+      safe_deduct_inventory: {
+        Args: {
+          p_inventory_id: string
+          p_notes?: string
+          p_quantity: number
+          p_used_by: string
+        }
+        Returns: undefined
       }
       update_overdue_payments: { Args: never; Returns: number }
     }

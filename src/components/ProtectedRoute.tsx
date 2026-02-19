@@ -58,12 +58,12 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
             return;
           }
 
-          // Handle completed status - read-only access to dashboard
-          // Students with 'completed' status can still view their course materials
-          // but cannot book new slots (handled at component level)
+          // Handle locked states - allow login but restrict features (handled at component level)
+          // locked_no_show: 3+ no-shows, locked_course_expired: course ended, locked_admin: manual lock
+          // These students can view dashboard/course data but cannot book, apply for jobs, etc.
           
-          // For active and completed students - allow access to dashboard
-          // Password change is OPTIONAL - no forced redirect
+          // For active, completed, and locked students - allow access to dashboard
+          // Feature restrictions are enforced at component level
         }
 
         // Handle vendor approval status

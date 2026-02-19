@@ -1,14 +1,17 @@
 import { Header } from "@/components/Header";
-import { StatsCard } from "@/components/StatsCard";
-import { CourseCard } from "@/components/CourseCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Award, Clock, Target, Bell, Loader2, FileText } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { 
+  BookOpen, Clock, Target, Loader2, Calendar, 
+  CreditCard, AlertTriangle, ChefHat, ArrowRight,
+  CheckCircle, Ban
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getCourseImage } from "@/lib/courseImages";
+import { format, isPast, parseISO } from "date-fns";
 
 const StudentDashboard = () => {
   // Fetch user profile
@@ -17,95 +20,145 @@ const StudentDashboard = () => {
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
-      
       if (error) throw error;
       return data;
     }
   });
 
-  // Fetch user's enrollments with courses
-  const { data: enrollments, isLoading: enrollmentsLoading } = useQuery({
-    queryKey: ['my-enrollments'],
+  // Fetch user's active enrollment with course
+  const { data: enrollment, isLoading: enrollmentLoading } = useQuery({
+    queryKey: ['my-enrollment-dashboard'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      
       const { data, error } = await supabase
         .from('enrollments')
         .select('*, courses(*)')
         .eq('student_id', user.id)
-        .order('created_at', { ascending: false });
-      
+        .in('status', ['active', 'completed'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (error) throw error;
       return data;
     }
   });
 
-  // Fetch available courses for new enrollment
-  const { data: courses } = useQuery({
-    queryKey: ['available-courses'],
+  // Fetch recipe progress
+  const { data: recipeProgress } = useQuery({
+    queryKey: ['recipe-progress-dashboard', enrollment?.course_id],
     queryFn: async () => {
+      if (!enrollment?.course_id) return { total: 0, completed: 0 };
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { total: 0, completed: 0 };
+
+      const { count: totalCount } = await supabase
+        .from('recipes')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', enrollment.course_id);
+
+      const { count: completedCount } = await supabase
+        .from('student_recipe_progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', user.id)
+        .eq('status', 'completed');
+
+      return { total: totalCount || 0, completed: completedCount || 0 };
+    },
+    enabled: !!enrollment?.course_id
+  });
+
+  // Fetch next upcoming booking
+  const { data: nextBooking } = useQuery({
+    queryKey: ['next-upcoming-booking'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const today = format(new Date(), 'yyyy-MM-dd');
       const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .limit(4);
-      
-      if (error) throw error;
+        .from('bookings')
+        .select(`
+          *,
+          recipes(title),
+          courses(title)
+        `)
+        .eq('student_id', user.id)
+        .eq('status', 'confirmed')
+        .gte('booking_date', today)
+        .order('booking_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) return null;
       return data;
     }
   });
 
-  // Fetch notifications count
-  const { data: notificationsCount } = useQuery({
-    queryKey: ['unread-notifications-count'],
+  // Fetch payment summary
+  const { data: paymentSummary } = useQuery({
+    queryKey: ['payment-summary-dashboard'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: schedules, error } = await supabase
+        .from('payment_schedules')
+        .select('*')
+        .eq('student_id', user.id)
+        .order('due_date', { ascending: true });
+
+      if (error || !schedules) return null;
+
+      const totalFee = schedules.reduce((sum, p) => sum + Number(p.amount), 0);
+      const paidAmount = schedules.filter(p => p.status === 'paid').reduce((sum, p) => sum + Number(p.amount), 0);
+      const outstanding = totalFee - paidAmount;
+      const nextDue = schedules.find(p => p.status !== 'paid');
+      const overduePayments = schedules.filter(p => 
+        p.status !== 'paid' && isPast(new Date(p.due_date))
+      );
+
+      return { totalFee, paidAmount, outstanding, nextDue, overdueCount: overduePayments.length };
+    }
+  });
+
+  // Fetch no-show count for alerts
+  const { data: noShowCount } = useQuery({
+    queryKey: ['no-show-count'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return 0;
-      
       const { count, error } = await supabase
-        .from('notifications')
+        .from('attendance')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('read', false);
-      
+        .eq('student_id', user.id)
+        .eq('status', 'no_show');
       if (error) return 0;
       return count || 0;
     }
   });
-
-  // Fetch certificates count
-  const { data: certificatesCount } = useQuery({
-    queryKey: ['certificates-count'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return 0;
-      
-      const { count, error } = await supabase
-        .from('certificates')
-        .select('*', { count: 'exact', head: true })
-        .eq('student_id', user.id);
-      
-      if (error) return 0;
-      return count || 0;
-    }
-  });
-
-  const activeEnrollments = enrollments?.filter(e => e.status === 'active') || [];
-  const completedEnrollments = enrollments?.filter(e => e.status === 'completed') || [];
-  const averageProgress = activeEnrollments.length > 0
-    ? Math.round(activeEnrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / activeEnrollments.length)
-    : 0;
 
   const firstName = profile?.first_name || 'Student';
   const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
+  
+  const isLocked = profile?.enrollment_status?.startsWith('locked') || false;
+  const isActive = profile?.enrollment_status === 'active';
+  const isCompleted = profile?.enrollment_status === 'completed';
 
-  if (enrollmentsLoading) {
+  const totalRecipes = recipeProgress?.total || 0;
+  const completedRecipes = recipeProgress?.completed || 0;
+  const remainingRecipes = totalRecipes - completedRecipes;
+  const progressPercent = totalRecipes > 0 ? Math.round((completedRecipes / totalRecipes) * 100) : 0;
+
+  // Determine if booking is allowed
+  const canBook = isActive && remainingRecipes > 0;
+
+  if (enrollmentLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header role="student" userName={firstName} />
@@ -121,242 +174,237 @@ const StudentDashboard = () => {
       <Header role="student" userName={firstName} />
       
       <div className="container px-4 md:px-6 py-6 md:py-8">
-        {/* Welcome Section */}
-        <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Welcome & Quick Action */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">{greeting}, {firstName} 👋</h1>
-            <p className="text-sm md:text-base text-muted-foreground">Welcome to Knead & Frost, check your priority learning.</p>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1">{greeting}, {firstName} 👋</h1>
+            <p className="text-sm text-muted-foreground">Welcome to your learning dashboard</p>
           </div>
-          <Button asChild className="w-fit">
-            <Link to="/student/resume">
-              <FileText className="h-4 w-4 mr-2" />
-              Build Resume
-            </Link>
-          </Button>
-        </div>
-
-        {/* Stats Grid */}
-        {/* Stats Row - Course Progress and Active Courses side by side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 mb-3 md:mb-6">
-          <StatsCard
-            title="Course Progress"
-            value={`${averageProgress}%`}
-            icon={Target}
-            variant="primary"
-          />
-          <StatsCard
-            title="Active Courses"
-            value={String(activeEnrollments.length)}
-            icon={BookOpen}
-            variant="default"
-          />
-        </div>
-        
-        {/* Quick Actions and Notifications - 2 column layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 mb-6 md:mb-8">
-          {/* Quick Actions - Left */}
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4">Quick Actions</h3>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" className="justify-start" asChild>
-                <Link to="/student/my-bookings">
-                  <Clock className="h-4 w-4 mr-2" />
-                  Book a Class
-                </Link>
-              </Button>
-              <Button variant="outline" className="justify-start" asChild>
-                <Link to="/student/my-course">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Course Recipes
-                </Link>
-              </Button>
-            </div>
-          </Card>
-
-          {/* Notifications - Right */}
-          {notificationsCount && notificationsCount > 0 ? (
-            <Card className="p-6 bg-gradient-to-r from-success/10 via-background to-background border-success/20">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <Badge className="mb-3 bg-success text-success-foreground">
-                    {notificationsCount} New
-                  </Badge>
-                  <h3 className="font-semibold text-lg mb-2">You have unread notifications</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Check your notifications for important updates about your courses and bookings.
-                  </p>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link to="/student/notifications">View Notifications →</Link>
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ) : (
-            <Card className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-2">Notifications</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    You're all caught up! No new notifications.
-                  </p>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link to="/student/notifications">View All →</Link>
-                  </Button>
-                </div>
-              </div>
-            </Card>
+          {canBook && (
+            <Button asChild>
+              <Link to="/student/my-bookings">
+                <Calendar className="h-4 w-4 mr-2" />
+                Book Slot
+              </Link>
+            </Button>
           )}
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6 md:space-y-8">
-            {/* In Progress Courses */}
-            <div>
-              <div className="flex items-center justify-between mb-4 md:mb-6">
+        {/* Alerts Section */}
+        {(isLocked || (noShowCount !== undefined && noShowCount >= 2) || (paymentSummary?.overdueCount ?? 0) > 0) && (
+          <div className="space-y-3 mb-6">
+            {isLocked && (
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
+                <Ban className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="text-lg md:text-xl font-semibold mb-1">In progress learning content</h2>
-                  <p className="text-xs md:text-sm text-muted-foreground">Continue where you left off</p>
+                  <p className="font-medium text-destructive">Account Restricted</p>
+                  <p className="text-sm text-muted-foreground">
+                    {profile?.enrollment_status === 'locked_no_show' && 'Your account has been locked due to 3+ no-shows. Contact admin to unlock.'}
+                    {profile?.enrollment_status === 'locked_course_expired' && 'Your course has expired. Contact admin for extension.'}
+                    {profile?.enrollment_status === 'locked_admin' && 'Your account has been locked by admin. Contact admin for details.'}
+                  </p>
                 </div>
-                <Button variant="link" size="sm" asChild>
-                  <Link to="/student/my-course">View all</Link>
+              </div>
+            )}
+            {!isLocked && noShowCount !== undefined && noShowCount >= 2 && (
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-900 dark:text-amber-100">No-Show Warning</p>
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    You have {noShowCount} no-show(s). At 3 no-shows your account will be locked automatically.
+                  </p>
+                </div>
+              </div>
+            )}
+            {(paymentSummary?.overdueCount ?? 0) > 0 && (
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium text-destructive">Overdue Payment</p>
+                  <p className="text-sm text-muted-foreground">
+                    You have {paymentSummary?.overdueCount} overdue installment(s). Please clear your dues.
+                  </p>
+                </div>
+                <Button size="sm" variant="destructive" asChild>
+                  <Link to="/student/course-payment">Pay Now</Link>
                 </Button>
               </div>
+            )}
+          </div>
+        )}
 
-              {activeEnrollments.length > 0 ? (
-                <div className="space-y-4">
-                  {activeEnrollments.slice(0, 2).map((enrollment) => (
-                    <Card key={enrollment.id} className="p-4 md:p-6">
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <div 
-                          className="h-32 sm:h-20 sm:w-32 rounded-lg bg-cover bg-center flex-shrink-0"
-                          style={{ 
-                            backgroundImage: `url(${getCourseImage(enrollment.course_id, '', enrollment.courses?.title || '')})`
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <Badge variant="secondary" className="mb-2">
-                            <BookOpen className="h-3 w-3 mr-1" />
-                            Course
-                          </Badge>
-                          <h3 className="font-semibold mb-1 text-sm md:text-base">{enrollment.courses?.title}</h3>
-                          <div className="flex flex-wrap items-center gap-3 md:gap-6 text-xs md:text-sm text-muted-foreground mt-2 md:mt-3">
-                            <span className="flex items-center gap-1">
-                              <BookOpen className="h-3 w-3 md:h-4 md:w-4" />
-                              {enrollment.courses?.materials_count || 0} Materials
-                            </span>
-                            <span className={enrollment.progress && enrollment.progress > 50 ? "text-success" : ""}>
-                              {enrollment.progress || 0}% Complete
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3 md:h-4 md:w-4" />
-                              {enrollment.courses?.duration}
-                            </span>
-                          </div>
-                        </div>
-                        <Button size="sm" className="w-full sm:w-auto mt-2 sm:mt-0" asChild>
-                          <Link to="/student/my-course">
-                            {enrollment.progress && enrollment.progress > 0 ? 'Continue' : 'Start'}
-                          </Link>
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
+        {/* Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Next Upcoming Batch */}
+          <Card className="p-5 border-border/60">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+              <Calendar className="h-4 w-4" />
+              <span>Next Session</span>
+            </div>
+            {nextBooking ? (
+              <div>
+                <h3 className="font-semibold mb-1">{nextBooking.recipes?.title || 'Recipe Session'}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {format(parseISO(nextBooking.booking_date), 'EEE, MMM d')} • {nextBooking.time_slot}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No upcoming sessions</p>
+            )}
+          </Card>
+
+          {/* Course Progress */}
+          <Card className="p-5 border-border/60">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+              <Target className="h-4 w-4" />
+              <span>Course Progress</span>
+            </div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-2xl font-bold">{progressPercent}%</span>
+              <span className="text-sm text-muted-foreground">
+                {completedRecipes}/{totalRecipes} recipes
+              </span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+          </Card>
+
+          {/* Payment Summary */}
+          <Card className="p-5 border-border/60">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+              <CreditCard className="h-4 w-4" />
+              <span>Payments</span>
+            </div>
+            {paymentSummary ? (
+              <div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-2xl font-bold">₹{paymentSummary.paidAmount.toLocaleString()}</span>
+                  <span className="text-sm text-muted-foreground">/ ₹{paymentSummary.totalFee.toLocaleString()}</span>
                 </div>
-              ) : (
-                <Card className="p-8 text-center">
-                  <p className="text-muted-foreground mb-4">You haven't enrolled in any courses yet.</p>
-                  <Button asChild>
-                    <Link to="/courses">Browse Courses</Link>
+                {paymentSummary.outstanding > 0 && paymentSummary.nextDue && (
+                  <p className="text-xs text-muted-foreground">
+                    Next due: {format(new Date(paymentSummary.nextDue.due_date), 'MMM d')}
+                  </p>
+                )}
+                {paymentSummary.outstanding === 0 && (
+                  <Badge variant="outline" className="text-green-600 border-green-300">
+                    <CheckCircle className="h-3 w-3 mr-1" /> Fully Paid
+                  </Badge>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No payment schedule</p>
+            )}
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Active Course */}
+            {enrollment && (
+              <Card className="p-6 border-border/60">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <Badge variant="secondary" className="mb-2">
+                      <BookOpen className="h-3 w-3 mr-1" />
+                      {enrollment.status === 'completed' ? 'Completed' : 'Active Course'}
+                    </Badge>
+                    <h2 className="text-xl font-semibold">{enrollment.courses?.title}</h2>
+                    <p className="text-sm text-muted-foreground mt-1">{enrollment.courses?.description}</p>
+                  </div>
+                  <Button size="sm" asChild>
+                    <Link to="/student/my-course">
+                      View Course <ArrowRight className="h-4 w-4 ml-1" />
+                    </Link>
                   </Button>
-                </Card>
-              )}
-            </div>
+                </div>
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    {enrollment.courses?.duration}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <ChefHat className="h-4 w-4" />
+                    {completedRecipes} of {totalRecipes} recipes done
+                  </span>
+                  <span>{remainingRecipes} remaining</span>
+                </div>
+              </Card>
+            )}
 
-            {/* Available Courses */}
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Explore more courses</h2>
-                <Button variant="link" asChild>
-                  <Link to="/courses">View all</Link>
+            {!enrollment && (
+              <Card className="p-8 text-center border-border/60">
+                <p className="text-muted-foreground mb-4">You haven't enrolled in any courses yet.</p>
+                <Button asChild>
+                  <Link to="/courses">Browse Courses</Link>
+                </Button>
+              </Card>
+            )}
+
+            {/* Quick Links */}
+            <Card className="p-6 border-border/60">
+              <h3 className="font-semibold mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1" asChild>
+                  <Link to="/student/my-course">
+                    <BookOpen className="h-5 w-5" />
+                    <span className="text-xs">My Course</span>
+                  </Link>
+                </Button>
+                {canBook && (
+                  <Button variant="outline" className="h-auto py-3 flex-col gap-1" asChild>
+                    <Link to="/student/my-bookings">
+                      <Calendar className="h-5 w-5" />
+                      <span className="text-xs">Book Slot</span>
+                    </Link>
+                  </Button>
+                )}
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1" asChild>
+                  <Link to="/student/course-payment">
+                    <CreditCard className="h-5 w-5" />
+                    <span className="text-xs">Payments</span>
+                  </Link>
                 </Button>
               </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {courses?.slice(0, 2).map((course) => (
-                  <CourseCard
-                    key={course.id}
-                    id={course.id}
-                    title={course.title}
-                    description={course.description}
-                    image={getCourseImage(course.id, '', course.title)}
-                    duration={course.duration}
-                    materials={course.materials_count || 0}
-                    level={course.level}
-                  />
-                ))}
-              </div>
-            </div>
+            </Card>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Goals Card */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Goals</h3>
-                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Link to="/student/notifications">
-                    <Bell className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-              
-              <div className="space-y-6">
-                <div className="text-center py-8">
-                  <div className="relative inline-flex mb-4">
-                    <svg className="h-32 w-32 transform -rotate-90">
-                      <circle
-                        cx="64"
-                        cy="64"
-                        r="56"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        className="text-muted/20"
-                      />
-                      <circle
-                        cx="64"
-                        cy="64"
-                        r="56"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        strokeDasharray={`${(averageProgress/100) * 2 * Math.PI * 56} ${2 * Math.PI * 56}`}
-                        className="text-success"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">{averageProgress}%</div>
-                        <div className="text-xs text-muted-foreground">progress</div>
-                      </div>
+            {/* Progress Ring */}
+            <Card className="p-6 border-border/60">
+              <h3 className="font-semibold mb-4">Goals</h3>
+              <div className="text-center py-4">
+                <div className="relative inline-flex mb-4">
+                  <svg className="h-28 w-28 transform -rotate-90">
+                    <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="8" fill="none" className="text-muted/20" />
+                    <circle cx="56" cy="56" r="48" stroke="currentColor" strokeWidth="8" fill="none"
+                      strokeDasharray={`${(progressPercent/100) * 2 * Math.PI * 48} ${2 * Math.PI * 48}`}
+                      className="text-primary" />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{progressPercent}%</div>
+                      <div className="text-xs text-muted-foreground">complete</div>
                     </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">
-                      {activeEnrollments.length} Active Course{activeEnrollments.length !== 1 ? 's' : ''}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {completedEnrollments.length} Completed
-                    </div>
-                    <Button variant="link" size="sm" className="text-primary" asChild>
-                      <Link to="/student/my-course">See Detail</Link>
-                    </Button>
                   </div>
                 </div>
+                <div className="space-y-1 text-sm">
+                  <p>{completedRecipes} recipes completed</p>
+                  <p className="text-muted-foreground">{remainingRecipes} remaining</p>
+                </div>
+                <Button variant="link" size="sm" asChild className="mt-2">
+                  <Link to="/student/my-course">View Details</Link>
+                </Button>
               </div>
+            </Card>
+
+            {/* Notifications CTA */}
+            <Card className="p-6 border-border/60">
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/student/notifications">View Notifications</Link>
+              </Button>
             </Card>
           </div>
         </div>

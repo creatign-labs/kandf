@@ -648,6 +648,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           enrollment_date: string
+          fee_snapshot: number | null
           id: string
           is_advance_payment: boolean | null
           payment_completed: boolean | null
@@ -668,6 +669,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           enrollment_date?: string
+          fee_snapshot?: number | null
           id?: string
           is_advance_payment?: boolean | null
           payment_completed?: boolean | null
@@ -688,6 +690,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           enrollment_date?: string
+          fee_snapshot?: number | null
           id?: string
           is_advance_payment?: boolean | null
           payment_completed?: boolean | null
@@ -761,6 +764,57 @@ export type Database = {
           },
           {
             foreignKeyName: "feedback_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          enrollment_id: string | null
+          entry_type: string
+          id: string
+          notes: string | null
+          performed_by: string
+          reference_id: string | null
+          student_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          enrollment_id?: string | null
+          entry_type: string
+          id?: string
+          notes?: string | null
+          performed_by: string
+          reference_id?: string | null
+          student_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          enrollment_id?: string | null
+          entry_type?: string
+          id?: string
+          notes?: string | null
+          performed_by?: string
+          reference_id?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_ledger_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_ledger_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -931,6 +985,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      inventory_ledger: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_id: string
+          movement_type: string
+          notes: string | null
+          performed_by: string
+          quantity: number
+          reference_id: string | null
+          reference_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_id: string
+          movement_type: string
+          notes?: string | null
+          performed_by: string
+          quantity: number
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_id?: string
+          movement_type?: string
+          notes?: string | null
+          performed_by?: string
+          quantity?: number
+          reference_id?: string | null
+          reference_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_ledger_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_usage: {
         Row: {
@@ -1715,6 +1813,7 @@ export type Database = {
           prep_time: number | null
           title: string
           updated_at: string
+          version: number
           video_url: string | null
         }
         Insert: {
@@ -1730,6 +1829,7 @@ export type Database = {
           prep_time?: number | null
           title: string
           updated_at?: string
+          version?: number
           video_url?: string | null
         }
         Update: {
@@ -1745,6 +1845,7 @@ export type Database = {
           prep_time?: number | null
           title?: string
           updated_at?: string
+          version?: number
           video_url?: string | null
         }
         Relationships: [

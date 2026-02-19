@@ -65,17 +65,22 @@ const VendorDashboard = () => {
     },
   });
 
-  // Get released applications that the vendor can see (platform-wide)
+  // Get released applications and hires count
   const { data: applicationStats } = useQuery({
     queryKey: ["vendor-application-stats"],
     queryFn: async () => {
-      // Get all released applications the vendor can see
       const { count: released } = await supabase
         .from("job_applications")
         .select("*", { count: "exact", head: true })
         .eq("released_to_vendor", true);
       
-      return { released: released || 0 };
+      const { count: hired } = await supabase
+        .from("job_applications")
+        .select("*", { count: "exact", head: true })
+        .eq("released_to_vendor", true)
+        .eq("vendor_status", "hired");
+      
+      return { released: released || 0, hired: hired || 0 };
     },
   });
 
@@ -109,10 +114,10 @@ const VendorDashboard = () => {
               description="Viewable candidates"
             />
             <VendorStatsCard
-              title="Platform Jobs"
-              value="Browse"
+              title="Hires"
+              value={applicationStats?.hired || 0}
               icon={TrendingUp}
-              description="View all job applications"
+              description="Candidates hired"
             />
           </div>
 

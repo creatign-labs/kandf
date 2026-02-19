@@ -164,8 +164,6 @@ const App = () => (
           <Route path="/chef/daily-ingredients" element={<ProtectedRoute requiredRole="chef"><DailyIngredients /></ProtectedRoute>} />
           <Route path="/chef/profile" element={<ProtectedRoute requiredRole="chef"><Profile /></ProtectedRoute>} />
           <Route path="/chef/inventory-usage" element={<ProtectedRoute requiredRole="chef"><InventoryUsage /></ProtectedRoute>} />
-          <Route path="/chef/daily-ingredients" element={<ProtectedRoute requiredRole="chef"><DailyIngredients /></ProtectedRoute>} />
-          <Route path="/chef/profile" element={<ProtectedRoute requiredRole="chef"><Profile /></ProtectedRoute>} />
           
           <Route path="/vendor" element={<ProtectedRoute requiredRole="vendor"><VendorDashboard /></ProtectedRoute>} />
           <Route path="/vendor/jobs" element={<ProtectedRoute requiredRole="vendor"><VendorJobs /></ProtectedRoute>} />

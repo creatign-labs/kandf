@@ -37,7 +37,7 @@ import { formatDistanceToNow } from "date-fns";
 
 const VendorJobs = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [deleteJobId, setDeleteJobId] = useState<string | null>(null);
+  // No delete functionality - deactivate only
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -112,24 +112,7 @@ const VendorJobs = () => {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (jobId: string) => {
-      const { error } = await supabase
-        .from("jobs")
-        .delete()
-        .eq("id", jobId);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vendor-jobs"] });
-      toast({ title: "Job deleted successfully" });
-      setDeleteJobId(null);
-    },
-    onError: () => {
-      toast({ title: "Failed to delete job", variant: "destructive" });
-    },
-  });
+  // No delete - deactivate only (no hard deletes allowed)
 
   const filteredJobs = jobs?.filter(job =>
     job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -230,14 +213,7 @@ const VendorJobs = () => {
                           >
                             {job.is_active ? "⏸" : "▶"}
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeleteJobId(job.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {/* No delete - deactivate only */}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -263,25 +239,7 @@ const VendorJobs = () => {
         </div>
       </div>
 
-      <AlertDialog open={!!deleteJobId} onOpenChange={() => setDeleteJobId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Job Posting?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. All applications for this job will also be removed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteJobId && deleteMutation.mutate(deleteJobId)}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* No delete dialog - jobs can only be deactivated */}
     </div>
   );
 };

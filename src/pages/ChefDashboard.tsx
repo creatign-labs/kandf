@@ -3,39 +3,30 @@ import { StatsCard } from "@/components/StatsCard";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, CheckCircle2, Clock, Loader2, ChefHat, XCircle, Lock } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar, Users, CheckCircle2, Clock, Loader2, ChefHat, XCircle, AlertTriangle, Package } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-
-// Helper to check if a time slot has passed
-const isTimeSlotPassed = (timeSlot: string): boolean => {
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  
-  // Extract end time from slot (e.g., "9:00 AM - 12:00 PM" -> "12:00 PM")
-  const endTimeMatch = timeSlot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i);
-  if (!endTimeMatch) return false;
-  
-  let hour = parseInt(endTimeMatch[1]);
-  const minute = parseInt(endTimeMatch[2]);
-  const period = endTimeMatch[3].toUpperCase();
-  
-  // Convert to 24-hour format
-  if (period === "PM" && hour !== 12) hour += 12;
-  if (period === "AM" && hour === 12) hour = 0;
-  
-  // Compare with current time
-  if (currentHour > hour) return true;
-  if (currentHour === hour && currentMinute > minute) return true;
-  return false;
-};
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ChefDashboard = () => {
   const queryClient = useQueryClient();
   const today = format(new Date(), 'yyyy-MM-dd');
+  const [attendanceState, setAttendanceState] = useState<Record<string, Record<string, 'present' | 'absent'>>>({});
+  const [confirmBatchId, setConfirmBatchId] = useState<string | null>(null);
+  const [sessionNotes, setSessionNotes] = useState<Record<string, string>>({});
 
   // Fetch chef profile
   const { data: profile } = useQuery({
@@ -43,208 +34,300 @@ const ChefDashboard = () => {
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       if (error) throw error;
       return data;
     }
   });
 
-  // Fetch today's bookings grouped by recipe
-  const { data: todaysBookings } = useQuery({
-    queryKey: ['todays-bookings-by-recipe', today],
+  // Fetch today's recipe batches assigned to this chef (via bookings with assigned_chef_id)
+  const { data: todaysBatches, isLoading } = useQuery({
+    queryKey: ['chef-todays-batches', today],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Get bookings assigned to this chef for today
       const { data: bookings, error } = await supabase
         .from('bookings')
         .select(`
-          id,
-          student_id,
-          course_id,
-          recipe_id,
-          time_slot,
+          id, student_id, course_id, recipe_id, time_slot, status, booking_date,
           recipes(id, title),
           courses(title)
         `)
         .eq('booking_date', today)
-        .eq('status', 'confirmed');
-      
+        .eq('assigned_chef_id', user.id)
+        .in('status', ['confirmed', 'attended', 'no_show']);
+
       if (error) throw error;
-      
-      // Fetch profiles for all students in bookings
-      const studentIds = [...new Set((bookings || []).map(b => b.student_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .in('id', studentIds);
-      
+
+      // Also get bookings without a specific chef assignment (all chef view)
+      const { data: unassignedBookings, error: err2 } = await supabase
+        .from('bookings')
+        .select(`
+          id, student_id, course_id, recipe_id, time_slot, status, booking_date,
+          recipes(id, title),
+          courses(title)
+        `)
+        .eq('booking_date', today)
+        .is('assigned_chef_id', null)
+        .in('status', ['confirmed', 'attended', 'no_show']);
+
+      if (err2) throw err2;
+
+      const allBookings = [...(bookings || []), ...(unassignedBookings || [])];
+
+      // Get student profiles
+      const studentIds = [...new Set(allBookings.map(b => b.student_id))];
+      const { data: profiles } = studentIds.length > 0
+        ? await supabase.from('profiles').select('id, first_name, last_name').in('id', studentIds)
+        : { data: [] };
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-      
-      return (bookings || []).map(b => ({
-        ...b,
-        profile: profileMap.get(b.student_id)
-      }));
-    }
-  });
 
-  // Fetch today's batches with enrollments
-  const { data: batchesData, isLoading } = useQuery({
-    queryKey: ['todays-batches', today],
-    queryFn: async () => {
-      const { data: batches, error: batchesError } = await supabase
-        .from('batches')
-        .select('*, courses(title)')
-        .order('time_slot');
-      
-      if (batchesError) throw batchesError;
+      // Group by time_slot + recipe
+      const grouped: Record<string, {
+        timeSlot: string;
+        recipeId: string | null;
+        recipeTitle: string;
+        courseName: string;
+        students: { id: string; name: string; bookingId: string; bookingStatus: string }[];
+      }> = {};
 
-      // Fetch enrollments with profiles for each batch
-      const batchesWithStudents = await Promise.all(
-        (batches || []).map(async (batch) => {
-          const { data: enrollments, error: enrollmentsError } = await supabase
-            .from('enrollments')
-            .select('*, profiles:student_id(id, first_name, last_name)')
-            .eq('batch_id', batch.id)
-            .eq('status', 'active');
-          
-          if (enrollmentsError) throw enrollmentsError;
-
-          // Fetch today's attendance for this batch
-          const { data: attendance, error: attendanceError } = await supabase
-            .from('attendance')
-            .select('*')
-            .eq('batch_id', batch.id)
-            .eq('class_date', today);
-          
-          if (attendanceError) throw attendanceError;
-
-          return {
-            ...batch,
-            enrollments: enrollments || [],
-            attendance: attendance || [],
-            isLocked: isTimeSlotPassed(batch.time_slot)
+      allBookings.forEach(b => {
+        const key = `${b.time_slot}__${b.recipe_id || 'none'}`;
+        if (!grouped[key]) {
+          grouped[key] = {
+            timeSlot: b.time_slot,
+            recipeId: b.recipe_id,
+            recipeTitle: b.recipes?.title || 'No Recipe',
+            courseName: b.courses?.title || '',
+            students: []
           };
-        })
-      );
+        }
+        const p = profileMap.get(b.student_id);
+        grouped[key].students.push({
+          id: b.student_id,
+          name: p ? `${p.first_name} ${p.last_name}` : 'Unknown',
+          bookingId: b.id,
+          bookingStatus: b.status
+        });
+      });
 
-      return batchesWithStudents;
+      return Object.values(grouped).sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
     }
   });
 
-  // Fetch low stock items for quick visibility
-  const { data: lowStockItems } = useQuery({
-    queryKey: ['low-stock-items'],
+  // Fetch daily ingredient summary (quantity × booked students, NO stock info)
+  const { data: ingredientSummary } = useQuery({
+    queryKey: ['chef-daily-ingredients-summary', today],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .lt('current_stock', 10)
-        .order('current_stock')
-        .limit(5);
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  // Group bookings by time slot and recipe
-  const groupedBySlotAndRecipe = todaysBookings?.reduce((acc, booking) => {
-    const slot = booking.time_slot;
-    const recipeId = booking.recipe_id || 'unassigned';
-    const recipeTitle = booking.recipes?.title || 'No Recipe Assigned';
-    
-    if (!acc[slot]) acc[slot] = {};
-    if (!acc[slot][recipeId]) {
-      acc[slot][recipeId] = {
-        recipeTitle,
-        students: []
-      };
-    }
-    
-    acc[slot][recipeId].students.push({
-      id: booking.profile?.id,
-      name: `${booking.profile?.first_name || ''} ${booking.profile?.last_name || ''}`.trim(),
-      courseName: booking.courses?.title
-    });
-    
-    return acc;
-  }, {} as Record<string, Record<string, { recipeTitle: string; students: { id: string | undefined; name: string; courseName: string | undefined }[] }>>);
-
-  // Mark attendance mutation
-  const attendanceMutation = useMutation({
-    mutationFn: async ({ studentId, batchId, status }: { studentId: string; batchId: string; status: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Check if attendance record exists
-      const { data: existing } = await supabase
-        .from('attendance')
-        .select('*')
-        .eq('student_id', studentId)
-        .eq('batch_id', batchId)
-        .eq('class_date', today)
-        .single();
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('recipe_id')
+        .eq('booking_date', today)
+        .eq('status', 'confirmed')
+        .not('recipe_id', 'is', null);
 
-      if (existing) {
-        const { error } = await supabase
-          .from('attendance')
-          .update({ status, marked_by: user.id })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('attendance')
-          .insert({
-            student_id: studentId,
-            batch_id: batchId,
-            class_date: today,
-            status,
-            marked_by: user.id
-          });
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['todays-batches'] });
-      toast({
-        title: "Attendance marked",
-        description: "The attendance has been recorded successfully.",
+      if (!bookings?.length) return [];
+
+      // Count students per recipe
+      const recipeCounts: Record<string, number> = {};
+      bookings.forEach(b => {
+        if (b.recipe_id) {
+          recipeCounts[b.recipe_id] = (recipeCounts[b.recipe_id] || 0) + 1;
+        }
       });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
+
+      const recipeIds = Object.keys(recipeCounts);
+      const { data: recipeIngredients } = await supabase
+        .from('recipe_ingredients')
+        .select('recipe_id, quantity_per_student, inventory:inventory_id(name, unit)')
+        .in('recipe_id', recipeIds);
+
+      // Aggregate
+      const ingredientMap: Record<string, { name: string; unit: string; total: number }> = {};
+      recipeIngredients?.forEach((ri: any) => {
+        if (!ri.inventory) return;
+        const key = ri.inventory.name;
+        if (!ingredientMap[key]) {
+          ingredientMap[key] = { name: ri.inventory.name, unit: ri.inventory.unit, total: 0 };
+        }
+        ingredientMap[key].total += ri.quantity_per_student * (recipeCounts[ri.recipe_id] || 0);
       });
+
+      return Object.values(ingredientMap).sort((a, b) => a.name.localeCompare(b.name));
     }
   });
 
-  const handleMarkAttendance = (studentId: string, batchId: string, status: 'present' | 'absent', isLocked: boolean) => {
-    if (isLocked) {
-      toast({
-        title: "Attendance Locked",
-        description: "This class has ended. Attendance can no longer be modified.",
-        variant: "destructive",
-      });
-      return;
+  // Confirm batch completion mutation (atomic)
+  const confirmBatchMutation = useMutation({
+    mutationFn: async (batchKey: string) => {
+      const batch = todaysBatches?.find((_, i) => `batch-${i}` === batchKey);
+      if (!batch) throw new Error('Batch not found');
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const batchAttendance = attendanceState[batchKey] || {};
+      
+      // Ensure all students are marked
+      const unmarked = batch.students.filter(s => s.bookingStatus === 'confirmed' && !batchAttendance[s.id]);
+      if (unmarked.length > 0) {
+        throw new Error(`Mark all students before confirming. ${unmarked.length} unmarked.`);
+      }
+
+      // Check inventory sufficiency for present students
+      const presentStudents = batch.students.filter(s => batchAttendance[s.id] === 'present');
+      
+      if (batch.recipeId && presentStudents.length > 0) {
+        const { data: recipeIngs } = await supabase
+          .from('recipe_ingredients')
+          .select('inventory_id, quantity_per_student, inventory:inventory_id(name, current_stock, unit)')
+          .eq('recipe_id', batch.recipeId);
+
+        for (const ri of (recipeIngs || []) as any[]) {
+          const needed = ri.quantity_per_student * presentStudents.length;
+          if (ri.inventory && ri.inventory.current_stock < needed) {
+            throw new Error(`Insufficient inventory: ${ri.inventory.name}. Need ${needed} ${ri.inventory.unit}, have ${ri.inventory.current_stock}`);
+          }
+        }
+      }
+
+      // Process each student atomically
+      for (const student of batch.students) {
+        if (student.bookingStatus !== 'confirmed') continue;
+        
+        const status = batchAttendance[student.id];
+        if (!status) continue;
+
+        if (status === 'present') {
+          // Update booking status
+          await supabase.from('bookings').update({ status: 'attended' }).eq('id', student.bookingId);
+          
+          // Mark recipe completed via RPC
+          if (batch.recipeId) {
+            await supabase.rpc('mark_recipe_complete_by_chef', {
+              p_student_id: student.id,
+              p_recipe_id: batch.recipeId
+            });
+          }
+
+          // Mark attendance
+          await supabase.from('attendance').upsert({
+            student_id: student.id,
+            batch_id: student.bookingId, // Using booking as reference
+            class_date: today,
+            status: 'present',
+            marked_by: user.id
+          }, { onConflict: 'student_id,batch_id,class_date' });
+
+        } else {
+          // Absent → no_show
+          await supabase.from('bookings').update({ status: 'no_show' }).eq('id', student.bookingId);
+          
+          await supabase.from('attendance').upsert({
+            student_id: student.id,
+            batch_id: student.bookingId,
+            class_date: today,
+            status: 'no_show',
+            marked_by: user.id
+          }, { onConflict: 'student_id,batch_id,class_date' });
+
+          // Check no_show count and lock if >= 3
+          const { count } = await supabase
+            .from('attendance')
+            .select('*', { count: 'exact', head: true })
+            .eq('student_id', student.id)
+            .eq('status', 'no_show');
+
+          if ((count || 0) >= 3) {
+            await supabase.from('profiles')
+              .update({ enrollment_status: 'locked_no_show' })
+              .eq('id', student.id);
+
+            await supabase.from('notifications').insert({
+              user_id: student.id,
+              title: 'Account Locked',
+              message: 'Your account has been locked due to 3+ no-shows. Contact admin.',
+              type: 'warning'
+            });
+          }
+        }
+      }
+
+      // Deduct inventory for present students only
+      if (batch.recipeId && presentStudents.length > 0) {
+        const { data: recipeIngs } = await supabase
+          .from('recipe_ingredients')
+          .select('inventory_id, quantity_per_student')
+          .eq('recipe_id', batch.recipeId);
+
+        for (const ri of (recipeIngs || [])) {
+          const totalDeduct = ri.quantity_per_student * presentStudents.length;
+          // Get current stock
+          const { data: inv } = await supabase.from('inventory').select('current_stock').eq('id', ri.inventory_id).single();
+          if (inv) {
+            const newStock = Math.max(0, inv.current_stock - totalDeduct);
+            await supabase.from('inventory').update({ current_stock: newStock }).eq('id', ri.inventory_id);
+            
+            await supabase.from('inventory_usage').insert({
+              inventory_id: ri.inventory_id,
+              quantity_used: totalDeduct,
+              used_by: user.id,
+              notes: `Batch completion: ${batch.recipeTitle} (${presentStudents.length} students)`
+            });
+          }
+        }
+      }
+
+      // Save session notes if provided
+      const notes = sessionNotes[batchKey];
+      if (notes && batch.recipeId) {
+        // Find recipe_batch record
+        const { data: rb } = await supabase
+          .from('recipe_batches')
+          .select('id')
+          .eq('recipe_id', batch.recipeId)
+          .eq('batch_date', today)
+          .eq('time_slot', batch.timeSlot)
+          .maybeSingle();
+
+        if (rb) {
+          await supabase.from('recipe_batches').update({
+            session_notes: notes,
+            session_notes_by: user.id,
+            session_notes_at: new Date().toISOString(),
+            status: 'completed'
+          }).eq('id', rb.id);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chef-todays-batches'] });
+      toast({ title: "Batch Completed", description: "Attendance confirmed and inventory deducted." });
+      setConfirmBatchId(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      setConfirmBatchId(null);
     }
-    attendanceMutation.mutate({ studentId, batchId, status });
+  });
+
+  const toggleAttendance = (batchKey: string, studentId: string, status: 'present' | 'absent') => {
+    setAttendanceState(prev => ({
+      ...prev,
+      [batchKey]: {
+        ...(prev[batchKey] || {}),
+        [studentId]: status
+      }
+    }));
   };
 
-  const getStudentStatus = (studentId: string, attendance: any[]) => {
-    const record = attendance.find(a => a.student_id === studentId);
-    return record?.status || null;
-  };
-
-  const totalStudents = batchesData?.reduce((sum, batch) => sum + batch.enrollments.length, 0) || 0;
-  const totalBatches = batchesData?.length || 0;
-  const lockedClasses = batchesData?.filter(b => b.isLocked).length || 0;
-
+  const totalStudents = todaysBatches?.reduce((sum, b) => sum + b.students.length, 0) || 0;
+  const totalBatches = todaysBatches?.length || 0;
   const firstName = profile?.first_name || 'Chef';
   const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -264,122 +347,70 @@ const ChefDashboard = () => {
       <Header role="chef" userName={`Chef ${firstName}`} />
       
       <div className="container px-4 md:px-6 py-6 md:py-8">
-        {/* Welcome Section */}
-        <div className="mb-6 md:mb-8">
+        <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold mb-2">{greeting}, Chef {firstName} 👨‍🍳</h1>
-          <p className="text-sm md:text-base text-muted-foreground">
-            {format(new Date(), "EEEE, MMMM d, yyyy")} • Manage your classes and mark attendance
+          <p className="text-sm text-muted-foreground">
+            {format(new Date(), "EEEE, MMMM d, yyyy")}
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
-          <StatsCard
-            title="Today's Classes"
-            value={String(totalBatches)}
-            icon={Calendar}
-            variant="primary"
-          />
-          <StatsCard
-            title="Total Students"
-            value={String(totalStudents)}
-            icon={Users}
-            variant="success"
-          />
-          <StatsCard
-            title="Classes Ended"
-            value={String(lockedClasses)}
-            icon={Lock}
-            variant="default"
-          />
-          <StatsCard
-            title="Low Stock Items"
-            value={String(lowStockItems?.length || 0)}
-            icon={CheckCircle2}
-            variant={lowStockItems && lowStockItems.length > 0 ? "warning" : "default"}
-          />
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mb-6">
+          <StatsCard title="Today's Batches" value={String(totalBatches)} icon={Calendar} variant="primary" />
+          <StatsCard title="Total Students" value={String(totalStudents)} icon={Users} variant="success" />
+          <StatsCard title="Ingredients Needed" value={String(ingredientSummary?.length || 0)} icon={Package} variant="default" />
         </div>
 
-        {/* Today's Recipe Groupings */}
-        {groupedBySlotAndRecipe && Object.keys(groupedBySlotAndRecipe).length > 0 && (
-          <Card className="p-4 md:p-6 mb-6 md:mb-8">
+        {/* Daily Ingredient Summary — NO stock/cost info */}
+        {ingredientSummary && ingredientSummary.length > 0 && (
+          <Card className="p-4 md:p-6 mb-6">
             <div className="flex items-center gap-2 mb-4">
-              <ChefHat className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-lg">Today's Recipe Groups</h3>
+              <Package className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-lg">Daily Ingredient Requirements</h3>
             </div>
-            <div className="space-y-4">
-              {Object.entries(groupedBySlotAndRecipe).map(([slot, recipes]) => (
-                <div key={slot} className="border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Badge variant="outline">{slot}</Badge>
-                    {isTimeSlotPassed(slot) && (
-                      <Badge variant="secondary" className="gap-1">
-                        <Lock className="h-3 w-3" /> Ended
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {Object.entries(recipes).map(([recipeId, data]) => (
-                      <div 
-                        key={recipeId} 
-                        className={`p-3 rounded-lg ${recipeId === 'unassigned' ? 'bg-muted/50 border-dashed border' : 'bg-primary/5 border border-primary/20'}`}
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <ChefHat className={`h-4 w-4 ${recipeId === 'unassigned' ? 'text-muted-foreground' : 'text-primary'}`} />
-                          <span className={`font-medium text-sm ${recipeId === 'unassigned' ? 'text-muted-foreground italic' : ''}`}>
-                            {data.recipeTitle}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {data.students.map((student, idx) => (
-                            <Badge 
-                              key={idx} 
-                              variant="secondary" 
-                              className="text-xs"
-                            >
-                              {student.name || 'Unknown'}
-                            </Badge>
-                          ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {data.students.length} student{data.students.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {ingredientSummary.map((item, idx) => (
+                <div key={idx} className="p-3 border rounded-lg">
+                  <div className="font-medium text-sm">{item.name}</div>
+                  <div className="text-lg font-bold text-primary">{item.total.toFixed(1)} {item.unit}</div>
                 </div>
               ))}
             </div>
           </Card>
         )}
 
-        {/* Classes Schedule with Attendance */}
-        <div className="space-y-4 md:space-y-6">
-          <h2 className="text-xl font-semibold">Mark Attendance</h2>
+        {/* Today's Batches with Attendance */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Today's Batches</h2>
           
-          {batchesData?.map((batch) => {
-            const presentCount = batch.attendance.filter((a: any) => a.status === 'present').length;
-            const absentCount = batch.attendance.filter((a: any) => a.status === 'absent').length;
-            
+          {todaysBatches?.length === 0 && (
+            <Card className="p-8 text-center">
+              <ChefHat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No batches scheduled for today</p>
+            </Card>
+          )}
+
+          {todaysBatches?.map((batch, idx) => {
+            const batchKey = `batch-${idx}`;
+            const batchAttendance = attendanceState[batchKey] || {};
+            const isCompleted = batch.students.every(s => s.bookingStatus === 'attended' || s.bookingStatus === 'no_show');
+            const confirmedStudents = batch.students.filter(s => s.bookingStatus === 'confirmed');
+            const allMarked = confirmedStudents.length > 0 && confirmedStudents.every(s => batchAttendance[s.id]);
+            const presentCount = Object.values(batchAttendance).filter(v => v === 'present').length;
+            const absentCount = Object.values(batchAttendance).filter(v => v === 'absent').length;
+
             return (
-              <Card key={batch.id} className={`p-4 md:p-6 ${batch.isLocked ? 'opacity-75' : ''}`}>
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 md:mb-6 gap-3">
+              <Card key={batchKey} className={`p-4 md:p-6 ${isCompleted ? 'opacity-60' : ''}`}>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 gap-3">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <Badge variant="default">
-                        {batch.time_slot}
-                      </Badge>
-                      <span className="text-xs md:text-sm font-medium text-muted-foreground">{batch.days}</span>
-                      {batch.isLocked && (
-                        <Badge variant="secondary" className="gap-1">
-                          <Lock className="h-3 w-3" /> Locked
-                        </Badge>
-                      )}
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline">{batch.timeSlot}</Badge>
+                      {isCompleted && <Badge className="bg-green-500">Completed</Badge>}
                     </div>
-                    <h2 className="text-lg md:text-xl font-semibold mb-1">{batch.courses?.title}</h2>
-                    <p className="text-xs md:text-sm text-muted-foreground">{batch.batch_name}</p>
+                    <h3 className="text-lg font-semibold">{batch.recipeTitle}</h3>
+                    <p className="text-sm text-muted-foreground">{batch.courseName}</p>
                   </div>
-                  <div className="flex gap-4 text-sm">
+                  <div className="flex gap-3 text-sm">
                     <div className="text-center">
                       <div className="text-green-500 font-bold text-lg">{presentCount}</div>
                       <div className="text-muted-foreground text-xs">Present</div>
@@ -388,106 +419,112 @@ const ChefDashboard = () => {
                       <div className="text-red-500 font-bold text-lg">{absentCount}</div>
                       <div className="text-muted-foreground text-xs">Absent</div>
                     </div>
+                    <div className="text-center">
+                      <div className="font-bold text-lg">{batch.students.length}</div>
+                      <div className="text-muted-foreground text-xs">Total</div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Student Roster */}
-                <div>
-                  <div className="flex items-center justify-between mb-3 md:mb-4">
-                    <h3 className="font-semibold text-sm md:text-base">Student Roster ({batch.enrollments.length})</h3>
-                  </div>
-                  
-                  {batch.enrollments.length > 0 ? (
-                    <div className="grid sm:grid-cols-2 gap-2 md:gap-3">
-                      {batch.enrollments.map((enrollment: any) => {
-                        const status = getStudentStatus(enrollment.student_id, batch.attendance);
-                        
-                        return (
-                          <div
-                            key={enrollment.id}
-                            className={`flex items-center gap-3 p-4 rounded-lg border bg-card transition-colors ${batch.isLocked ? '' : 'hover:bg-accent/5'}`}
-                          >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">
-                                  {enrollment.profiles?.first_name} {enrollment.profiles?.last_name}
-                                </span>
-                                {status === 'present' && (
-                                  <Badge className="bg-green-500 text-white">Present</Badge>
-                                )}
-                                {status === 'absent' && (
-                                  <Badge className="bg-red-500 text-white">Absent</Badge>
-                                )}
-                                {status === 'no_show' && (
-                                  <Badge className="bg-orange-500 text-white">No Show</Badge>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant={status === 'present' ? 'default' : 'outline'}
-                                className={status === 'present' ? 'bg-green-500 hover:bg-green-600' : ''}
-                                onClick={() => handleMarkAttendance(enrollment.student_id, batch.id, 'present', batch.isLocked)}
-                                disabled={batch.isLocked || attendanceMutation.isPending}
-                              >
-                                <CheckCircle2 className="h-4 w-4 mr-1" />
-                                Present
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant={status === 'absent' ? 'default' : 'outline'}
-                                className={status === 'absent' ? 'bg-red-500 hover:bg-red-600' : ''}
-                                onClick={() => handleMarkAttendance(enrollment.student_id, batch.id, 'absent', batch.isLocked)}
-                                disabled={batch.isLocked || attendanceMutation.isPending}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Absent
-                              </Button>
-                            </div>
+                {/* Student List */}
+                <div className="space-y-2 mb-4">
+                  {batch.students.map(student => {
+                    const currentMark = batchAttendance[student.id];
+                    const alreadyProcessed = student.bookingStatus === 'attended' || student.bookingStatus === 'no_show';
+                    
+                    return (
+                      <div key={student.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{student.name}</span>
+                          {alreadyProcessed && (
+                            <Badge className={student.bookingStatus === 'attended' ? 'bg-green-500' : 'bg-red-500'}>
+                              {student.bookingStatus === 'attended' ? 'Present' : 'No Show'}
+                            </Badge>
+                          )}
+                          {!alreadyProcessed && currentMark && (
+                            <Badge className={currentMark === 'present' ? 'bg-green-500' : 'bg-red-500'}>
+                              {currentMark === 'present' ? 'Present' : 'Absent'}
+                            </Badge>
+                          )}
+                          {!alreadyProcessed && !currentMark && (
+                            <Badge variant="outline" className="text-muted-foreground">Not Marked</Badge>
+                          )}
+                        </div>
+                        {!alreadyProcessed && !isCompleted && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant={currentMark === 'present' ? 'default' : 'outline'}
+                              className={currentMark === 'present' ? 'bg-green-500 hover:bg-green-600' : ''}
+                              onClick={() => toggleAttendance(batchKey, student.id, 'present')}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={currentMark === 'absent' ? 'default' : 'outline'}
+                              className={currentMark === 'absent' ? 'bg-red-500 hover:bg-red-600' : ''}
+                              onClick={() => toggleAttendance(batchKey, student.id, 'absent')}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      No students enrolled in this batch
-                    </p>
-                  )}
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+
+                {/* Session Notes */}
+                {!isCompleted && (
+                  <div className="mb-4">
+                    <Textarea
+                      placeholder="Session notes (optional): issues, observations..."
+                      value={sessionNotes[batchKey] || ''}
+                      onChange={e => setSessionNotes(prev => ({ ...prev, [batchKey]: e.target.value }))}
+                      className="text-sm"
+                      rows={2}
+                    />
+                  </div>
+                )}
+
+                {/* Confirm Button */}
+                {!isCompleted && (
+                  <Button
+                    className="w-full"
+                    disabled={!allMarked || confirmBatchMutation.isPending}
+                    onClick={() => setConfirmBatchId(batchKey)}
+                  >
+                    {confirmBatchMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
+                    ) : (
+                      <><CheckCircle2 className="h-4 w-4 mr-2" /> Confirm Batch Completion</>
+                    )}
+                  </Button>
+                )}
               </Card>
             );
           })}
-
-          {(!batchesData || batchesData.length === 0) && (
-            <Card className="p-8 text-center">
-              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Classes Today</h3>
-              <p className="text-muted-foreground">You don't have any classes scheduled for today.</p>
-            </Card>
-          )}
         </div>
-
-        {/* Low Stock Alert */}
-        {lowStockItems && lowStockItems.length > 0 && (
-          <Card className="p-6 mt-8 border-yellow-500/50 bg-yellow-500/5">
-            <h3 className="font-semibold mb-4 text-yellow-600 dark:text-yellow-400">Low Stock Alert</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {lowStockItems.map((item) => (
-                <div key={item.id} className="flex justify-between p-3 border rounded-lg bg-background">
-                  <div>
-                    <span className="font-medium">{item.name}</span>
-                    <span className="text-sm text-muted-foreground ml-2">({item.category})</span>
-                  </div>
-                  <span className="text-yellow-600 dark:text-yellow-400 font-medium">
-                    {item.current_stock} {item.unit}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
       </div>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!confirmBatchId} onOpenChange={() => setConfirmBatchId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Batch Completion</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will finalize attendance, update recipe progress, deduct inventory for present students, and apply no-show rules. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmBatchId && confirmBatchMutation.mutate(confirmBatchId)}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

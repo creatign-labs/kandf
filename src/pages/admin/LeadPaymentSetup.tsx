@@ -529,14 +529,6 @@ const LeadPaymentSetup = () => {
                             </TooltipTrigger>
                             <TooltipContent>Generate Razorpay Payment Link</TooltipContent>
                           </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => window.open(`${BASE_URL}/pay/lead/${inst.id}`, "_blank")}>
-                                <ExternalLink className="h-3 w-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Open Payment Page</TooltipContent>
-                          </Tooltip>
                         </>
                       )}
                       {!inst.id && inst.status !== "paid" && (

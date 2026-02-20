@@ -723,7 +723,7 @@ const AdminEnrollments = () => {
                           <Input
                             id="balance1Amount"
                             type="number"
-                            value={customPaymentSchedule.balance1Amount}
+                            value={customPaymentSchedule.balance1Amount || ""}
                             onChange={(e) => setCustomPaymentSchedule(prev => ({
                               ...prev,
                               balance1Amount: Number(e.target.value)
@@ -751,7 +751,7 @@ const AdminEnrollments = () => {
                           <Input
                             id="balance2Amount"
                             type="number"
-                            value={customPaymentSchedule.balance2Amount}
+                            value={customPaymentSchedule.balance2Amount || ""}
                             onChange={(e) => setCustomPaymentSchedule(prev => ({
                               ...prev,
                               balance2Amount: Number(e.target.value)

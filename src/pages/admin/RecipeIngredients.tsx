@@ -228,7 +228,7 @@ const RecipeIngredients = () => {
                       type="number"
                       min="0"
                       step="0.01"
-                      value={newIngredient.quantity_per_student}
+                      value={newIngredient.quantity_per_student || ""}
                       onChange={(e) =>
                         setNewIngredient({
                           ...newIngredient,

@@ -1966,6 +1966,30 @@ export type Database = {
           },
         ]
       }
+      resume_access_logs: {
+        Row: {
+          accessed_at: string
+          id: string
+          job_application_id: string
+          student_id: string
+          vendor_user_id: string
+        }
+        Insert: {
+          accessed_at?: string
+          id?: string
+          job_application_id: string
+          student_id: string
+          vendor_user_id: string
+        }
+        Update: {
+          accessed_at?: string
+          id?: string
+          job_application_id?: string
+          student_id?: string
+          vendor_user_id?: string
+        }
+        Relationships: []
+      }
       resumes: {
         Row: {
           created_at: string
@@ -2561,6 +2585,30 @@ export type Database = {
           recipe_order: number
           recipe_title: string
         }[]
+      }
+      get_student_resume_with_audit: {
+        Args: { p_job_application_id: string; p_student_id: string }
+        Returns: {
+          created_at: string
+          education: string | null
+          email: string | null
+          experience: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+          resume_url: string | null
+          skills: string | null
+          student_id: string
+          summary: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "resumes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       has_permission: {
         Args: { _permission_key: string; _user_id: string }

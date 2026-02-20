@@ -225,12 +225,18 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
         <div className="hidden md:flex items-center gap-2 md:gap-3">
           {role === "public" ? (
             isLoggedIn && userPrimaryRole ? (
-              <Button size="sm" asChild>
-                <Link to={getDashboardPath()}>
-                  <LayoutDashboard className="h-4 w-4 mr-2" />
-                  Back to Dashboard
-                </Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" asChild>
+                  <Link to={getDashboardPath()}>
+                    <LayoutDashboard className="h-4 w-4 mr-2" />
+                    Back to Dashboard
+                  </Link>
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log Out
+                </Button>
+              </div>
             ) : (
               <>
                 <Button variant="ghost" size="sm" asChild>
@@ -329,14 +335,27 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
                 <div className="p-4 border-t mt-auto">
                   {role === "public" ? (
                     isLoggedIn && userPrimaryRole ? (
-                      <SheetClose asChild>
-                        <Button className="w-full gap-2" asChild>
-                          <Link to={getDashboardPath()}>
-                            <LayoutDashboard className="h-4 w-4" />
-                            Back to Dashboard
-                          </Link>
+                      <div className="space-y-2">
+                        <SheetClose asChild>
+                          <Button className="w-full gap-2" asChild>
+                            <Link to={getDashboardPath()}>
+                              <LayoutDashboard className="h-4 w-4" />
+                              Back to Dashboard
+                            </Link>
+                          </Button>
+                        </SheetClose>
+                        <Button 
+                          variant="outline" 
+                          className="w-full gap-2 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            setIsOpen(false);
+                            handleLogout();
+                          }}
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Log Out
                         </Button>
-                      </SheetClose>
+                      </div>
                     ) : (
                       <div className="space-y-2">
                         <SheetClose asChild>

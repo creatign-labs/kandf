@@ -3,10 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, Mail, Calendar, GripVertical } from "lucide-react";
+import { Phone, Mail, Calendar, GripVertical, CreditCard } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface Lead {
   id: string;
@@ -26,6 +28,7 @@ interface LeadsKanbanProps {
 const STAGES = [
   { id: "new", label: "New", color: "bg-blue-500" },
   { id: "contacted", label: "Contacted", color: "bg-purple-500" },
+  { id: "interested", label: "Interested", color: "bg-orange-500" },
   { id: "follow-up", label: "Follow Up", color: "bg-yellow-500" },
   { id: "converted", label: "Converted", color: "bg-green-500" },
   { id: "lost", label: "Lost", color: "bg-red-500" },
@@ -33,6 +36,7 @@ const STAGES = [
 
 export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
@@ -89,7 +93,7 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
   };
 
   return (
-    <div className="grid grid-cols-5 gap-4 h-[calc(100vh-300px)] min-h-[500px]">
+    <div className="grid grid-cols-6 gap-4 h-[calc(100vh-300px)] min-h-[500px]">
       {STAGES.map((stage) => {
         const stageLeads = getLeadsByStage(stage.id);
         const isDropTarget = dragOverStage === stage.id && draggedLead?.stage !== stage.id;
@@ -154,6 +158,20 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
                             <span>{format(new Date(lead.created_at), "MMM d")}</span>
                           </div>
                         </div>
+                        {lead.stage === "interested" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 w-full text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/admin/lead-payment/${lead.id}`);
+                            }}
+                          >
+                            <CreditCard className="h-3 w-3 mr-1" />
+                            Setup Payment
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </Card>

@@ -102,6 +102,7 @@ serve(async (req) => {
     }
 
     const lead = installment.leads;
+    const supabaseFunctionsUrl = `${supabaseUrl}/functions/v1/lead-payment-webhook`;
 
     // Create Razorpay Payment Link with the final amount
     const linkResponse = await fetch('https://api.razorpay.com/v1/payment_links', {
@@ -127,6 +128,7 @@ serve(async (req) => {
         notes: {
           installment_id: installmentId,
           lead_id: installment.lead_id,
+          installment_number: String(installment.installment_number),
           label: installment.label,
         },
         callback_url: '',

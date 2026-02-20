@@ -457,24 +457,23 @@ const LeadPaymentSetup = () => {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {inst.id && inst.status !== "paid" && (
-                        <>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => copyPaymentLink(inst.id!)}>
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Copy Payment Link</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => window.open(`${BASE_URL}/pay/lead/${inst.id}`, "_blank")}>
-                                <ExternalLink className="h-3 w-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Open Payment Page</TooltipContent>
-                          </Tooltip>
-                        </>
+                        <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => copyPaymentLink(inst.id!)}>
+                          <Copy className="h-3 w-3" />
+                          Generate Link
+                        </Button>
+                      )}
+                      {inst.id && inst.status !== "paid" && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => window.open(`${BASE_URL}/pay/lead/${inst.id}`, "_blank")}>
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Open Payment Page</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {!inst.id && inst.status !== "paid" && (
+                        <span className="text-xs text-muted-foreground">Save plan first</span>
                       )}
                       {inst.status !== "paid" && (
                         <Tooltip>

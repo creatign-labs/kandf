@@ -158,7 +158,7 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
                             <span>{format(new Date(lead.created_at), "MMM d")}</span>
                           </div>
                         </div>
-                        {lead.stage === "interested" && (
+                        {(lead.stage === "contacted" || lead.stage === "interested") && (
                           <Button
                             variant="outline"
                             size="sm"

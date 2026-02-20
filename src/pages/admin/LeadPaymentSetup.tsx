@@ -125,38 +125,52 @@ const LeadPaymentSetup = () => {
   }, [existingPlan, lead]);
 
   // Auto-adjust installment amounts when net payable changes
+  // Keep enrollment fee (installment_number 1) fixed at enrollmentFee, adjust only other installments
   useEffect(() => {
     if (installments.length === 0) return;
     const paidTotal = installments.filter(i => i.status === "paid").reduce((s, i) => s + (Number(i.amount) || 0), 0);
-    const unpaid = installments.filter(i => i.status !== "paid");
-    if (unpaid.length === 0) return;
+    
+    // Separate enrollment fee from other unpaid installments
+    const enrollmentInst = installments.find(i => i.installment_number === 1 && i.status !== "paid");
+    const otherUnpaid = installments.filter(i => i.status !== "paid" && i.installment_number !== 1);
+    
+    if (otherUnpaid.length === 0 && !enrollmentInst) return;
 
-    const remaining = Math.max(0, netAmount - paidTotal);
-    const oldUnpaidTotal = unpaid.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    // Fix enrollment fee amount
+    const fixedEnrollment = enrollmentInst ? enrollmentFee : 0;
+    const enrollmentPaid = installments.find(i => i.installment_number === 1 && i.status === "paid");
+    const enrollmentTotal = enrollmentPaid ? Number(enrollmentPaid.amount) || 0 : fixedEnrollment;
+    
+    const remainingForOthers = Math.max(0, netAmount - paidTotal - (enrollmentInst ? fixedEnrollment : 0));
+    const oldOtherTotal = otherUnpaid.reduce((s, i) => s + (Number(i.amount) || 0), 0);
 
     // Skip if already matching
-    if (Math.abs(remaining - oldUnpaidTotal) < 1) return;
+    if (Math.abs(remainingForOthers - oldOtherTotal) < 1 && (!enrollmentInst || enrollmentInst.amount === fixedEnrollment)) return;
 
     const updated = installments.map(inst => {
       if (inst.status === "paid") return inst;
-      const share = oldUnpaidTotal > 0
-        ? Math.round((Number(inst.amount) / oldUnpaidTotal) * remaining)
-        : Math.round(remaining / unpaid.length);
+      // Keep enrollment fee fixed
+      if (inst.installment_number === 1) return { ...inst, amount: fixedEnrollment };
+      // Distribute remaining among other unpaid installments
+      if (otherUnpaid.length === 0) return inst;
+      const share = oldOtherTotal > 0
+        ? Math.round((Number(inst.amount) / oldOtherTotal) * remainingForOthers)
+        : Math.round(remainingForOthers / otherUnpaid.length);
       return { ...inst, amount: share };
     });
 
-    // Fix rounding: adjust last unpaid installment
-    const newUnpaidTotal = updated.filter(i => i.status !== "paid").reduce((s, i) => s + (Number(i.amount) || 0), 0);
-    const diff = remaining - newUnpaidTotal;
+    // Fix rounding: adjust last non-enrollment unpaid installment
+    const newOtherTotal = updated.filter(i => i.status !== "paid" && i.installment_number !== 1).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const diff = remainingForOthers - newOtherTotal;
     if (diff !== 0) {
-      const lastUnpaidIdx = updated.map((inst, i) => inst.status !== "paid" ? i : -1).filter(i => i !== -1).pop();
-      if (lastUnpaidIdx !== undefined) {
-        updated[lastUnpaidIdx] = { ...updated[lastUnpaidIdx], amount: updated[lastUnpaidIdx].amount + diff };
+      const lastOtherIdx = updated.map((inst, i) => inst.status !== "paid" && inst.installment_number !== 1 ? i : -1).filter(i => i !== -1).pop();
+      if (lastOtherIdx !== undefined) {
+        updated[lastOtherIdx] = { ...updated[lastOtherIdx], amount: updated[lastOtherIdx].amount + diff };
       }
     }
 
     setInstallments(updated);
-  }, [netAmount]);
+  }, [netAmount, enrollmentFee]);
 
   const generateDefaultInstallments = (total: number) => {
     const registration = Math.min(2000, total);

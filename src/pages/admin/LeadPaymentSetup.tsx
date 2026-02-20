@@ -53,6 +53,7 @@ const LeadPaymentSetup = () => {
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [generatingLinkFor, setGeneratingLinkFor] = useState<string | null>(null);
+  const [markingPaidFor, setMarkingPaidFor] = useState<string | null>(null);
 
   // Fetch lead info
   const { data: lead, isLoading: leadLoading } = useQuery({
@@ -307,10 +308,43 @@ const LeadPaymentSetup = () => {
     }
   };
 
+  const markAsPaid = async (installmentId: string, installmentNumber: number) => {
+    if (!window.confirm("Mark this installment as paid? This action cannot be undone.")) return;
+    setMarkingPaidFor(installmentId);
+    try {
+      const { error } = await supabase
+        .from("lead_installments")
+        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .eq("id", installmentId);
+      if (error) throw error;
+
+      // Auto-convert lead when enrollment fee (installment #1) is paid
+      if (installmentNumber === 1 && leadId) {
+        await supabase.from("leads").update({ stage: "converted" }).eq("id", leadId);
+      }
+
+      // Update local state
+      setInstallments(prev =>
+        prev.map(inst =>
+          inst.id === installmentId ? { ...inst, status: "paid" } : inst
+        )
+      );
+
+      queryClient.invalidateQueries({ queryKey: ["lead-payment-plan", leadId] });
+      toast({
+        title: "Marked as paid!",
+        description: installmentNumber === 1 ? "Enrollment fee paid. Lead converted." : "Installment marked as paid.",
+      });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setMarkingPaidFor(null);
+    }
+  };
+
   const generatePaymentLink = async (installmentId: string) => {
     setGeneratingLinkFor(installmentId);
     try {
-      // Find the current amount from local state
       const inst = installments.find(i => i.id === installmentId);
       const { data, error } = await supabase.functions.invoke('create-lead-payment-link', {
         body: { installmentId, amount: inst ? Number(inst.amount) : undefined },
@@ -525,6 +559,24 @@ const LeadPaymentSetup = () => {
                     <div className="flex items-center justify-end gap-1">
                       {inst.id && inst.status !== "paid" && (
                         <>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8 text-green-600 border-green-300 hover:bg-green-50"
+                                disabled={markingPaidFor === inst.id}
+                                onClick={() => markAsPaid(inst.id!, inst.installment_number)}
+                              >
+                                {markingPaidFor === inst.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Mark as Paid</TooltipContent>
+                          </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button

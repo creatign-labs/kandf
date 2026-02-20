@@ -91,6 +91,16 @@ const LeadPaymentSetup = () => {
     enabled: !!leadId,
   });
 
+  const calculateDiscount = () => {
+    if (discountType === "none" || !discountValue) return 0;
+    const courseFee = lead?.courses?.base_fee || enrollmentFee;
+    if (discountType === "fixed") return discountValue;
+    if (discountType === "percentage") return Math.round((courseFee * discountValue) / 100);
+    return 0;
+  };
+
+  const netAmount = (lead?.courses?.base_fee || enrollmentFee) - calculateDiscount();
+
   // Load existing plan data
   useEffect(() => {
     if (existingPlan?.plan) {
@@ -108,22 +118,44 @@ const LeadPaymentSetup = () => {
         }))
       );
     } else if (lead?.courses?.base_fee && !existingPlan) {
-      // Initialize default installments based on course fee
       const courseFee = lead.courses.base_fee;
-      const netAmount = courseFee;
-      generateDefaultInstallments(netAmount);
+      generateDefaultInstallments(courseFee);
     }
   }, [existingPlan, lead]);
 
-  const calculateDiscount = () => {
-    if (discountType === "none" || !discountValue) return 0;
-    const courseFee = lead?.courses?.base_fee || enrollmentFee;
-    if (discountType === "fixed") return discountValue;
-    if (discountType === "percentage") return Math.round((courseFee * discountValue) / 100);
-    return 0;
-  };
+  // Auto-adjust installment amounts when net payable changes
+  useEffect(() => {
+    if (installments.length === 0) return;
+    const paidTotal = installments.filter(i => i.status === "paid").reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const unpaid = installments.filter(i => i.status !== "paid");
+    if (unpaid.length === 0) return;
 
-  const netAmount = (lead?.courses?.base_fee || enrollmentFee) - calculateDiscount();
+    const remaining = Math.max(0, netAmount - paidTotal);
+    const oldUnpaidTotal = unpaid.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+    // Skip if already matching
+    if (Math.abs(remaining - oldUnpaidTotal) < 1) return;
+
+    const updated = installments.map(inst => {
+      if (inst.status === "paid") return inst;
+      const share = oldUnpaidTotal > 0
+        ? Math.round((Number(inst.amount) / oldUnpaidTotal) * remaining)
+        : Math.round(remaining / unpaid.length);
+      return { ...inst, amount: share };
+    });
+
+    // Fix rounding: adjust last unpaid installment
+    const newUnpaidTotal = updated.filter(i => i.status !== "paid").reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const diff = remaining - newUnpaidTotal;
+    if (diff !== 0) {
+      const lastUnpaidIdx = updated.map((inst, i) => inst.status !== "paid" ? i : -1).filter(i => i !== -1).pop();
+      if (lastUnpaidIdx !== undefined) {
+        updated[lastUnpaidIdx] = { ...updated[lastUnpaidIdx], amount: updated[lastUnpaidIdx].amount + diff };
+      }
+    }
+
+    setInstallments(updated);
+  }, [netAmount]);
 
   const generateDefaultInstallments = (total: number) => {
     const registration = Math.min(2000, total);

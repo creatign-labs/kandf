@@ -1201,6 +1201,126 @@ export type Database = {
           },
         ]
       }
+      lead_installments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          installment_number: number
+          label: string
+          lead_id: string
+          paid_at: string | null
+          payment_link_id: string | null
+          plan_id: string
+          razorpay_payment_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          installment_number: number
+          label?: string
+          lead_id: string
+          paid_at?: string | null
+          payment_link_id?: string | null
+          plan_id: string
+          razorpay_payment_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          installment_number?: number
+          label?: string
+          lead_id?: string
+          paid_at?: string | null
+          payment_link_id?: string | null
+          plan_id?: string
+          razorpay_payment_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_installments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_installments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "lead_payment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_payment_plans: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          created_by: string
+          discount_type: string | null
+          discount_value: number | null
+          enrollment_fee: number
+          id: string
+          lead_id: string
+          net_amount: number
+          total_installments: number
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          created_by: string
+          discount_type?: string | null
+          discount_value?: number | null
+          enrollment_fee?: number
+          id?: string
+          lead_id: string
+          net_amount: number
+          total_installments?: number
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string
+          discount_type?: string | null
+          discount_value?: number | null
+          enrollment_fee?: number
+          id?: string
+          lead_id?: string
+          net_amount?: number
+          total_installments?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_payment_plans_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_payment_plans_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           course_id: string | null

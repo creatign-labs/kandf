@@ -32,12 +32,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Phone, Mail, Calendar, Loader2, MoreHorizontal, MessageSquare, Trash2, List, LayoutGrid } from "lucide-react";
+import { Search, Phone, Mail, Calendar, Loader2, MoreHorizontal, MessageSquare, Trash2, List, LayoutGrid, CreditCard } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { LeadsKanban } from "@/components/admin/LeadsKanban";
+import { useNavigate } from "react-router-dom";
 
 const Leads = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,6 +46,7 @@ const Leads = () => {
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ["leads"],
@@ -100,6 +102,8 @@ const Leads = () => {
         return "bg-blue-500";
       case "contacted":
         return "bg-purple-500";
+      case "interested":
+        return "bg-orange-500";
       case "follow-up":
         return "bg-yellow-500";
       case "converted":
@@ -114,8 +118,9 @@ const Leads = () => {
   const getNextStages = (currentStage: string) => {
     const stageFlow: Record<string, string[]> = {
       new: ["contacted", "lost"],
-      contacted: ["follow-up", "converted", "lost"],
-      "follow-up": ["contacted", "converted", "lost"],
+      contacted: ["interested", "follow-up", "lost"],
+      interested: ["follow-up", "converted", "lost"],
+      "follow-up": ["interested", "converted", "lost"],
       converted: [],
       lost: ["new"],
     };
@@ -149,7 +154,7 @@ const Leads = () => {
         </div>
 
         {/* Stage Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-blue-500">{stageCounts["new"] || 0}</div>
             <div className="text-sm text-muted-foreground">New</div>
@@ -157,6 +162,10 @@ const Leads = () => {
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-purple-500">{stageCounts["contacted"] || 0}</div>
             <div className="text-sm text-muted-foreground">Contacted</div>
+          </Card>
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-orange-500">{stageCounts["interested"] || 0}</div>
+            <div className="text-sm text-muted-foreground">Interested</div>
           </Card>
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-yellow-500">{stageCounts["follow-up"] || 0}</div>
@@ -193,6 +202,7 @@ const Leads = () => {
                   <SelectItem value="all">All Stages</SelectItem>
                   <SelectItem value="new">New</SelectItem>
                   <SelectItem value="contacted">Contacted</SelectItem>
+                  <SelectItem value="interested">Interested</SelectItem>
                   <SelectItem value="follow-up">Follow-up</SelectItem>
                   <SelectItem value="converted">Converted</SelectItem>
                   <SelectItem value="lost">Lost</SelectItem>
@@ -279,7 +289,7 @@ const Leads = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {getNextStages(lead.stage).map((stage) => (
+                          {getNextStages(lead.stage).map((stage) => (
                                   <DropdownMenuItem
                                     key={stage}
                                     onClick={() => updateStageMutation.mutate({ id: lead.id, stage })}
@@ -287,6 +297,14 @@ const Leads = () => {
                                     {stage.charAt(0).toUpperCase() + stage.slice(1).replace("-", " ")}
                                   </DropdownMenuItem>
                                 ))}
+                                {lead.stage === "interested" && (
+                                  <DropdownMenuItem
+                                    onClick={() => navigate(`/admin/lead-payment/${lead.id}`)}
+                                  >
+                                    <CreditCard className="h-4 w-4 mr-2" />
+                                    Setup Payment
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}

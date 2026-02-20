@@ -198,8 +198,8 @@ const PurchaseOrders = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Input type="number" placeholder="Qty" className="w-20" value={item.quantity} onChange={e => updateItem(idx, "quantity", Number(e.target.value))} />
-                        <Input type="number" placeholder="Cost" className="w-24" value={item.unit_cost} onChange={e => updateItem(idx, "unit_cost", Number(e.target.value))} />
+                        <Input type="number" placeholder="Qty" className="w-20" value={item.quantity || ""} onChange={e => updateItem(idx, "quantity", Number(e.target.value))} />
+                        <Input type="number" placeholder="Cost" className="w-24" value={item.unit_cost || ""} onChange={e => updateItem(idx, "unit_cost", Number(e.target.value))} />
                         <Button size="sm" variant="ghost" onClick={() => removeItem(idx)}>×</Button>
                       </div>
                     ))}

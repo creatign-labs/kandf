@@ -439,7 +439,7 @@ const Batches = () => {
                       <Input
                         id="total_seats"
                         type="number"
-                        value={formData.total_seats}
+                        value={formData.total_seats || ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,

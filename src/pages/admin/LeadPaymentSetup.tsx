@@ -365,7 +365,7 @@ const LeadPaymentSetup = () => {
                 <Label>{discountType === "fixed" ? "Discount Amount (₹)" : "Discount (%)"}</Label>
                 <Input
                   type="number"
-                  value={discountValue}
+                  value={discountValue || ""}
                   onChange={(e) => setDiscountValue(Number(e.target.value))}
                   className="mt-1"
                   min={0}
@@ -438,7 +438,7 @@ const LeadPaymentSetup = () => {
                   <TableCell>
                     <Input
                       type="number"
-                      value={inst.amount}
+                      value={inst.amount || ""}
                       onChange={(e) => updateInstallment(index, "amount", Number(e.target.value))}
                       className="h-8 w-28"
                       disabled={inst.status === "paid"}

@@ -234,7 +234,7 @@ const Inventory = () => {
                         <Input 
                           id="current" 
                           type="number"
-                          value={newItem.current_stock}
+                          value={newItem.current_stock || ""}
                           onChange={(e) => setNewItem({ ...newItem, current_stock: Number(e.target.value) })}
                         />
                       </div>
@@ -243,7 +243,7 @@ const Inventory = () => {
                         <Input 
                           id="required" 
                           type="number"
-                          value={newItem.required_stock}
+                          value={newItem.required_stock || ""}
                           onChange={(e) => setNewItem({ ...newItem, required_stock: Number(e.target.value) })}
                         />
                       </div>

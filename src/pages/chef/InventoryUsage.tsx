@@ -256,7 +256,7 @@ const InventoryUsage = () => {
                         type="number"
                         min="0"
                         step="0.1"
-                        value={formData.quantity_used}
+                        value={formData.quantity_used || ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,

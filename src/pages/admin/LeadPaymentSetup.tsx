@@ -473,7 +473,7 @@ const LeadPaymentSetup = () => {
                         </Tooltip>
                       )}
                       {!inst.id && inst.status !== "paid" && (
-                        <span className="text-xs text-muted-foreground">Save plan first</span>
+                        <span className="text-xs text-muted-foreground italic">—</span>
                       )}
                       {inst.status !== "paid" && (
                         <Tooltip>
@@ -499,6 +499,12 @@ const LeadPaymentSetup = () => {
               )}
             </TableBody>
           </Table>
+
+          {!existingPlan && installments.length > 0 && (
+            <p className="text-sm text-muted-foreground mt-4 text-center">
+              Save Payment Plan to Generate Payment Links
+            </p>
+          )}
         </Card>
 
         {/* Save */}

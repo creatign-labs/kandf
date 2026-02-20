@@ -2470,6 +2470,7 @@ export type Database = {
         Args: { p_course_id: string; p_student_id: string }
         Returns: boolean
       }
+      check_lead_rate_limit: { Args: { p_email: string }; Returns: boolean }
       check_student_booking_eligibility: {
         Args: { p_student_id: string }
         Returns: {

@@ -26,7 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ArrowLeft, Loader2, Copy, ExternalLink, Plus, Trash2, CheckCircle, Clock, AlertTriangle, CreditCard } from "lucide-react";
+import { ArrowLeft, Loader2, Copy, ExternalLink, Plus, Trash2, CheckCircle, Clock, AlertTriangle, CreditCard, IndianRupee } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addDays } from "date-fns";
@@ -52,6 +52,7 @@ const LeadPaymentSetup = () => {
   const [discountValue, setDiscountValue] = useState(0);
   const [installments, setInstallments] = useState<Installment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [generatingLinkFor, setGeneratingLinkFor] = useState<string | null>(null);
 
   // Fetch lead info
   const { data: lead, isLoading: leadLoading } = useQuery({
@@ -292,10 +293,28 @@ const LeadPaymentSetup = () => {
     }
   };
 
-  const copyPaymentLink = (installmentId: string) => {
-    const link = `${BASE_URL}/pay/lead/${installmentId}`;
-    navigator.clipboard.writeText(link);
-    toast({ title: "Payment link copied!", description: "Share this link to collect payment." });
+  const generatePaymentLink = async (installmentId: string) => {
+    setGeneratingLinkFor(installmentId);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-lead-payment-link', {
+        body: { installmentId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const shortUrl = data.payment_link?.short_url;
+      if (shortUrl) {
+        await navigator.clipboard.writeText(shortUrl);
+        toast({ title: "Payment link generated & copied!", description: shortUrl });
+      } else {
+        toast({ title: "Payment link generated!", description: "Link created successfully." });
+      }
+      queryClient.invalidateQueries({ queryKey: ["lead-payment-plan", leadId] });
+    } catch (err: any) {
+      toast({ title: "Failed to generate link", description: err.message, variant: "destructive" });
+    } finally {
+      setGeneratingLinkFor(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -452,7 +471,7 @@ const LeadPaymentSetup = () => {
                 <TableHead>Amount (₹)</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">Generate Link</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -489,20 +508,34 @@ const LeadPaymentSetup = () => {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {inst.id && inst.status !== "paid" && (
-                        <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => copyPaymentLink(inst.id!)}>
-                          <Copy className="h-3 w-3" />
-                          Generate Link
-                        </Button>
-                      )}
-                      {inst.id && inst.status !== "paid" && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => window.open(`${BASE_URL}/pay/lead/${inst.id}`, "_blank")}>
-                              <ExternalLink className="h-3 w-3" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Open Payment Page</TooltipContent>
-                        </Tooltip>
+                        <>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                disabled={generatingLinkFor === inst.id}
+                                onClick={() => generatePaymentLink(inst.id!)}
+                              >
+                                {generatingLinkFor === inst.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <IndianRupee className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Generate Razorpay Payment Link</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => window.open(`${BASE_URL}/pay/lead/${inst.id}`, "_blank")}>
+                                <ExternalLink className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Open Payment Page</TooltipContent>
+                          </Tooltip>
+                        </>
                       )}
                       {!inst.id && inst.status !== "paid" && (
                         <span className="text-xs text-muted-foreground italic">—</span>

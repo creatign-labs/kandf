@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.course-expiry-check]
 verify_jwt = false
+
+[functions.create-lead-payment-link]
+verify_jwt = false

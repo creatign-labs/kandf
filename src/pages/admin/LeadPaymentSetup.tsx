@@ -296,8 +296,10 @@ const LeadPaymentSetup = () => {
   const generatePaymentLink = async (installmentId: string) => {
     setGeneratingLinkFor(installmentId);
     try {
+      // Find the current amount from local state
+      const inst = installments.find(i => i.id === installmentId);
       const { data, error } = await supabase.functions.invoke('create-lead-payment-link', {
-        body: { installmentId },
+        body: { installmentId, amount: inst ? Number(inst.amount) : undefined },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

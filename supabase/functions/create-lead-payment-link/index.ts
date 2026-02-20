@@ -22,7 +22,7 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { installmentId } = await req.json();
+    const { installmentId, amount: overrideAmount } = await req.json();
 
     if (!installmentId) {
       return new Response(
@@ -52,29 +52,58 @@ serve(async (req) => {
       );
     }
 
+    // Use override amount if provided, otherwise use DB amount
+    const finalAmount = overrideAmount != null ? Number(overrideAmount) : installment.amount;
+
+    if (!finalAmount || finalAmount <= 0) {
+      return new Response(
+        JSON.stringify({ error: 'Amount must be greater than zero' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
+
     // Check if payment link already exists
     if (installment.payment_link_id) {
-      // Fetch existing link status from Razorpay
-      const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
       const existingRes = await fetch(`https://api.razorpay.com/v1/payment_links/${installment.payment_link_id}`, {
         headers: { 'Authorization': `Basic ${auth}` },
       });
 
       if (existingRes.ok) {
         const existingLink = await existingRes.json();
-        if (existingLink.status !== 'cancelled' && existingLink.status !== 'expired') {
+        const existingAmountInRupees = existingLink.amount / 100;
+
+        // If amount matches and link is still active, reuse it
+        if (
+          existingLink.status !== 'cancelled' &&
+          existingLink.status !== 'expired' &&
+          Math.abs(existingAmountInRupees - finalAmount) < 1
+        ) {
           return new Response(
             JSON.stringify({ payment_link: existingLink }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+
+        // Amount changed or link expired — cancel old link if still active
+        if (existingLink.status !== 'cancelled' && existingLink.status !== 'expired') {
+          try {
+            await fetch(`https://api.razorpay.com/v1/payment_links/${installment.payment_link_id}/cancel`, {
+              method: 'POST',
+              headers: { 'Authorization': `Basic ${auth}` },
+            });
+            console.log('Cancelled old payment link:', installment.payment_link_id);
+          } catch (cancelErr) {
+            console.warn('Could not cancel old link, proceeding to create new one');
+          }
+        }
       }
     }
 
     const lead = installment.leads;
-    const auth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
 
-    // Create Razorpay Payment Link
+    // Create Razorpay Payment Link with the final amount
     const linkResponse = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
       headers: {
@@ -82,7 +111,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        amount: Math.round(installment.amount * 100), // paise
+        amount: Math.round(finalAmount * 100), // paise
         currency: 'INR',
         description: `${installment.label} - ${lead?.name || 'Lead Payment'}`,
         customer: {

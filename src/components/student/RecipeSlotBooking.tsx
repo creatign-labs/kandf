@@ -187,13 +187,6 @@ export function RecipeSlotBooking({ courseId, recipeId, recipeTitle, onBooked }:
                           {isFull ? "Full" : `${slot.available_spots} spots`}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="h-4 w-4" />
-                        <span>
-                          {slot.current_count} / {slot.capacity} students
-                          {slot.recipe_batch_id && " (batch exists)"}
-                        </span>
-                      </div>
                     </button>
                   );
                 })

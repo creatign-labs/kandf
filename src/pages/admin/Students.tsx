@@ -26,12 +26,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Download, UserCircle, Loader2, Key, Copy, Eye, EyeOff, CheckCircle, Clock } from "lucide-react";
+import { Search, Download, UserCircle, Loader2, Key, Copy, Eye, EyeOff, CheckCircle, Clock, MonitorPlay } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useMemo } from "react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { OnlineClassManager } from "@/components/admin/OnlineClassManager";
 
 const Students = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,6 +42,7 @@ const Students = () => {
   const [awaitingSearch, setAwaitingSearch] = useState("");
   const [credentialsStudent, setCredentialsStudent] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [onlineClassStudent, setOnlineClassStudent] = useState<{ id: string; name: string } | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch all enrollments with student profiles and courses
@@ -384,7 +386,20 @@ const Students = () => {
                           {new Date(enrollment.enrollment_date).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="outline" size="sm">View</Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setOnlineClassStudent({
+                                id: enrollment.student_id,
+                                name: `${enrollment.profile?.first_name || ''} ${enrollment.profile?.last_name || ''}`.trim(),
+                              })}
+                            >
+                              <MonitorPlay className="h-4 w-4 mr-1" />
+                              Online Class
+                            </Button>
+                            <Button variant="outline" size="sm">View</Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -627,6 +642,16 @@ const Students = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Online Class Manager Dialog */}
+      {onlineClassStudent && (
+        <OnlineClassManager
+          studentId={onlineClassStudent.id}
+          studentName={onlineClassStudent.name}
+          open={!!onlineClassStudent}
+          onOpenChange={(open) => !open && setOnlineClassStudent(null)}
+        />
+      )}
     </div>
   );
 };

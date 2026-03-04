@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { 
   BookOpen, Clock, Target, Loader2, Calendar, 
   CreditCard, AlertTriangle, ChefHat, ArrowRight,
-  CheckCircle, Ban
+  CheckCircle, Ban, MonitorPlay
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -364,6 +364,12 @@ const StudentDashboard = () => {
                   <Link to="/student/course-payment">
                     <CreditCard className="h-5 w-5" />
                     <span className="text-xs">Payments</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-auto py-3 flex-col gap-1" asChild>
+                  <Link to="/student/online-classes">
+                    <MonitorPlay className="h-5 w-5" />
+                    <span className="text-xs">Online Classes</span>
                   </Link>
                 </Button>
               </div>

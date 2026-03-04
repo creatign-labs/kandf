@@ -21,6 +21,7 @@ import AdvancePayment from "./pages/AdvancePayment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PublicPayment from "./pages/PublicPayment";
 import MyCourse from "./pages/student/MyCourse";
+import OnlineClasses from "./pages/student/OnlineClasses";
 import RecipeDetail from "./pages/student/RecipeDetail";
 import MyBookings from "./pages/student/MyBookings";
 import Notifications from "./pages/student/Notifications";
@@ -119,6 +120,7 @@ const App = () => (
           
           <Route path="/student" element={<ProtectedRoute requiredRole="student"><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/my-course" element={<ProtectedRoute requiredRole="student"><MyCourse /></ProtectedRoute>} />
+          <Route path="/student/online-classes" element={<ProtectedRoute requiredRole="student"><OnlineClasses /></ProtectedRoute>} />
           <Route path="/student/recipes/:id" element={<ProtectedRoute requiredRole="student"><RecipeDetail /></ProtectedRoute>} />
           <Route path="/student/my-bookings" element={<ProtectedRoute requiredRole="student"><MyBookings /></ProtectedRoute>} />
           <Route path="/student/notifications" element={<ProtectedRoute requiredRole="student"><Notifications /></ProtectedRoute>} />

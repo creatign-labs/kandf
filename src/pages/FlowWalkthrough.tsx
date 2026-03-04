@@ -38,7 +38,7 @@ const FlowWalkthrough = () => {
         {
           actor: "Super Admin",
           action: "Approve & Issue Credentials",
-          route: "/admin/student-approvals",
+          route: "/admin/students?tab=awaiting",
           details: "Navigate to Student Approvals → Click 'Approve' → System generates password → Copy and share credentials with student.",
         },
         {

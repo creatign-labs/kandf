@@ -47,7 +47,7 @@ import AdminNotifications from "./pages/admin/Notifications";
 import Batches from "./pages/admin/Batches";
 import Staff from "./pages/admin/Staff";
 import DataTemplate from "./pages/admin/DataTemplate";
-import StudentApprovals from "./pages/admin/StudentApprovals";
+
 import InventoryChecklist from "./pages/admin/InventoryChecklist";
 import DailyInventoryRequirements from "./pages/admin/DailyInventoryRequirements";
 import RecipeIngredients from "./pages/admin/RecipeIngredients";
@@ -145,7 +145,7 @@ const App = () => (
           <Route path="/admin/batches" element={<ProtectedRoute requiredRole="admin"><Batches /></ProtectedRoute>} />
           <Route path="/admin/staff" element={<ProtectedRoute requiredRole="admin"><Staff /></ProtectedRoute>} />
           <Route path="/admin/data-template" element={<ProtectedRoute requiredRole="admin"><DataTemplate /></ProtectedRoute>} />
-          <Route path="/admin/student-approvals" element={<ProtectedRoute requiredRole="admin"><StudentApprovals /></ProtectedRoute>} />
+          
           <Route path="/admin/inventory-checklist" element={<ProtectedRoute requiredRole="admin"><InventoryChecklist /></ProtectedRoute>} />
           <Route path="/admin/daily-inventory" element={<ProtectedRoute requiredRole="admin"><DailyInventoryRequirements /></ProtectedRoute>} />
           <Route path="/admin/recipe-ingredients" element={<ProtectedRoute requiredRole="admin"><RecipeIngredients /></ProtectedRoute>} />

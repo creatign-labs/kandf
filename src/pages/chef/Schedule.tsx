@@ -39,7 +39,7 @@ const Schedule = () => {
         .gte('booking_date', dateRange.from)
         .lte('booking_date', dateRange.to)
         .in('status', ['confirmed', 'attended', 'no_show'])
-        .or(`assigned_chef_id.eq.${user.id},assigned_chef_id.is.null`);
+        .eq('assigned_chef_id', user.id);
 
       if (error) throw error;
 

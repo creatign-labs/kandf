@@ -170,7 +170,7 @@ const BookingRecipeAssignment = () => {
     }
   });
 
-  // Notify chefs about assigned recipes
+  // Notify only assigned chefs about their bookings
   const notifyChefs = async () => {
     if (!bookings || bookings.length === 0) {
       toast({ title: "No bookings to notify about", variant: "destructive" });
@@ -180,90 +180,47 @@ const BookingRecipeAssignment = () => {
     setIsNotifying(true);
 
     try {
-      // Get unique assigned recipes for the date
-      const assignedRecipes = [...new Set(
-        bookings
-          .filter(b => b.recipe_id)
-          .map(b => b.recipe_id)
-      )];
+      // Filter bookings that have both a recipe and an assigned chef
+      const assignedBookings = bookings.filter(b => b.recipe_id && b.assigned_chef_id);
 
-      if (assignedRecipes.length === 0) {
-        toast({ title: "No recipes assigned yet", description: "Assign recipes before notifying chefs", variant: "destructive" });
+      if (assignedBookings.length === 0) {
+        toast({ title: "No chef assignments found", description: "Assign chefs to bookings before notifying", variant: "destructive" });
         setIsNotifying(false);
         return;
       }
 
-      // Find chefs who specialize in these recipes
-      const chefsToNotify = new Set<string>();
-      const chefRecipeMap: Record<string, string[]> = {};
-
-      if (chefsWithSpecializations) {
-        for (const chef of chefsWithSpecializations) {
-          if (!chef.id) continue;
-          
-          const matchingRecipes = chef.specializations
-            .filter((s: any) => assignedRecipes.includes(s.recipe_id))
-            .map((s: any) => s.recipes?.title || 'Unknown Recipe');
-
-          if (matchingRecipes.length > 0) {
-            chefsToNotify.add(chef.id);
-            chefRecipeMap[chef.id] = matchingRecipes;
-          }
+      // Group by assigned chef
+      const chefBookings: Record<string, { recipes: Set<string>; studentCount: number }> = {};
+      assignedBookings.forEach(b => {
+        const chefId = b.assigned_chef_id!;
+        if (!chefBookings[chefId]) {
+          chefBookings[chefId] = { recipes: new Set(), studentCount: 0 };
         }
-      }
-
-      // If no specialized chefs found, notify all chefs
-      if (chefsToNotify.size === 0 && chefsWithSpecializations) {
-        chefsWithSpecializations.forEach(chef => {
-          if (chef.id) chefsToNotify.add(chef.id);
-        });
-      }
-
-      // Group bookings by recipe for the notification message
-      const recipeGroups = bookings
-        .filter(b => b.recipe_id)
-        .reduce((acc, booking) => {
-          const recipeTitle = booking.recipes?.title || 'Unknown Recipe';
-          if (!acc[recipeTitle]) {
-            acc[recipeTitle] = { count: 0, timeSlots: new Set<string>() };
-          }
-          acc[recipeTitle].count++;
-          acc[recipeTitle].timeSlots.add(booking.time_slot);
-          return acc;
-        }, {} as Record<string, { count: number; timeSlots: Set<string> }>);
-
-      const dateStr = format(selectedDate, 'MMMM d, yyyy');
-      
-      // Create notifications for each chef
-      const notifications = Array.from(chefsToNotify).map(chefId => {
-        const chefRecipes = chefRecipeMap[chefId];
-        const message = chefRecipes && chefRecipes.length > 0
-          ? `You have been assigned: ${chefRecipes.join(', ')}. ${Object.entries(recipeGroups).map(([recipe, data]) => `${recipe}: ${data.count} student(s)`).join('; ')}`
-          : `Recipe assignments for ${dateStr}: ${Object.entries(recipeGroups).map(([recipe, data]) => `${recipe}: ${data.count} student(s)`).join('; ')}`;
-
-        return {
-          user_id: chefId,
-          title: `Recipe Assignments for ${dateStr}`,
-          message: message,
-          type: 'info',
-          read: false
-        };
+        chefBookings[chefId].recipes.add(b.recipes?.title || 'Unknown Recipe');
+        chefBookings[chefId].studentCount++;
       });
 
-      if (notifications.length > 0) {
-        const { error } = await supabase
-          .from('notifications')
-          .insert(notifications);
+      const dateStr = format(selectedDate, 'MMMM d, yyyy');
 
-        if (error) throw error;
+      // Create one notification per assigned chef
+      const notifications = Object.entries(chefBookings).map(([chefId, data]) => ({
+        user_id: chefId,
+        title: `Recipe Assignments for ${dateStr}`,
+        message: `You have been assigned: ${Array.from(data.recipes).join(', ')}. Total: ${data.studentCount} student(s).`,
+        type: 'info',
+        read: false
+      }));
 
-        toast({ 
-          title: "Chefs notified successfully", 
-          description: `${notifications.length} chef(s) have been notified about the recipe assignments` 
-        });
-      } else {
-        toast({ title: "No chefs to notify", variant: "destructive" });
-      }
+      const { error } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (error) throw error;
+
+      toast({ 
+        title: "Chefs notified successfully", 
+        description: `${notifications.length} chef(s) have been notified about their assignments` 
+      });
     } catch (error: any) {
       toast({
         title: "Failed to notify chefs",

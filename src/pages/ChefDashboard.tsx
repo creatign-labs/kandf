@@ -61,21 +61,7 @@ const ChefDashboard = () => {
 
       if (error) throw error;
 
-      // Also get bookings without a specific chef assignment (all chef view)
-      const { data: unassignedBookings, error: err2 } = await supabase
-        .from('bookings')
-        .select(`
-          id, student_id, course_id, recipe_id, time_slot, status, booking_date,
-          recipes(id, title),
-          courses(title)
-        `)
-        .eq('booking_date', today)
-        .is('assigned_chef_id', null)
-        .in('status', ['confirmed', 'attended', 'no_show']);
-
-      if (err2) throw err2;
-
-      const allBookings = [...(bookings || []), ...(unassignedBookings || [])];
+      const allBookings = bookings || [];
 
       // Get student profiles
       const studentIds = [...new Set(allBookings.map(b => b.student_id))];
@@ -127,7 +113,7 @@ const ChefDashboard = () => {
       const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
       const weekAhead = format(addDays(new Date(), 7), 'yyyy-MM-dd');
 
-      // Get bookings assigned to this chef or unassigned
+      // Get bookings assigned to this chef only
       const { data: assigned } = await supabase
         .from('bookings')
         .select(`id, student_id, recipe_id, time_slot, booking_date, recipes(title), courses(title)`)
@@ -136,15 +122,7 @@ const ChefDashboard = () => {
         .eq('assigned_chef_id', user.id)
         .in('status', ['confirmed']);
 
-      const { data: unassigned } = await supabase
-        .from('bookings')
-        .select(`id, student_id, recipe_id, time_slot, booking_date, recipes(title), courses(title)`)
-        .gte('booking_date', tomorrow)
-        .lte('booking_date', weekAhead)
-        .is('assigned_chef_id', null)
-        .in('status', ['confirmed']);
-
-      const all = [...(assigned || []), ...(unassigned || [])];
+      const all = assigned || [];
 
       // Group by date → time_slot + recipe
       const grouped: Record<string, { timeSlot: string; recipe: string; course: string; studentCount: number }[]> = {};

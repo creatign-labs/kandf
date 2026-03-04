@@ -1,11 +1,11 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, Mail, Calendar, GripVertical, CreditCard } from "lucide-react";
+import { Phone, Mail, Calendar, GripVertical, CreditCard, UserCheck, Clock, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -39,6 +39,26 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
   const navigate = useNavigate();
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+
+  // Fetch student account status for converted leads
+  const convertedLeadEmails = leads.filter(l => l.stage === "converted").map(l => l.email);
+  const { data: studentStatuses } = useQuery({
+    queryKey: ['converted-lead-statuses', convertedLeadEmails],
+    queryFn: async () => {
+      if (convertedLeadEmails.length === 0) return {};
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('email, enrollment_status')
+        .in('email', convertedLeadEmails);
+      
+      const statusMap: Record<string, string> = {};
+      profiles?.forEach(p => {
+        if (p.email) statusMap[p.email] = p.enrollment_status;
+      });
+      return statusMap;
+    },
+    enabled: convertedLeadEmails.length > 0,
+  });
 
   const updateStageMutation = useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
@@ -172,11 +192,42 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
                             Setup Payment
                           </Button>
                         )}
+                        {lead.stage === "converted" && (() => {
+                          const status = studentStatuses?.[lead.email];
+                          if (status === "active") {
+                            return (
+                              <Badge className="mt-2 w-full justify-center bg-green-500 text-xs">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Student Active
+                              </Badge>
+                            );
+                          } else if (status === "enrolled") {
+                            return (
+                              <Badge variant="outline" className="mt-2 w-full justify-center text-orange-600 border-orange-300 text-xs">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Awaiting Activation
+                              </Badge>
+                            );
+                          } else if (status) {
+                            return (
+                              <Badge variant="secondary" className="mt-2 w-full justify-center text-xs">
+                                <UserCheck className="h-3 w-3 mr-1" />
+                                Account Created
+                              </Badge>
+                            );
+                          } else {
+                            return (
+                              <Badge variant="outline" className="mt-2 w-full justify-center text-muted-foreground text-xs">
+                                <Clock className="h-3 w-3 mr-1" />
+                                No Account Yet
+                              </Badge>
+                            );
+                          }
+                        })()}
                       </div>
                     </div>
                   </Card>
                 ))}
-
                 {stageLeads.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground text-sm">
                     No leads

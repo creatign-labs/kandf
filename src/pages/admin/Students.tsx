@@ -84,21 +84,26 @@ const Students = () => {
       
       if (error) throw error;
 
-      // Get their approval records for credential info
       const studentIds = profiles?.map(p => p.id) || [];
       if (studentIds.length === 0) return [];
 
+      // Get their approval records for credential info
       const { data: approvals } = await supabase
         .from('student_access_approvals')
         .select('*')
         .in('student_id', studentIds);
 
-      // Get auth emails
-      const { data: authData } = await supabase.auth.getUser();
+      // Get advance payments to find course info
+      const { data: advancePayments } = await supabase
+        .from('advance_payments')
+        .select('student_id, course_id, courses(id, title)')
+        .in('student_id', studentIds)
+        .order('created_at', { ascending: false });
 
       return profiles?.map(profile => ({
         ...profile,
         approval: approvals?.find(a => a.student_id === profile.id),
+        advance_payment: advancePayments?.find(ap => ap.student_id === profile.id),
       })) || [];
     }
   });
@@ -427,6 +432,7 @@ const Students = () => {
                         <TableHead>Student</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Phone</TableHead>
+                        <TableHead>Course</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -448,6 +454,11 @@ const Students = () => {
                           </TableCell>
                           <TableCell>
                             <span className="text-muted-foreground">{student.phone || 'N/A'}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-muted-foreground">
+                              {(student.advance_payment?.courses as any)?.title || 'N/A'}
+                            </span>
                           </TableCell>
                           <TableCell>
                             {student.approval?.status === "approved" ? (
@@ -480,7 +491,10 @@ const Students = () => {
                               ) : isSuperAdmin ? (
                                 <Button
                                   size="sm"
-                                  onClick={() => generateCredentialsMutation.mutate({ studentId: student.id })}
+                                  onClick={() => generateCredentialsMutation.mutate({ 
+                                    studentId: student.id, 
+                                    courseId: student.advance_payment?.course_id || undefined 
+                                  })}
                                   disabled={generateCredentialsMutation.isPending}
                                 >
                                   {generateCredentialsMutation.isPending ? (
@@ -499,7 +513,7 @@ const Students = () => {
                       ))}
                       {filteredAwaiting.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                             No students awaiting activation
                           </TableCell>
                         </TableRow>

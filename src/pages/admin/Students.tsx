@@ -22,28 +22,58 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Download, UserCircle, Loader2, Key, Copy, Eye, EyeOff, CheckCircle, Clock, MonitorPlay } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Search, Download, UserCircle, Loader2, Copy, Eye, EyeOff, CheckCircle, Clock, MonitorPlay, UserCheck, XCircle, Ban, Pencil, Trash2, Mail } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { OnlineClassManager } from "@/components/admin/OnlineClassManager";
+import { useSearchParams } from "react-router-dom";
 
 const Students = () => {
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all-status");
-  const [activeTab, setActiveTab] = useState("enrolled");
-  const [awaitingSearch, setAwaitingSearch] = useState("");
-  const [credentialsStudent, setCredentialsStudent] = useState<any>(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") === "awaiting" ? "awaiting" : "enrolled");
   const [onlineClassStudent, setOnlineClassStudent] = useState<{ id: string; name: string } | null>(null);
   const queryClient = useQueryClient();
+
+  // Awaiting tab state
+  const [awaitingSearch, setAwaitingSearch] = useState("");
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [rejectingStudent, setRejectingStudent] = useState<any>(null);
+  const [editingApproval, setEditingApproval] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editStatus, setEditStatus] = useState<string>("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [credentialsStudent, setCredentialsStudent] = useState<any>(null);
+
+  // Sync tab from URL
+  useEffect(() => {
+    if (searchParams.get("tab") === "awaiting") {
+      setActiveTab("awaiting");
+    }
+  }, [searchParams]);
 
   // Fetch all enrollments with student profiles and courses
   const { data: enrollments, isLoading } = useQuery({
@@ -51,10 +81,7 @@ const Students = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('enrollments')
-        .select(`
-          *,
-          courses(id, title)
-        `)
+        .select(`*, courses(id, title)`)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -70,43 +97,6 @@ const Students = () => {
         })
       );
       return enrollmentsWithProfiles;
-    }
-  });
-
-  // Fetch students awaiting activation (enrolled status, no enrollment yet)
-  const { data: awaitingStudents, isLoading: awaitingLoading } = useQuery({
-    queryKey: ['awaiting-activation-students'],
-    queryFn: async () => {
-      // Get profiles with enrolled status
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('enrollment_status', 'enrolled')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-
-      const studentIds = profiles?.map(p => p.id) || [];
-      if (studentIds.length === 0) return [];
-
-      // Get their approval records for credential info
-      const { data: approvals } = await supabase
-        .from('student_access_approvals')
-        .select('*')
-        .in('student_id', studentIds);
-
-      // Get advance payments to find course info
-      const { data: advancePayments } = await supabase
-        .from('advance_payments')
-        .select('student_id, course_id, courses(id, title)')
-        .in('student_id', studentIds)
-        .order('created_at', { ascending: false });
-
-      return profiles?.map(profile => ({
-        ...profile,
-        approval: approvals?.find(a => a.student_id === profile.id),
-        advance_payment: advancePayments?.find(ap => ap.student_id === profile.id),
-      })) || [];
     }
   });
 
@@ -126,28 +116,124 @@ const Students = () => {
     },
   });
 
-  // Generate credentials mutation
-  const generateCredentialsMutation = useMutation({
+  // Fetch approval records (same data source as StudentApprovals page)
+  const { data: pendingApprovals, isLoading: approvalsLoading } = useQuery({
+    queryKey: ["pending-student-approvals"],
+    queryFn: async () => {
+      const { data: approvals, error } = await supabase
+        .from("student_access_approvals")
+        .select(`
+          *,
+          advance_payments!student_access_approvals_advance_payment_id_fkey(
+            *,
+            courses(title)
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const studentIds = approvals?.map(a => a.student_id) || [];
+      if (studentIds.length === 0) return [];
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("id", studentIds);
+
+      return approvals?.map(approval => ({
+        ...approval,
+        profile: profiles?.find(p => p.id === approval.student_id),
+      })) || [];
+    },
+  });
+
+  // Approve mutation
+  const approveMutation = useMutation({
     mutationFn: async ({ studentId, courseId }: { studentId: string; courseId?: string }) => {
       const { data, error } = await supabase.functions.invoke('approve-student-with-password', {
         body: { student_id: studentId, course_id: courseId || undefined },
       });
-      if (error) throw new Error(error.message || "Failed to generate credentials");
-      if (!data?.success) throw new Error(data?.error || "Failed to generate credentials");
+      if (error) throw new Error(error.message || "Failed to call approval function");
+      if (!data?.success) throw new Error(data?.error || "Failed to approve student");
       return { studentId, password: data.password, studentCode: data.studentCode };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['awaiting-activation-students'] });
+      queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
       queryClient.invalidateQueries({ queryKey: ['admin-students'] });
-      const student = awaitingStudents?.find(s => s.id === data.studentId);
+      toast({ title: "Student Approved", description: "Account is now active. Password has been updated." });
+      const student = pendingApprovals?.find(a => a.student_id === data.studentId);
       if (student) {
-        setCredentialsStudent({
-          ...student,
-          generated_password: data.password,
-          student_code: data.studentCode,
-        });
+        setSelectedStudent({ ...student, generated_password: data.password, student_code: data.studentCode });
       }
-      toast({ title: "Credentials Generated", description: "Student activated. Copy and share the credentials." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Reject mutation
+  const rejectMutation = useMutation({
+    mutationFn: async (studentId: string) => {
+      const { error: approvalError } = await supabase
+        .from("student_access_approvals")
+        .update({ status: "rejected", updated_at: new Date().toISOString() })
+        .eq("student_id", studentId);
+      if (approvalError) throw approvalError;
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ enrollment_status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("id", studentId);
+      if (profileError) throw profileError;
+
+      await supabase.from("notifications").insert({
+        user_id: studentId,
+        title: "Application Rejected",
+        message: "Your application has been rejected. Please contact Admin for more details.",
+        type: "error",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
+      toast({ title: "Application Rejected", description: "The student has been notified." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Delete approval record mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (approvalId: string) => {
+      const { error } = await supabase
+        .from("student_access_approvals")
+        .delete()
+        .eq("id", approvalId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
+      toast({ title: "Record Deleted", description: "The approval record has been removed." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Update approval status mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ approvalId, status }: { approvalId: string; status: string }) => {
+      const { error } = await supabase
+        .from("student_access_approvals")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("id", approvalId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-student-approvals"] });
+      toast({ title: "Record Updated", description: "The approval status has been updated." });
+      setEditingApproval(null);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -167,6 +253,7 @@ const Students = () => {
     }
   });
 
+  // Enrolled tab filters
   const filteredEnrollments = useMemo(() => {
     if (!enrollments) return [];
     return enrollments.filter((enrollment) => {
@@ -184,16 +271,18 @@ const Students = () => {
     });
   }, [enrollments, searchQuery, courseFilter, statusFilter]);
 
-  const filteredAwaiting = useMemo(() => {
-    if (!awaitingStudents) return [];
-    return awaitingStudents.filter((student) => {
-      const fullName = `${student.first_name || ''} ${student.last_name || ''}`.toLowerCase();
-      const phone = student.phone?.toLowerCase() || '';
-      return awaitingSearch === "" || 
-        fullName.includes(awaitingSearch.toLowerCase()) ||
-        phone.includes(awaitingSearch.toLowerCase());
+  // Awaiting tab filters
+  const filteredApprovals = useMemo(() => {
+    if (!pendingApprovals) return [];
+    return pendingApprovals.filter(approval => {
+      const matchesSearch = 
+        approval.profile?.first_name?.toLowerCase().includes(awaitingSearch.toLowerCase()) ||
+        approval.profile?.last_name?.toLowerCase().includes(awaitingSearch.toLowerCase()) ||
+        approval.profile?.phone?.includes(awaitingSearch);
+      const matchesStatus = approvalStatusFilter === "all" || approval.status === approvalStatusFilter;
+      return matchesSearch && matchesStatus;
     });
-  }, [awaitingStudents, awaitingSearch]);
+  }, [pendingApprovals, awaitingSearch, approvalStatusFilter]);
 
   const stats = useMemo(() => {
     if (!enrollments) return { total: 0, active: 0, completed: 0, onHold: 0 };
@@ -205,7 +294,10 @@ const Students = () => {
     };
   }, [enrollments]);
 
-  const awaitingCount = awaitingStudents?.length || 0;
+  const pendingCount = pendingApprovals?.filter(a => a.status === "pending").length || 0;
+  const approvedCount = pendingApprovals?.filter(a => a.status === "approved").length || 0;
+  const rejectedCount = pendingApprovals?.filter(a => a.status === "rejected").length || 0;
+  const awaitingCount = pendingApprovals?.length || 0;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -231,9 +323,37 @@ const Students = () => {
   };
 
   const copyAllCredentials = (student: any) => {
-    const text = `Student Credentials\n\nName: ${student.first_name} ${student.last_name}\nEmail: ${student.email}\nPassword: ${student.generated_password}${student.student_code ? `\nStudent ID: ${student.student_code}` : ''}\n\nLogin at: ${window.location.origin}/login`;
+    const name = student?.profile ? `${student.profile.first_name} ${student.profile.last_name}` : `${student.first_name} ${student.last_name}`;
+    const email = student?.profile?.email || student.email;
+    const text = `Student Credentials\n\nName: ${name}\nEmail: ${email}\nPassword: ${student.generated_password}${student.student_code ? `\nStudent ID: ${student.student_code}` : ''}\n\nLogin at: ${window.location.origin}/login`;
     navigator.clipboard.writeText(text);
     toast({ title: "All credentials copied!", description: "Ready to share via email or WhatsApp." });
+  };
+
+  const handleEditClick = (approval: any) => {
+    setEditingApproval(approval);
+    setEditStatus(approval.status);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingApproval && editStatus !== editingApproval.status) {
+      updateMutation.mutate({ approvalId: editingApproval.id, status: editStatus });
+    } else {
+      setEditingApproval(null);
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (editingApproval) {
+      deleteMutation.mutate(editingApproval.id);
+      setShowDeleteConfirm(false);
+      setEditingApproval(null);
+    }
+  };
+
+  const handleApproveStudent = (approval: any) => {
+    const courseId = approval.advance_payments?.course_id;
+    approveMutation.mutate({ studentId: approval.student_id, courseId: courseId || undefined });
   };
 
   if (isLoading) {
@@ -416,230 +536,439 @@ const Students = () => {
             </Card>
           </TabsContent>
 
-          {/* Awaiting Activation Tab */}
+          {/* Awaiting Activation Tab - Full Approval Workflow */}
           <TabsContent value="awaiting">
-            <Card className="p-6">
-              <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search by name or phone..." 
-                    className="pl-10" 
-                    value={awaitingSearch}
-                    onChange={(e) => setAwaitingSearch(e.target.value)}
-                  />
-                </div>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <Card className="p-4">
+                <div className="text-sm text-muted-foreground">Pending</div>
+                <div className="text-2xl font-bold text-yellow-500">{pendingCount}</div>
+              </Card>
+              <Card className="p-4">
+                <div className="text-sm text-muted-foreground">Approved</div>
+                <div className="text-2xl font-bold text-green-500">{approvedCount}</div>
+              </Card>
+              <Card className="p-4">
+                <div className="text-sm text-muted-foreground">Rejected</div>
+                <div className="text-2xl font-bold text-red-500">{rejectedCount}</div>
+              </Card>
+            </div>
+
+            {/* Sub-filter Tabs and Search */}
+            <Card className="p-4 mb-6">
+              <Tabs value={approvalStatusFilter} onValueChange={(v) => setApprovalStatusFilter(v as any)} className="mb-4">
+                <TabsList>
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
+                  <TabsTrigger value="approved">Approved ({approvedCount})</TabsTrigger>
+                  <TabsTrigger value="rejected">Rejected ({rejectedCount})</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or phone..."
+                  className="pl-10"
+                  value={awaitingSearch}
+                  onChange={(e) => setAwaitingSearch(e.target.value)}
+                />
               </div>
+            </Card>
 
-              <p className="text-sm text-muted-foreground mb-4">
-                Students who have paid their enrollment fee and are waiting for credential generation and course activation.
-              </p>
+            {/* Approvals Table */}
+            <Card className="p-6">
+              {!isSuperAdmin && (
+                <p className="text-sm text-muted-foreground mb-4">
+                  <Badge variant="outline" className="mr-2">View Only</Badge>
+                  Only Super Admins can approve or reject students.
+                </p>
+              )}
 
-              {awaitingLoading ? (
+              {approvalsLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Course</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredAwaiting.map((student) => (
-                        <TableRow key={student.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <UserCircle className="h-8 w-8 text-muted-foreground" />
-                              <span className="font-medium">
-                                {student.first_name} {student.last_name}
-                              </span>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Course</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredApprovals?.map((approval) => (
+                      <TableRow key={approval.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {approval.profile?.first_name} {approval.profile?.last_name}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-muted-foreground">{student.email || 'N/A'}</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-muted-foreground">{student.phone || 'N/A'}</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-muted-foreground">
-                              {(student.advance_payment?.courses as any)?.title || 'N/A'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {student.approval?.status === "approved" ? (
-                              <Badge className="bg-green-500">
-                                <CheckCircle className="h-3 w-3 mr-1" />Activated
-                              </Badge>
+                            <div className="text-sm text-muted-foreground">
+                              {approval.profile?.phone}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {approval.advance_payments?.courses?.title || "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={approval.advance_payments?.status === "paid" ? "default" : "secondary"}>
+                            {approval.advance_payments?.status === "paid" ? (
+                              <>
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                ₹{approval.advance_payments?.amount}
+                              </>
                             ) : (
-                              <Badge variant="outline" className="text-orange-600 border-orange-300">
-                                <Clock className="h-3 w-3 mr-1" />Awaiting Activation
-                              </Badge>
+                              "Pending"
                             )}
-                          </TableCell>
-                          <TableCell>
-                            {format(new Date(student.created_at), "MMM d, yyyy")}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {student.approval?.status === "approved" && student.approval?.generated_password ? (
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={
+                              approval.status === "approved" 
+                                ? "default" 
+                                : approval.status === "rejected" 
+                                ? "destructive" 
+                                : "outline"
+                            }
+                          >
+                            {approval.status === "approved" ? (
+                              <>
+                                <UserCheck className="h-3 w-3 mr-1" />
+                                Approved
+                              </>
+                            ) : approval.status === "rejected" ? (
+                              <>
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Rejected
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="h-3 w-3 mr-1" />
+                                Pending
+                              </>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(approval.created_at), "MMM d, yyyy")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {approval.status === "pending" && isSuperAdmin ? (
+                              <>
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  onClick={() => setCredentialsStudent({
-                                    ...student,
-                                    generated_password: student.approval.generated_password,
-                                  })}
+                                  onClick={() => handleApproveStudent(approval)}
+                                  disabled={approveMutation.isPending || rejectMutation.isPending}
                                 >
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  View Credentials
+                                  {approveMutation.isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  ) : null}
+                                  Approve & Enroll
                                 </Button>
-                              ) : isSuperAdmin ? (
                                 <Button
                                   size="sm"
-                                  onClick={() => generateCredentialsMutation.mutate({ 
-                                    studentId: student.id, 
-                                    courseId: student.advance_payment?.course_id || undefined 
-                                  })}
-                                  disabled={generateCredentialsMutation.isPending}
+                                  variant="destructive"
+                                  onClick={() => setRejectingStudent(approval)}
+                                  disabled={approveMutation.isPending || rejectMutation.isPending}
                                 >
-                                  {generateCredentialsMutation.isPending ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                                  ) : (
-                                    <Key className="h-4 w-4 mr-1" />
-                                  )}
-                                  Generate Credentials
+                                  <Ban className="h-4 w-4 mr-1" />
+                                  Reject
                                 </Button>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">Super Admin only</span>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {filteredAwaiting.length === 0 && (
-                        <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                            No students awaiting activation
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                              </>
+                            ) : approval.status === "approved" ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedStudent(approval)}
+                              >
+                                View Credentials
+                              </Button>
+                            ) : approval.status === "rejected" ? (
+                              <Badge variant="destructive" className="gap-1">
+                                <XCircle className="h-3 w-3" />
+                                Application Rejected
+                              </Badge>
+                            ) : !isSuperAdmin ? (
+                              <span className="text-sm text-muted-foreground">Super Admin only</span>
+                            ) : null}
+                            {isSuperAdmin && approval.status !== "rejected" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditClick(approval)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(!filteredApprovals || filteredApprovals.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No approvals found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               )}
             </Card>
           </TabsContent>
         </Tabs>
       </main>
 
-      {/* Credentials Dialog */}
-      <Dialog open={!!credentialsStudent} onOpenChange={() => { setCredentialsStudent(null); setShowPassword(false); }}>
-        <DialogContent className="max-w-md">
+      {/* Credentials Dialog (from StudentApprovals) */}
+      <Dialog open={!!selectedStudent} onOpenChange={() => setSelectedStudent(null)}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Student Credentials</DialogTitle>
-            <DialogDescription>
-              Copy and share these credentials with the student via email or WhatsApp.
-            </DialogDescription>
           </DialogHeader>
-
-          {credentialsStudent && (
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Name</label>
-                  <div className="flex items-center justify-between bg-muted/50 rounded-md p-3 mt-1">
-                    <span className="font-medium">{credentialsStudent.first_name} {credentialsStudent.last_name}</span>
-                  </div>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium">Student Name</label>
+              <p className="text-lg">
+                {selectedStudent?.profile?.first_name} {selectedStudent?.profile?.last_name}
+              </p>
+            </div>
+            {selectedStudent?.student_code && (
+              <div>
+                <label className="text-sm font-medium">Student ID</label>
+                <div className="flex items-center gap-2">
+                  <Input value={selectedStudent.student_code} readOnly className="font-mono font-bold" />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyToClipboard(selectedStudent.student_code)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <div className="flex items-center justify-between bg-muted/50 rounded-md p-3 mt-1">
-                    <span className="font-mono text-sm">{credentialsStudent.email}</span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => copyToClipboard(credentialsStudent.email)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Password</label>
-                  <div className="flex items-center justify-between bg-muted/50 rounded-md p-3 mt-1">
-                    <span className="font-mono text-sm">
-                      {showPassword ? credentialsStudent.generated_password : "••••••••••••"}
-                    </span>
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => copyToClipboard(credentialsStudent.generated_password)}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {credentialsStudent.student_code && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Student ID</label>
-                    <div className="flex items-center justify-between bg-muted/50 rounded-md p-3 mt-1">
-                      <span className="font-mono text-sm">{credentialsStudent.student_code}</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => copyToClipboard(credentialsStudent.student_code)}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
-
-              <div className="flex gap-2 pt-2">
+            )}
+            <div>
+              <label className="text-sm font-medium">Email</label>
+              <div className="flex items-center gap-2">
+                <Input value={selectedStudent?.profile?.email || "N/A"} readOnly />
                 <Button
-                  className="flex-1"
-                  onClick={() => copyAllCredentials(credentialsStudent)}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy All Credentials
-                </Button>
-                <Button
+                  size="icon"
                   variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    const text = `Student Credentials\n\nName: ${credentialsStudent.first_name} ${credentialsStudent.last_name}\nEmail: ${credentialsStudent.email}\nPassword: ${credentialsStudent.generated_password}${credentialsStudent.student_code ? `\nStudent ID: ${credentialsStudent.student_code}` : ''}\n\nLogin at: ${window.location.origin}/login`;
-                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-                    window.open(whatsappUrl, '_blank');
-                  }}
+                  onClick={() => copyToClipboard(selectedStudent?.profile?.email || "")}
                 >
-                  Share via WhatsApp
+                  <Copy className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          )}
+            {selectedStudent?.generated_password && (
+              <div>
+                <label className="text-sm font-medium">Generated Password</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={selectedStudent.generated_password}
+                    readOnly
+                  />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyToClipboard(selectedStudent.generated_password)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Share these credentials with the student securely
+                </p>
+              </div>
+            )}
+            <div className="pt-4 border-t flex gap-2">
+              <Button className="flex-1 gap-2" onClick={() => copyAllCredentials(selectedStudent)}>
+                <Copy className="h-4 w-4" />
+                Copy All Credentials
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  const name = `${selectedStudent?.profile?.first_name} ${selectedStudent?.profile?.last_name}`;
+                  const email = selectedStudent?.profile?.email;
+                  const text = `Student Credentials\n\nName: ${name}\nEmail: ${email}\nPassword: ${selectedStudent?.generated_password}${selectedStudent?.student_code ? `\nStudent ID: ${selectedStudent.student_code}` : ''}\n\nLogin at: ${window.location.origin}/login`;
+                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                  window.open(whatsappUrl, '_blank');
+                }}
+              >
+                Share via WhatsApp
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingApproval} onOpenChange={() => setEditingApproval(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Approval Record</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-sm font-medium">Student Name</Label>
+              <p className="text-lg">
+                {editingApproval?.profile?.first_name} {editingApproval?.profile?.last_name}
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Email</Label>
+              <p className="text-muted-foreground">{editingApproval?.profile?.email || "N/A"}</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Course</Label>
+              <p className="text-muted-foreground">
+                {editingApproval?.advance_payments?.courses?.title || "N/A"}
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Status</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Created</Label>
+              <p className="text-muted-foreground">
+                {editingApproval?.created_at && format(new Date(editingApproval.created_at), "MMM d, yyyy h:mm a")}
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button 
+                className="flex-1" 
+                onClick={handleSaveEdit}
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Save Changes
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setEditingApproval(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+
+            <Separator className="my-4" />
+
+            <div className="pt-2">
+              <p className="text-sm text-muted-foreground mb-3">
+                Permanently delete this approval record. This action cannot be undone.
+              </p>
+              <Button 
+                variant="destructive" 
+                className="w-full gap-2"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Record
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Approval Record?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the approval record for{" "}
+              <strong>{editingApproval?.profile?.first_name} {editingApproval?.profile?.last_name}</strong>.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rejection Confirmation Dialog */}
+      <Dialog open={!!rejectingStudent} onOpenChange={() => setRejectingStudent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Ban className="h-5 w-5" />
+              Reject Application
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reject the application for{" "}
+              <strong>{rejectingStudent?.profile?.first_name} {rejectingStudent?.profile?.last_name}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Card className="p-4 bg-destructive/5 border-destructive/20">
+              <p className="text-sm text-muted-foreground">
+                The student will be notified that their application has been rejected and will see:
+              </p>
+              <p className="text-sm font-medium mt-2 text-destructive">
+                "Your application has been rejected. Please contact Admin for more details."
+              </p>
+            </Card>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectingStudent(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                rejectMutation.mutate(rejectingStudent.student_id);
+                setRejectingStudent(null);
+              }}
+              disabled={rejectMutation.isPending}
+            >
+              {rejectMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Ban className="h-4 w-4 mr-2" />
+              )}
+              Reject Application
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

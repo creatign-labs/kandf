@@ -400,7 +400,7 @@ const AdminDashboard = () => {
               <div className="space-y-2">
                 {isSuperAdmin && (
                   <Button variant="outline" className="w-full justify-start relative" asChild>
-                    <Link to="/admin/student-approvals">
+                    <Link to="/admin/students?tab=awaiting">
                       <UserCheck className="h-4 w-4 mr-2" />
                       Student Approvals
                       {pendingApprovalsCount !== undefined && pendingApprovalsCount > 0 && (

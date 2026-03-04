@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText, LayoutDashboard, ChevronDown, MoreHorizontal, CreditCard } from "lucide-react";
+import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText, LayoutDashboard, ChevronDown, MoreHorizontal, CreditCard, MonitorPlay } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -48,6 +48,7 @@ const studentMainNavItems: NavItem[] = [
   { to: "/student", label: "Dashboard", icon: Home, end: true },
   { to: "/student/my-course", label: "My Course", icon: BookOpen },
   { to: "/student/my-bookings", label: "My Bookings", icon: Calendar },
+  { to: "/student/online-classes", label: "Online Classes", icon: MonitorPlay },
 ];
 
 // More dropdown items for student

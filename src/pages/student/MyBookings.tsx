@@ -1,6 +1,6 @@
 import { Header } from "@/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, History, AlertCircle } from "lucide-react";
+import { Plus, History } from "lucide-react";
 import { RecipeSlotBooking } from "@/components/student/RecipeSlotBooking";
 import { MyRecipeBookings } from "@/components/student/MyRecipeBookings";
 
@@ -30,19 +30,6 @@ const MyBookings = () => {
 
             {/* Book Slot Tab */}
             <TabsContent value="book" className="space-y-6">
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-900 dark:text-amber-100 mb-1">Booking Rules</p>
-                  <ul className="text-amber-800 dark:text-amber-200 space-y-1">
-                    <li>• You can only book your next incomplete recipe</li>
-                    <li>• Slots must be booked at least one day in advance</li>
-                    <li>• Cancellations allowed before 11:59 PM the previous day</li>
-                    <li>• No-shows will result in the class being marked as consumed</li>
-                  </ul>
-                </div>
-              </div>
-
               <RecipeSlotBooking />
             </TabsContent>
 

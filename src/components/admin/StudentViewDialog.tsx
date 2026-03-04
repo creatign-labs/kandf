@@ -1,0 +1,220 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { UserCircle, Mail, Phone, Hash, BookOpen, Calendar, MonitorPlay, CreditCard, Loader2, CheckCircle, Clock, XCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+
+interface StudentViewDialogProps {
+  enrollment: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onManageOnlineClass?: () => void;
+}
+
+export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnlineClass }: StudentViewDialogProps) => {
+  const profile = enrollment?.profile;
+  const studentId = enrollment?.student_id;
+  const enrollmentId = enrollment?.id;
+
+  // Fetch payment schedules
+  const { data: paymentSchedules, isLoading: paymentsLoading } = useQuery({
+    queryKey: ["student-payment-schedules", enrollmentId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("payment_schedules")
+        .select("*")
+        .eq("enrollment_id", enrollmentId)
+        .order("due_date");
+      return data || [];
+    },
+    enabled: !!enrollmentId && open,
+  });
+
+  // Fetch online access status
+  const { data: onlineAccess } = useQuery({
+    queryKey: ["student-online-access-view", studentId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("student_online_access")
+        .select("*")
+        .eq("student_id", studentId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!studentId && open,
+  });
+
+  // Fetch batch info
+  const { data: batch } = useQuery({
+    queryKey: ["student-batch-view", enrollment?.batch_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("batches")
+        .select("batch_name, time_slot, days, start_date")
+        .eq("id", enrollment.batch_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!enrollment?.batch_id && open,
+  });
+
+  if (!enrollment) return null;
+
+  const paidCount = paymentSchedules?.filter(p => p.status === "paid").length || 0;
+  const totalSchedules = paymentSchedules?.length || 0;
+  const totalPaid = paymentSchedules?.filter(p => p.status === "paid").reduce((s, p) => s + Number(p.amount), 0) || 0;
+  const totalDue = paymentSchedules?.reduce((s, p) => s + Number(p.amount), 0) || 0;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active": return "bg-green-500";
+      case "completed": return "bg-blue-500";
+      case "on_hold": return "bg-yellow-500";
+      default: return "bg-muted";
+    }
+  };
+
+  const getPaymentStatusIcon = (status: string) => {
+    switch (status) {
+      case "paid": return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
+      case "overdue": return <XCircle className="h-3.5 w-3.5 text-destructive" />;
+      default: return <Clock className="h-3.5 w-3.5 text-yellow-500" />;
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserCircle className="h-5 w-5" />
+            Student Details
+          </DialogTitle>
+          <DialogDescription>
+            Full profile and enrollment overview
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          {/* Student Info */}
+          <Card className="p-4 space-y-2">
+            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Profile</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <UserCircle className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{profile?.first_name} {profile?.last_name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Hash className="h-4 w-4 text-muted-foreground" />
+                <span>{enrollment.student_code || "N/A"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <span className="truncate">{profile?.email || "N/A"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span>{profile?.phone || "N/A"}</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Course & Enrollment */}
+          <Card className="p-4 space-y-3">
+            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Enrollment</h4>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{enrollment.courses?.title || "N/A"}</span>
+              </div>
+              <Badge className={getStatusColor(enrollment.status)}>
+                {enrollment.status === "on_hold" ? "On Hold" : enrollment.status?.charAt(0).toUpperCase() + enrollment.status?.slice(1)}
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-medium">{enrollment.progress || 0}%</span>
+              </div>
+              <Progress value={enrollment.progress || 0} className="h-2" />
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                Enrolled: {format(new Date(enrollment.enrollment_date), "dd MMM yyyy")}
+              </div>
+              {batch && (
+                <div>Batch: {batch.batch_name}</div>
+              )}
+            </div>
+            {batch && (
+              <div className="text-xs text-muted-foreground">
+                {batch.days} · {batch.time_slot}{batch.start_date ? ` · Starts ${format(new Date(batch.start_date), "dd MMM yyyy")}` : ""}
+              </div>
+            )}
+          </Card>
+
+          {/* Payment Summary */}
+          <Card className="p-4 space-y-3">
+            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Payment Schedule</h4>
+            {paymentsLoading ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>
+            ) : totalSchedules === 0 ? (
+              <p className="text-sm text-muted-foreground">No payment schedule found.</p>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Paid {paidCount} of {totalSchedules} installments</span>
+                  <span className="font-medium">₹{totalPaid.toLocaleString()} / ₹{totalDue.toLocaleString()}</span>
+                </div>
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                  {paymentSchedules?.map((ps) => (
+                    <div key={ps.id} className="flex items-center justify-between text-sm border rounded-md px-3 py-1.5">
+                      <div className="flex items-center gap-2">
+                        {getPaymentStatusIcon(ps.status)}
+                        <span>{ps.payment_stage}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-muted-foreground">
+                        <span>₹{Number(ps.amount).toLocaleString()}</span>
+                        <span className="text-xs">{format(new Date(ps.due_date), "dd MMM")}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </Card>
+
+          {/* Online Class Status */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MonitorPlay className="h-4 w-4 text-muted-foreground" />
+                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Online Classes</h4>
+              </div>
+              <Badge variant={onlineAccess?.is_enabled ? "default" : "secondary"}>
+                {onlineAccess?.is_enabled ? "Enabled" : "Disabled"}
+              </Badge>
+            </div>
+            {onManageOnlineClass && (
+              <Button variant="link" size="sm" className="p-0 h-auto mt-2 text-xs" onClick={() => { onOpenChange(false); onManageOnlineClass(); }}>
+                Manage Online Class →
+              </Button>
+            )}
+          </Card>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

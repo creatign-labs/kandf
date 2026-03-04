@@ -46,6 +46,7 @@ import { useState, useMemo, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { OnlineClassManager } from "@/components/admin/OnlineClassManager";
+import { StudentViewDialog } from "@/components/admin/StudentViewDialog";
 import { useSearchParams } from "react-router-dom";
 
 const Students = () => {
@@ -55,6 +56,7 @@ const Students = () => {
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") === "awaiting" ? "awaiting" : "enrolled");
   const [onlineClassStudent, setOnlineClassStudent] = useState<{ id: string; name: string } | null>(null);
+  const [viewEnrollment, setViewEnrollment] = useState<any>(null);
   const queryClient = useQueryClient();
 
   // Awaiting tab state
@@ -518,7 +520,7 @@ const Students = () => {
                               <MonitorPlay className="h-4 w-4 mr-1" />
                               Online Class
                             </Button>
-                            <Button variant="outline" size="sm">View</Button>
+                            <Button variant="outline" size="sm" onClick={() => setViewEnrollment(enrollment)}>View</Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -981,6 +983,17 @@ const Students = () => {
           onOpenChange={(open) => !open && setOnlineClassStudent(null)}
         />
       )}
+
+      {/* Student View Dialog */}
+      <StudentViewDialog
+        enrollment={viewEnrollment}
+        open={!!viewEnrollment}
+        onOpenChange={(open) => !open && setViewEnrollment(null)}
+        onManageOnlineClass={viewEnrollment ? () => setOnlineClassStudent({
+          id: viewEnrollment.student_id,
+          name: `${viewEnrollment.profile?.first_name || ''} ${viewEnrollment.profile?.last_name || ''}`.trim(),
+        }) : undefined}
+      />
     </div>
   );
 };

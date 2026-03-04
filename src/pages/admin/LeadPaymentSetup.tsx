@@ -318,9 +318,19 @@ const LeadPaymentSetup = () => {
         .eq("id", installmentId);
       if (error) throw error;
 
-      // Auto-convert lead when enrollment fee (installment #1) is paid
+      // When enrollment fee (installment #1) is paid, convert lead AND create student account
       if (installmentNumber === 1 && leadId) {
-        await supabase.from("leads").update({ stage: "converted" }).eq("id", leadId);
+        const { data: convResult, error: convError } = await supabase.functions.invoke(
+          "convert-lead-to-student",
+          { body: { leadId } }
+        );
+        if (convError) {
+          console.error("Lead conversion error:", convError);
+          toast({ title: "Warning", description: "Payment marked but student creation failed. Contact support.", variant: "destructive" });
+        } else if (convResult?.error) {
+          console.error("Lead conversion error:", convResult.error);
+          toast({ title: "Warning", description: convResult.error, variant: "destructive" });
+        }
       }
 
       // Update local state
@@ -331,9 +341,10 @@ const LeadPaymentSetup = () => {
       );
 
       queryClient.invalidateQueries({ queryKey: ["lead-payment-plan", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
       toast({
         title: "Marked as paid!",
-        description: installmentNumber === 1 ? "Enrollment fee paid. Lead converted." : "Installment marked as paid.",
+        description: installmentNumber === 1 ? "Enrollment fee paid. Lead converted & student account created." : "Installment marked as paid.",
       });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });

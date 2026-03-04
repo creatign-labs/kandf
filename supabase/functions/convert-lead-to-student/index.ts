@@ -137,6 +137,34 @@ Deno.serve(async (req) => {
       await supabaseAdmin.from("notifications").insert(notifications);
     }
 
+    // Determine course_id from lead or lead_payment_plans
+    let courseId = lead.course_id;
+    if (!courseId) {
+      const { data: plan } = await supabaseAdmin
+        .from("lead_payment_plans")
+        .select("course_id")
+        .eq("lead_id", leadId)
+        .maybeSingle();
+      courseId = plan?.course_id || null;
+    }
+
+    // Create advance_payments record so approve-student-with-password can find the course
+    if (courseId) {
+      const { error: apError } = await supabaseAdmin.from("advance_payments").insert({
+        student_id: studentId,
+        course_id: courseId,
+        amount: 2000,
+        status: "completed",
+        payment_method: "lead_conversion",
+        paid_at: new Date().toISOString(),
+      });
+      if (apError) {
+        console.error("Failed to create advance_payment record:", apError);
+      } else {
+        console.log("Created advance_payment record for course:", courseId);
+      }
+    }
+
     // Log enrollment status change
     await supabaseAdmin.from("enrollment_status_logs").insert({
       student_id: studentId,

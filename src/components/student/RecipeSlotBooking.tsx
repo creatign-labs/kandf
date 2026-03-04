@@ -97,24 +97,6 @@ export function RecipeSlotBooking({ courseId, recipeId, recipeTitle, onBooked }:
 
   return (
     <div className="space-y-4">
-      {/* Only show recipe info card if not using inline mode (no recipeId prop) */}
-      {!recipeId && (
-        <Card className="p-6 border-border/60 bg-primary/5">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <ChefHat className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Your Next Recipe</p>
-              <h3 className="font-semibold text-xl">{effectiveRecipeTitle}</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Book a slot below to attend this recipe session
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {/* Booking Rules */}
       <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
         <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />

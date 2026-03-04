@@ -186,7 +186,7 @@ const Jobs = () => {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <h3 className="text-xl font-semibold mb-2">{job.title}</h3>
-                        <p className="text-sm text-muted-foreground italic mb-3">Company Name Hidden</p>
+                        
                         
                         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-4">
                           <span className="flex items-center gap-1">

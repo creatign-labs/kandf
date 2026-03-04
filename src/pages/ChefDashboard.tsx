@@ -8,7 +8,7 @@ import { Calendar, Users, CheckCircle2, Clock, Loader2, ChefHat, XCircle, AlertT
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
 import { useState } from "react";
 import {
   AlertDialog,
@@ -117,7 +117,61 @@ const ChefDashboard = () => {
     }
   });
 
-  // Fetch daily ingredient summary (quantity × booked students, NO stock info)
+  // Fetch upcoming bookings (next 7 days, excluding today)
+  const { data: upcomingBookings } = useQuery({
+    queryKey: ['chef-upcoming-batches', today],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+      const weekAhead = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+
+      // Get bookings assigned to this chef or unassigned
+      const { data: assigned } = await supabase
+        .from('bookings')
+        .select(`id, student_id, recipe_id, time_slot, booking_date, recipes(title), courses(title)`)
+        .gte('booking_date', tomorrow)
+        .lte('booking_date', weekAhead)
+        .eq('assigned_chef_id', user.id)
+        .in('status', ['confirmed']);
+
+      const { data: unassigned } = await supabase
+        .from('bookings')
+        .select(`id, student_id, recipe_id, time_slot, booking_date, recipes(title), courses(title)`)
+        .gte('booking_date', tomorrow)
+        .lte('booking_date', weekAhead)
+        .is('assigned_chef_id', null)
+        .in('status', ['confirmed']);
+
+      const all = [...(assigned || []), ...(unassigned || [])];
+
+      // Group by date → time_slot + recipe
+      const grouped: Record<string, { timeSlot: string; recipe: string; course: string; studentCount: number }[]> = {};
+      all.forEach(b => {
+        const d = b.booking_date;
+        if (!grouped[d]) grouped[d] = [];
+        const existing = grouped[d].find(e => e.timeSlot === b.time_slot && e.recipe === (b.recipes?.title || 'No Recipe'));
+        if (existing) {
+          existing.studentCount++;
+        } else {
+          grouped[d].push({
+            timeSlot: b.time_slot,
+            recipe: b.recipes?.title || 'No Recipe',
+            course: b.courses?.title || '',
+            studentCount: 1
+          });
+        }
+      });
+
+      // Sort dates
+      return Object.entries(grouped)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, entries]) => ({ date, entries: entries.sort((a, b) => a.timeSlot.localeCompare(b.timeSlot)) }));
+    }
+  });
+
+
   const { data: ingredientSummary } = useQuery({
     queryKey: ['chef-daily-ingredients-summary', today],
     queryFn: async () => {
@@ -400,6 +454,39 @@ const ChefDashboard = () => {
             );
           })}
         </div>
+
+        {/* Upcoming Batches (Next 7 Days) */}
+        {upcomingBookings && upcomingBookings.length > 0 && (
+          <div className="space-y-4 mt-8">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Upcoming Batches
+            </h2>
+            {upcomingBookings.map(day => (
+              <div key={day.date}>
+                <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                  {format(parseISO(day.date), 'EEEE, MMMM d')}
+                </h3>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {day.entries.map((entry, i) => (
+                    <Card key={i} className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        <Badge variant="outline">{entry.timeSlot}</Badge>
+                      </div>
+                      <h4 className="font-semibold mb-1">{entry.recipe}</h4>
+                      <p className="text-sm text-muted-foreground mb-2">{entry.course}</p>
+                      <div className="flex items-center gap-1 text-sm">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span>{entry.studentCount} student{entry.studentCount !== 1 ? 's' : ''}</span>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Confirmation Dialog */}

@@ -1,53 +1,82 @@
 
 
-## Plan: "Mark as Paid" Button + Post-Enrollment-Payment Lead Conversion
+## Plan: Consolidate Student Approvals into Student Management
 
-### What This Does
+### Current State
+- **StudentApprovals page** (`/admin/student-approvals`): Full-featured approval workflow with status tabs (All/Pending/Approved/Rejected), stats cards, Approve & Enroll / Reject buttons, View Credentials, Edit approval record, Delete record, rejection confirmation dialog.
+- **Students page** (`/admin/students`): Has an "Awaiting Activation" tab with a simpler UI -- only "Generate Credentials" button, no reject option, no status filtering, no edit/delete of approval records.
 
-1. **"Mark as Paid" button** on each unpaid installment so admins can manually confirm payment received outside the system (cash, bank transfer, etc.)
-2. **Auto-conversion after enrollment fee is paid**: When the first installment (enrollment fee) is marked as paid, the lead's stage automatically updates to "Converted"
+### What Changes
 
----
+**1. Upgrade the "Awaiting Activation" tab in Students.tsx**
+Replace the current simple awaiting tab with the full StudentApprovals logic:
+- Add sub-filter tabs: All / Pending / Approved / Rejected (with counts)
+- Add stats cards for Pending, Approved, Rejected counts within the tab
+- Add table columns matching StudentApprovals: Student, Course, Payment status, Approval Status, Date, Actions
+- Add all action buttons:
+  - **Pending**: "Approve & Enroll" + "Reject" (Super Admin only)
+  - **Approved**: "View Credentials"
+  - **Rejected**: "Application Rejected" badge
+  - **Edit** (pencil icon) for Super Admin on non-rejected records
+- Add all dialogs from StudentApprovals:
+  - Rejection confirmation dialog with notification preview
+  - Edit approval record dialog (change status, delete record)
+  - Delete confirmation AlertDialog
+- Data source: query `student_access_approvals` with joined `advance_payments` and `profiles` (same as StudentApprovals)
+- Add reject mutation that updates approval status + profile enrollment_status + sends notification
 
-### Changes
+**2. Remove the standalone StudentApprovals page**
+- Remove `/admin/student-approvals` route from App.tsx
+- Remove import of StudentApprovals from App.tsx
+- Update AdminDashboard quick action link: change "Student Approvals" to navigate to `/admin/students` (and auto-select the awaiting tab via query param or state)
+- Update FlowWalkthrough reference
+- Optionally keep `StudentApprovals.tsx` file but it will be unused (or delete it)
 
-#### 1. Add `markAsPaid` function in `LeadPaymentSetup.tsx`
+**3. Update AdminDashboard quick action**
+- Change the "Student Approvals" quick action button to link to `/admin/students?tab=awaiting` so it opens the Students page directly on the awaiting tab
+- Students page will read the URL param to set the initial active tab
 
-- New async function that updates the `lead_installments` row: sets `status = 'paid'` and `paid_at = now()`
-- After marking installment #1 (enrollment fee) as paid, also update `leads.stage` to `'converted'`
-- Refresh the query cache so the UI updates immediately
-- Show a confirmation toast
+### Output Preview
 
-#### 2. Add "Mark as Paid" button in the installments table
+The **Student Management** page will have two tabs:
+- **Enrolled Students (N)** -- unchanged, same as today
+- **Awaiting Activation (N)** -- now contains the full approval workflow:
 
-- A new `CheckCircle` icon button next to the existing "Generate Link" and "Remove" buttons
-- Only visible for saved installments (`inst.id` exists) with `status !== 'paid'`
-- Includes a tooltip saying "Mark as Paid"
-- Confirmation dialog (using `window.confirm`) before marking to prevent accidental clicks
+```text
+┌─────────────────────────────────────────────────────┐
+│ Student Management                                   │
+│ View and manage all students                         │
+├─────────────────────────────────────────────────────┤
+│ [Total] [Active] [Completed] [On Hold] [Awaiting]   │
+├─────────────────────────────────────────────────────┤
+│ [Enrolled Students (12)]  [Awaiting Activation (5)] │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│  [Pending: 3] [Approved: 1] [Rejected: 1]           │
+│                                                      │
+│  [All] [Pending(3)] [Approved(1)] [Rejected(1)]     │
+│  [🔍 Search by name or phone...]                     │
+│                                                      │
+│  Student | Course | Payment | Status  | Date | Acts  │
+│  ─────────────────────────────────────────────────── │
+│  John D  | Found  | ₹2000✓  | Pending | Mar 1│ [Ap] │
+│  Jane S  | Adv.P  | ₹2000✓  | Approved| Feb28│ [Cr] │
+│  Sam K   | Found  | ₹2000✓  | Rejected| Feb25│ [Rj] │
+└─────────────────────────────────────────────────────┘
+```
 
-#### 3. Auto-update lead stage on enrollment fee payment
+Actions per status (Super Admin):
+- **Pending**: "Approve & Enroll" (green) + "Reject" (red) + Edit (pencil)
+- **Approved**: "View Credentials" + Edit (pencil)
+- **Rejected**: "Application Rejected" badge
 
-- When installment #1 is marked as paid, the function will also run:
-  ```sql
-  UPDATE leads SET stage = 'converted' WHERE id = leadId
-  ```
-- This moves the lead from "Contacted/Interested" to "Converted" on the Kanban board
+Non-Super-Admins see "Super Admin only" text and view-only access.
 
----
-
-### Technical Details
-
-**File modified:** `src/pages/admin/LeadPaymentSetup.tsx`
-
-**New function - `markAsPaid(installmentId, installmentNumber)`:**
-- Updates `lead_installments` set `status = 'paid'`, `paid_at = new Date().toISOString()` where `id = installmentId`
-- If `installmentNumber === 1`, also updates `leads.stage = 'converted'` for the current lead
-- Updates local `installments` state to reflect the change
-- Invalidates the `lead-payment-plan` query
-
-**UI addition in the table actions column:**
-- New `CheckCircle` icon button with green styling, placed before the "Generate Link" button
-- Guarded by `window.confirm("Mark this installment as paid?")` to prevent accidental clicks
-
-**No database schema changes needed** - the `lead_installments` table already has `status` and `paid_at` columns, and `leads` already has a `stage` column.
+### Files Modified
+| File | Change |
+|------|--------|
+| `src/pages/admin/Students.tsx` | Major rewrite of "Awaiting Activation" tab with full approval logic, reject mutation, edit/delete dialogs |
+| `src/App.tsx` | Remove StudentApprovals route and import |
+| `src/pages/AdminDashboard.tsx` | Update quick action link to `/admin/students?tab=awaiting` |
+| `src/pages/FlowWalkthrough.tsx` | Update route reference |
 

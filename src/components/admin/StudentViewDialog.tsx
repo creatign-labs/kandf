@@ -8,24 +8,40 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { UserCircle, Mail, Phone, Hash, BookOpen, Calendar, MonitorPlay, CreditCard, Loader2, CheckCircle, Clock, XCircle } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { UserCircle, Mail, Phone, Hash, BookOpen, Calendar, MonitorPlay, CreditCard, Loader2, CheckCircle, Clock, XCircle, Trash2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { useState } from "react";
 
 interface StudentViewDialogProps {
   enrollment: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onManageOnlineClass?: () => void;
+  isSuperAdmin?: boolean;
 }
 
-export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnlineClass }: StudentViewDialogProps) => {
+export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnlineClass, isSuperAdmin }: StudentViewDialogProps) => {
   const profile = enrollment?.profile;
   const studentId = enrollment?.student_id;
   const enrollmentId = enrollment?.id;
+  const queryClient = useQueryClient();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // Fetch payment schedules
   const { data: paymentSchedules, isLoading: paymentsLoading } = useQuery({
@@ -67,6 +83,24 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
       return data;
     },
     enabled: !!enrollment?.batch_id && open,
+  });
+
+  const deleteEnrollment = useMutation({
+    mutationFn: async () => {
+      // Delete payment schedules first (referencing enrollment)
+      await supabase.from("payment_schedules").delete().eq("enrollment_id", enrollmentId);
+      // Delete the enrollment
+      const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Enrollment deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin-enrollments"] });
+      onOpenChange(false);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to delete enrollment");
+    },
   });
 
   if (!enrollment) return null;
@@ -213,6 +247,43 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
               </Button>
             )}
           </Card>
+          {/* Delete Enrollment - Super Admin Only */}
+          {isSuperAdmin && (
+            <Card className="p-4 border-destructive/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-sm text-destructive uppercase tracking-wide">Danger Zone</h4>
+                  <p className="text-xs text-muted-foreground mt-1">Permanently delete this enrollment record</p>
+                </div>
+                <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Enrollment</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete the enrollment for <strong>{profile?.first_name} {profile?.last_name}</strong> ({enrollment.student_code || "N/A"}). Associated payment schedules will also be removed. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteEnrollment.mutate()}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteEnrollment.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                        Delete Enrollment
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </Card>
+          )}
         </div>
       </DialogContent>
     </Dialog>

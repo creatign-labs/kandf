@@ -989,6 +989,7 @@ const Students = () => {
         enrollment={viewEnrollment}
         open={!!viewEnrollment}
         onOpenChange={(open) => !open && setViewEnrollment(null)}
+        isSuperAdmin={isSuperAdmin}
         onManageOnlineClass={viewEnrollment ? () => setOnlineClassStudent({
           id: viewEnrollment.student_id,
           name: `${viewEnrollment.profile?.first_name || ''} ${viewEnrollment.profile?.last_name || ''}`.trim(),

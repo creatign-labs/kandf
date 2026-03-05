@@ -338,85 +338,13 @@ Deno.serve(async (req) => {
       type: "success",
     });
 
-    // Get student email and course name for email
-    const { data: studentProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("email, first_name, last_name")
-      .eq("id", student_id)
-      .single();
-
-    let courseName = null;
-    if (enrollmentCourseId) {
-      const { data: courseInfo } = await supabaseAdmin
-        .from("courses")
-        .select("title")
-        .eq("id", enrollmentCourseId)
-        .single();
-      courseName = courseInfo?.title;
-    }
-
-    // Try to send credentials email via Resend
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    let emailSent = false;
-    if (RESEND_API_KEY && studentProfile?.email) {
-      try {
-        const loginUrl = req.headers.get("origin") || "https://kandf.lovable.app";
-        const studentName = `${studentProfile.first_name || ""} ${studentProfile.last_name || ""}`.trim();
-        
-        const emailHtml = `
-          <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
-            <div style="background:#d4a574;padding:32px;text-align:center;color:#fff;">
-              <h1 style="margin:0;font-size:24px;">🧁 Knead & Frost</h1>
-              <p style="margin:4px 0 0;opacity:0.9;font-size:14px;">Global Baking Academy</p>
-            </div>
-            <div style="padding:32px;">
-              <h2 style="color:#1a1a1a;margin-top:0;">Welcome, ${studentName}!</h2>
-              <p>Your account has been approved. Here are your login credentials:</p>
-              <div style="background:#faf5f0;border:1px solid #e8d5c4;border-radius:8px;padding:20px;margin:20px 0;">
-                ${finalStudentCode ? `<p><strong>Student ID:</strong> ${finalStudentCode}</p>` : ''}
-                ${courseName ? `<p><strong>Course:</strong> ${courseName}</p>` : ''}
-                <p><strong>Email:</strong> ${studentProfile.email}</p>
-                <p><strong>Password:</strong> ${newPassword}</p>
-              </div>
-              <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:12px;margin:16px 0;font-size:13px;color:#92400e;">
-                ⚠️ Please keep your credentials safe.
-              </div>
-              <div style="text-align:center;">
-                <a href="${loginUrl}/login" style="display:inline-block;background:#d4a574;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;">Login to Your Dashboard</a>
-              </div>
-            </div>
-          </div>
-        `;
-
-        const resendRes = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${RESEND_API_KEY}`,
-          },
-          body: JSON.stringify({
-            from: "Knead & Frost <onboarding@resend.dev>",
-            to: [studentProfile.email],
-            subject: "Your Knead & Frost Student Credentials",
-            html: emailHtml,
-          }),
-        });
-
-        const resendData = await resendRes.json();
-        emailSent = resendRes.ok;
-        console.log("Email send result:", resendRes.ok, resendData);
-      } catch (emailErr) {
-        console.error("Failed to send credentials email:", emailErr);
-      }
-    }
-
+    console.log(`Student ${student_id} approved with new password and student ID: ${finalStudentCode}`);
     console.log(`Student ${student_id} approved with new password and student ID: ${finalStudentCode}`);
 
     return new Response(JSON.stringify({ 
       success: true, 
       password: newPassword,
       studentCode: finalStudentCode,
-      emailSent,
       message: "Student approved and password updated"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

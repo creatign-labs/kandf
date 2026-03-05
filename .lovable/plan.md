@@ -1,34 +1,54 @@
 
 
-## Plan: Fix the "View" Button on Student Management Page
+## Email Sending Across the Application — Analysis & Plan
 
-### Problem
-The "View" button (line 521 in `Students.tsx`) has no `onClick` handler -- it's a dead button.
+### Current State
 
-### What the View Dialog Should Show
-A dialog displaying the student's full profile and enrollment details:
+The application has **no email sending capability** implemented. Here is where emails are expected but not functional:
 
-- **Student Info**: Name, Email, Phone, Student ID
-- **Course Info**: Course title, Enrollment date, Status, Progress
-- **Payment Info**: Payment schedule summary (from `payment_schedules` table)
-- **Online Class Status**: Whether online classes are enabled
-- **Batch Info**: Assigned batch (from enrollment record)
+1. **Student Approval** (`StudentApprovals.tsx`): "Send Credentials via Email" button exists but does nothing — credentials (password, student ID) are only shown on-screen.
+2. **Vendor Approval** (`VendorApprovals.tsx`): Same "Send Credentials via Email" button, non-functional.
+3. **Payment Confirmations** (`PaymentSuccess.tsx`): UI text promises "confirmation email with login credentials" but no email is sent.
+4. **In-app Notifications** (`admin/Notifications.tsx`): These are database-only notifications (stored in `notifications` table), not emails.
+5. **Auth emails** (signup verification, password reset): Handled by Lovable Cloud's built-in auth system — these already work by default.
 
-### Implementation
+The `FeatureReport.tsx` page explicitly lists "Email Delivery" as pending.
 
-**File: `src/pages/admin/Students.tsx`**
+### What Needs to Be Done
 
-1. Add a `viewStudent` state to track the selected student/enrollment for viewing
-2. Add an `onClick` handler to the View button that sets this state
-3. Add a Dialog component that displays:
-   - Student profile section (name, email, phone, student ID)
-   - Enrollment details section (course, batch, status, progress, enrollment date)
-   - Payment overview (fetch from `payment_schedules` for this enrollment)
-   - Online class access status (fetch from `student_online_access`)
-4. Include action shortcuts in the dialog: "Manage Online Class", "View Payments" link
+These are **transactional emails** (credential delivery, payment receipts), not auth emails. They require an email sending service.
 
-### Files Modified
-| File | Change |
+#### Recommended Approach: Resend Integration
+
+Resend is the standard transactional email service. The setup involves:
+
+1. **Connect Resend** — You'll need a Resend account and API key. This will be stored as a backend secret (`RESEND_API_KEY`).
+
+2. **Create a `send-email` backend function** — A single reusable function that accepts recipient, subject, and HTML body, then sends via Resend's API.
+
+3. **Integrate into existing flows**:
+   - **Student approval** (`approve-student-with-password`): After generating credentials, call the email function to send login details to the student.
+   - **Vendor approval** (`approve-vendor-with-password`): Same pattern for vendor credentials.
+   - **Payment confirmation**: After successful payment verification, send a receipt email.
+   - **Admin notification broadcast** (optional): Extend the notification system to optionally send email copies.
+
+4. **Wire up the "Send Credentials via Email" buttons** in `StudentApprovals.tsx` and `VendorApprovals.tsx` to trigger the email function.
+
+### What You Need to Provide
+
+- A **Resend account** (free tier at [resend.com](https://resend.com) supports 100 emails/day)
+- Your **Resend API key**
+- A **verified sender domain** or use Resend's default `onboarding@resend.dev` for testing
+
+### Summary
+
+| Item | Status |
 |------|--------|
-| `src/pages/admin/Students.tsx` | Add view dialog state, onClick handler, and Dialog component with student details |
+| Auth emails (verification, password reset) | Already working via Lovable Cloud |
+| Student credential emails | Needs Resend + backend function |
+| Vendor credential emails | Needs Resend + backend function |
+| Payment confirmation emails | Needs Resend + backend function |
+| Notification broadcast emails | Optional enhancement |
+
+Shall I proceed with setting up the Resend integration? I'll walk you through getting the API key and then build the email infrastructure.
 

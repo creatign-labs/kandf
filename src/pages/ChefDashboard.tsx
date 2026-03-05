@@ -161,6 +161,7 @@ const ChefDashboard = () => {
         .select('recipe_id')
         .eq('booking_date', today)
         .eq('status', 'confirmed')
+        .eq('assigned_chef_id', user.id)
         .not('recipe_id', 'is', null);
 
       if (!bookings?.length) return [];

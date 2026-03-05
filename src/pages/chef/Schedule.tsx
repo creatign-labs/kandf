@@ -10,18 +10,51 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfWeek, endOfWeek, addDays, isSameDay } from "date-fns";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const Schedule = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'custom'>('daily');
+  const [customFrom, setCustomFrom] = useState<Date | undefined>(undefined);
+  const [customTo, setCustomTo] = useState<Date | undefined>(undefined);
 
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const dateRange = viewMode === 'daily'
-    ? { from: format(selectedDate, 'yyyy-MM-dd'), to: format(selectedDate, 'yyyy-MM-dd') }
-    : { from: format(weekStart, 'yyyy-MM-dd'), to: format(weekEnd, 'yyyy-MM-dd') };
+  const getDateRange = () => {
+    if (viewMode === 'daily') {
+      return { from: format(selectedDate, 'yyyy-MM-dd'), to: format(selectedDate, 'yyyy-MM-dd') };
+    }
+    if (viewMode === 'weekly') {
+      return { from: format(weekStart, 'yyyy-MM-dd'), to: format(weekEnd, 'yyyy-MM-dd') };
+    }
+    // custom
+    if (customFrom && customTo) {
+      return { from: format(customFrom, 'yyyy-MM-dd'), to: format(customTo, 'yyyy-MM-dd') };
+    }
+    return { from: format(new Date(), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd') };
+  };
+
+  const dateRange = getDateRange();
+
+  // Generate day labels for the range
+  const getRangeDays = () => {
+    if (viewMode === 'daily') return [selectedDate];
+    if (viewMode === 'weekly') return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    if (customFrom && customTo) {
+      const days: Date[] = [];
+      let current = customFrom;
+      while (current <= customTo) {
+        days.push(current);
+        current = addDays(current, 1);
+      }
+      return days;
+    }
+    return [];
+  };
+
+  const rangeDays = getRangeDays();
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['chef-schedule', dateRange.from, dateRange.to],
@@ -43,7 +76,6 @@ const Schedule = () => {
 
       if (error) throw error;
 
-      // Group by date + time_slot + recipe
       const grouped: Record<string, {
         date: string;
         timeSlot: string;
@@ -75,7 +107,8 @@ const Schedule = () => {
       });
 
       return grouped;
-    }
+    },
+    enabled: viewMode !== 'custom' || (!!customFrom && !!customTo)
   });
 
   if (isLoading) {
@@ -98,37 +131,91 @@ const Schedule = () => {
             <h1 className="text-3xl font-bold mb-2">My Schedule</h1>
             <p className="text-muted-foreground">View your upcoming batches</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Tabs value={viewMode} onValueChange={v => setViewMode(v as 'daily' | 'weekly')}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Tabs value={viewMode} onValueChange={v => setViewMode(v as 'daily' | 'weekly' | 'custom')}>
               <TabsList>
                 <TabsTrigger value="daily">Daily</TabsTrigger>
                 <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                <TabsTrigger value="custom">Custom</TabsTrigger>
               </TabsList>
             </Tabs>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <CalendarIcon className="h-4 w-4" />
-                  {format(selectedDate, "PPP")}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={date => date && setSelectedDate(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+
+            {viewMode !== 'custom' && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    {format(selectedDate, "PPP")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={date => date && setSelectedDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </div>
+
+        {/* Custom date range picker */}
+        {viewMode === 'custom' && (
+          <Card className="p-4 mb-6">
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <Label className="text-sm mb-1 block">From</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="gap-2 w-[180px]">
+                      <CalendarIcon className="h-4 w-4" />
+                      {customFrom ? format(customFrom, "PP") : "Start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customFrom}
+                      onSelect={d => d && setCustomFrom(d)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label className="text-sm mb-1 block">To</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="gap-2 w-[180px]">
+                      <CalendarIcon className="h-4 w-4" />
+                      {customTo ? format(customTo, "PP") : "End date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customTo}
+                      onSelect={d => d && setCustomTo(d)}
+                      disabled={date => customFrom ? date < customFrom : false}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              {(!customFrom || !customTo) && (
+                <p className="text-sm text-muted-foreground">Select both dates to view schedule</p>
+              )}
+            </div>
+          </Card>
+        )}
 
         {viewMode === 'daily' ? (
           <DayView entries={bookings?.[format(selectedDate, 'yyyy-MM-dd')] || []} date={selectedDate} />
         ) : (
           <div className="space-y-4">
-            {weekDays.map(day => {
+            {rangeDays.map(day => {
               const dateStr = format(day, 'yyyy-MM-dd');
               const entries = bookings?.[dateStr] || [];
               return (

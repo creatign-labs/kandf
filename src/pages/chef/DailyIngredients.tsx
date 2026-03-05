@@ -17,20 +17,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Loader2, Package, Users, ChefHat, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Loader2, Package, Users, ChefHat } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
 interface IngredientRequirement {
-  inventoryId: string;
   ingredientName: string;
   unit: string;
   category: string;
   totalRequired: number;
-  currentStock: number;
-  shortfall: number;
   recipes: string[];
 }
 
@@ -38,10 +34,13 @@ const DailyIngredients = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const formattedDate = format(selectedDate, "yyyy-MM-dd");
 
-  // Fetch bookings with assigned recipes for the selected date
+  // Fetch bookings assigned to this chef with recipes for the selected date
   const { data: bookings, isLoading: bookingsLoading } = useQuery({
-    queryKey: ["daily-bookings", formattedDate],
+    queryKey: ["chef-daily-bookings", formattedDate],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from("bookings")
         .select(`
@@ -52,7 +51,8 @@ const DailyIngredients = () => {
           recipes(id, title)
         `)
         .eq("booking_date", formattedDate)
-        .eq("status", "confirmed")
+        .eq("assigned_chef_id", user.id)
+        .in("status", ["confirmed", "attended"])
         .not("recipe_id", "is", null);
 
       if (error) throw error;
@@ -60,7 +60,7 @@ const DailyIngredients = () => {
     },
   });
 
-  // Fetch recipe ingredients with inventory details
+  // Fetch recipe ingredients
   const { data: recipeIngredients, isLoading: ingredientsLoading } = useQuery({
     queryKey: ["recipe-ingredients-all"],
     queryFn: async () => {
@@ -70,7 +70,7 @@ const DailyIngredients = () => {
           recipe_id,
           inventory_id,
           quantity_per_student,
-          inventory(id, name, unit, category, current_stock, reorder_level)
+          inventory(id, name, unit, category)
         `);
 
       if (error) throw error;
@@ -78,7 +78,7 @@ const DailyIngredients = () => {
     },
   });
 
-  // Calculate ingredient requirements
+  // Calculate ingredient requirements (no stock/cost info)
   const calculateRequirements = (): IngredientRequirement[] => {
     if (!bookings || !recipeIngredients) return [];
 
@@ -112,13 +112,10 @@ const DailyIngredients = () => {
 
         if (!ingredientMap[key]) {
           ingredientMap[key] = {
-            inventoryId: ing.inventory_id,
             ingredientName: ing.inventory.name,
             unit: ing.inventory.unit,
             category: ing.inventory.category,
             totalRequired: 0,
-            currentStock: ing.inventory.current_stock,
-            shortfall: 0,
             recipes: [],
           };
         }
@@ -130,20 +127,16 @@ const DailyIngredients = () => {
       });
     });
 
-    // Calculate shortfalls
-    Object.values(ingredientMap).forEach((item) => {
-      item.shortfall = Math.max(0, item.totalRequired - item.currentStock);
-    });
-
-    return Object.values(ingredientMap).sort((a, b) => 
-      b.shortfall - a.shortfall || a.ingredientName.localeCompare(b.ingredientName)
+    return Object.values(ingredientMap).sort((a, b) =>
+      a.ingredientName.localeCompare(b.ingredientName)
     );
   };
 
   const requirements = calculateRequirements();
   const totalStudents = bookings?.length || 0;
-  const uniqueRecipes = [...new Set(bookings?.map((b: any) => b.recipe_id).filter(Boolean))].length;
-  const shortfallItems = requirements.filter((r) => r.shortfall > 0);
+  const uniqueRecipes = [
+    ...new Set(bookings?.map((b: any) => b.recipe_id).filter(Boolean)),
+  ].length;
 
   const isLoading = bookingsLoading || ingredientsLoading;
 
@@ -165,11 +158,9 @@ const DailyIngredients = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">
-              Daily Ingredients
-            </h1>
+            <h1 className="text-3xl font-bold mb-2">Daily Ingredients</h1>
             <p className="text-muted-foreground">
-              Auto-calculated requirements based on bookings
+              Ingredient requirements for your assigned classes
             </p>
           </div>
 
@@ -192,7 +183,7 @@ const DailyIngredients = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
@@ -228,49 +219,7 @@ const DailyIngredients = () => {
               </div>
             </div>
           </Card>
-
-          <Card className={cn(
-            "p-4",
-            shortfallItems.length > 0 && "border-destructive bg-destructive/5"
-          )}>
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "p-2 rounded-lg",
-                shortfallItems.length > 0 ? "bg-destructive/10" : "bg-green-500/10"
-              )}>
-                <AlertTriangle className={cn(
-                  "h-5 w-5",
-                  shortfallItems.length > 0 ? "text-destructive" : "text-green-500"
-                )} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{shortfallItems.length}</p>
-                <p className="text-sm text-muted-foreground">Shortfalls</p>
-              </div>
-            </div>
-          </Card>
         </div>
-
-        {/* Shortfall Alert */}
-        {shortfallItems.length > 0 && (
-          <Card className="p-4 mb-6 border-destructive bg-destructive/5">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-destructive mb-2">
-                  Insufficient Stock Alert
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {shortfallItems.map((item) => (
-                    <Badge key={item.inventoryId} variant="destructive">
-                      {item.ingredientName}: need {item.shortfall.toFixed(1)} more {item.unit}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
 
         {/* Requirements Table */}
         <Card className="p-6">
@@ -279,7 +228,7 @@ const DailyIngredients = () => {
           {requirements.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No bookings with assigned recipes for this date</p>
+              <p>No assigned bookings with recipes for this date</p>
             </div>
           ) : (
             <div className="rounded-md border">
@@ -288,49 +237,30 @@ const DailyIngredients = () => {
                   <TableRow>
                     <TableHead>Ingredient</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Required</TableHead>
-                    <TableHead className="text-right">In Stock</TableHead>
-                    <TableHead className="text-right">Shortfall</TableHead>
+                    <TableHead className="text-right">Total Required</TableHead>
                     <TableHead>Recipes</TableHead>
-                    <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {requirements.map((req) => (
-                    <TableRow key={req.inventoryId}>
+                  {requirements.map((req, idx) => (
+                    <TableRow key={idx}>
                       <TableCell className="font-medium">
                         {req.ingredientName}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{req.category}</Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right font-semibold">
                         {req.totalRequired.toFixed(1)} {req.unit}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {req.currentStock.toFixed(1)} {req.unit}
-                      </TableCell>
-                      <TableCell className={cn(
-                        "text-right font-medium",
-                        req.shortfall > 0 ? "text-destructive" : "text-green-600"
-                      )}>
-                        {req.shortfall > 0 ? `-${req.shortfall.toFixed(1)}` : "OK"}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {req.recipes.map((recipe, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
+                          {req.recipes.map((recipe, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
                               {recipe}
                             </Badge>
                           ))}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {req.shortfall > 0 ? (
-                          <Badge variant="destructive">Low</Badge>
-                        ) : (
-                          <Badge className="bg-green-500 hover:bg-green-600">Ready</Badge>
-                        )}
                       </TableCell>
                     </TableRow>
                   ))}

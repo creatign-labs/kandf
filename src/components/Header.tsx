@@ -95,6 +95,7 @@ const chefNavItems = [
   { to: "/chef", label: "Today's Classes", icon: Home, end: true },
   { to: "/chef/schedule", label: "Schedule", icon: Calendar },
   { to: "/chef/attendance", label: "Attendance", icon: ClipboardList },
+  { to: "/chef/daily-ingredients", label: "Ingredients", icon: Package },
 ];
 
 export const Header = ({ role = "public", userName }: HeaderProps) => {

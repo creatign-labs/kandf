@@ -1,54 +1,64 @@
 
 
-## Email Sending Across the Application — Analysis & Plan
+# Real Data Migration Plan
 
-### Current State
+## What You Already Have
 
-The application has **no email sending capability** implemented. Here is where emails are expected but not functional:
+Your platform has a **Data Management Centre** (accessible from the admin dashboard) that handles CSV-based data import with built-in validation. It supports: Courses, Modules, Recipes, Assessments, Questions, Inventory, Batches, and Jobs.
 
-1. **Student Approval** (`StudentApprovals.tsx`): "Send Credentials via Email" button exists but does nothing — credentials (password, student ID) are only shown on-screen.
-2. **Vendor Approval** (`VendorApprovals.tsx`): Same "Send Credentials via Email" button, non-functional.
-3. **Payment Confirmations** (`PaymentSuccess.tsx`): UI text promises "confirmation email with login credentials" but no email is sent.
-4. **In-app Notifications** (`admin/Notifications.tsx`): These are database-only notifications (stored in `notifications` table), not emails.
-5. **Auth emails** (signup verification, password reset): Handled by Lovable Cloud's built-in auth system — these already work by default.
+## Step-by-Step Execution Plan
 
-The `FeatureReport.tsx` page explicitly lists "Email Delivery" as pending.
+### Phase 0: Clean Out Demo Data
+Before importing real data, all demo/seed data must be removed. I will build a **"Clear All Demo Data"** button on the Data Management Centre that wipes the following tables in safe dependency order:
+- attendance, bookings, recipe_batch_memberships, recipe_batches
+- student_recipe_progress, payment_schedules, enrollments
+- questions, assessments, recipe_ingredients
+- recipes, modules, inventory, batches, jobs, courses
 
-### What Needs to Be Done
+This ensures no foreign key conflicts and gives you a clean slate.
 
-These are **transactional emails** (credential delivery, payment receipts), not auth emails. They require an email sending service.
+### Phase 1: Prepare Your CSV Files
+Download templates from the Data Management Centre ("Download All Templates" button). Fill them with your real data following this **strict order**:
 
-#### Recommended Approach: Resend Integration
+```text
+Order    Table          Depends On
+─────    ─────          ──────────
+1        Courses        (none)
+2        Modules        Courses
+3        Recipes        Courses, Modules
+4        Assessments    Courses, Modules
+5        Questions      Assessments
+6        Inventory      (none)
+7        Batches        Courses
+8        Jobs           (none — vendor jobs can come later)
+```
 
-Resend is the standard transactional email service. The setup involves:
+### Phase 2: Import Data (In Order)
+Upload each CSV file through the Data Management Centre in the order above. The system will:
+- Validate each row
+- Resolve references automatically (e.g., `course_title` → `course_id`)
+- Report success/failure counts per file
 
-1. **Connect Resend** — You'll need a Resend account and API key. This will be stored as a backend secret (`RESEND_API_KEY`).
+### Phase 3: Link Recipe Ingredients
+After recipes and inventory are both imported, you'll need to link them via the **Recipe Ingredients** page in the admin panel (`/admin/recipe-ingredients`). This maps which inventory items are used by which recipe and in what quantity per student.
 
-2. **Create a `send-email` backend function** — A single reusable function that accepts recipient, subject, and HTML body, then sends via Resend's API.
+### Phase 4: Verification
+After all imports, verify through the admin dashboard:
+- Courses page shows all courses with correct fees and levels
+- Each course has its modules and recipes listed
+- Assessments have their questions attached
+- Inventory shows correct stock levels
+- Batches are scheduled with correct dates and time slots
 
-3. **Integrate into existing flows**:
-   - **Student approval** (`approve-student-with-password`): After generating credentials, call the email function to send login details to the student.
-   - **Vendor approval** (`approve-vendor-with-password`): Same pattern for vendor credentials.
-   - **Payment confirmation**: After successful payment verification, send a receipt email.
-   - **Admin notification broadcast** (optional): Extend the notification system to optionally send email copies.
+## What I Will Build
 
-4. **Wire up the "Send Credentials via Email" buttons** in `StudentApprovals.tsx` and `VendorApprovals.tsx` to trigger the email function.
+1. **"Clear Demo Data" function** — A button on the Data Management Centre that safely purges all seed/demo data in dependency order, giving you a clean database for real data
+2. **Import result summary** — An enhanced post-import verification checklist showing record counts per table so you can confirm everything landed correctly
 
-### What You Need to Provide
+## Important Notes
 
-- A **Resend account** (free tier at [resend.com](https://resend.com) supports 100 emails/day)
-- Your **Resend API key**
-- A **verified sender domain** or use Resend's default `onboarding@resend.dev` for testing
-
-### Summary
-
-| Item | Status |
-|------|--------|
-| Auth emails (verification, password reset) | Already working via Lovable Cloud |
-| Student credential emails | Needs Resend + backend function |
-| Vendor credential emails | Needs Resend + backend function |
-| Payment confirmation emails | Needs Resend + backend function |
-| Notification broadcast emails | Optional enhancement |
-
-Shall I proceed with setting up the Resend integration? I'll walk you through getting the API key and then build the email infrastructure.
+- **Import order matters** — Modules reference Courses, Recipes reference Courses+Modules, Questions reference Assessments. Importing out of order will cause failures.
+- **Exact title matching** — When your Modules CSV says `course_title = "Foundation Baking"`, a course with that exact title must already exist.
+- **No duplicates** — If you re-import the same CSV, it will create duplicate records. Clear first, then import.
+- **Students/Staff are NOT imported via CSV** — Students sign up or are created via admin. Chefs and admins are managed through the Staff page.
 

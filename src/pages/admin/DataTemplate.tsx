@@ -3,10 +3,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Download, FileSpreadsheet, Check, Upload, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
-import { useState, useRef } from "react";
+import { Copy, Download, FileSpreadsheet, Check, Upload, AlertCircle, Loader2, CheckCircle2, Trash2, RefreshCw, Database } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface TemplateSection {
   title: string;
@@ -130,7 +131,68 @@ const DataTemplate = () => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
   const [importResults, setImportResults] = useState<Record<string, { success: number; failed: number }>>({});
+  const [clearing, setClearing] = useState(false);
+  const [tableCounts, setTableCounts] = useState<Record<string, number> | null>(null);
+  const [loadingCounts, setLoadingCounts] = useState(false);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const fetchTableCounts = async () => {
+    setLoadingCounts(true);
+    try {
+      const tables = ['courses', 'modules', 'recipes', 'assessments', 'questions', 'inventory', 'batches', 'jobs'] as const;
+      const counts: Record<string, number> = {};
+      
+      await Promise.all(tables.map(async (table) => {
+        const { count, error } = await supabase
+          .from(table)
+          .select('*', { count: 'exact', head: true });
+        counts[table] = error ? -1 : (count ?? 0);
+      }));
+      
+      setTableCounts(counts);
+    } catch {
+      toast.error("Failed to fetch record counts");
+    } finally {
+      setLoadingCounts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTableCounts();
+  }, []);
+
+  const handleClearDemoData = async () => {
+    setClearing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("clear-demo-data", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        const totalDeleted = Object.values(data.deletedCounts as Record<string, number>)
+          .filter((v): v is number => v > 0)
+          .reduce((a, b) => a + b, 0);
+        toast.success(`Cleared ${totalDeleted} records across all tables`);
+        setImportResults({});
+        fetchTableCounts();
+      } else {
+        toast.error(data?.error || "Failed to clear data");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to clear data";
+      toast.error(msg);
+    } finally {
+      setClearing(false);
+    }
+  };
 
   const copyToClipboard = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -459,12 +521,65 @@ const DataTemplate = () => {
                 Download templates, fill with your data, and import directly into the database
               </p>
             </div>
-            <Button onClick={downloadAllTemplates} className="gap-2">
-              <Download className="h-4 w-4" />
-              Download All Templates
-            </Button>
+            <div className="flex gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="gap-2" disabled={clearing}>
+                    {clearing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    Clear All Data
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear All Data?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete ALL data from courses, modules, recipes, assessments, questions, inventory, batches, jobs, and all related records (attendance, bookings, enrollments, payments, etc.). 
+                      <br /><br />
+                      <strong>This action cannot be undone.</strong> Student accounts and staff accounts will NOT be affected.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearDemoData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Yes, Clear Everything
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button onClick={downloadAllTemplates} className="gap-2">
+                <Download className="h-4 w-4" />
+                Download All Templates
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* Verification Summary */}
+        <Card className="mb-6 p-4 md:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              Database Record Counts
+            </h2>
+            <Button variant="outline" size="sm" onClick={fetchTableCounts} disabled={loadingCounts} className="gap-2">
+              {loadingCounts ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Refresh
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {templates.map((t) => {
+              const count = tableCounts?.[t.tableName];
+              return (
+                <div key={t.tableName} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                  <span className="text-sm font-medium">{t.title}</span>
+                  <Badge variant={count && count > 0 ? "default" : "secondary"}>
+                    {loadingCounts ? "..." : (count ?? "—")}
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
 
         <Tabs defaultValue="import" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 max-w-md">

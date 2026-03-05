@@ -513,7 +513,38 @@ const VendorApprovals = () => {
                 </div>
               )}
               <div className="pt-4 border-t">
-                <Button className="w-full gap-2">
+                <Button 
+                  className="w-full gap-2"
+                  onClick={async () => {
+                    const vendorEmail = selectedVendor?.vendor_profiles?.contact_email || selectedVendor?.profile?.email;
+                    if (!vendorEmail) {
+                      toast({ title: "No email found", description: "Vendor has no email address on file.", variant: "destructive" });
+                      return;
+                    }
+                    try {
+                      const { vendorCredentialsEmail } = await import("@/lib/emailTemplates");
+                      const html = vendorCredentialsEmail({
+                        vendorName: `${selectedVendor.profile?.first_name || ""} ${selectedVendor.profile?.last_name || ""}`.trim(),
+                        companyName: selectedVendor.vendor_profiles?.company_name || "N/A",
+                        vendorCode: selectedVendor.vendor_code || "N/A",
+                        email: vendorEmail,
+                        password: selectedVendor.generated_password || "N/A",
+                        loginUrl: `${window.location.origin}/login`,
+                      });
+                      const { error } = await supabase.functions.invoke("send-email", {
+                        body: {
+                          to: vendorEmail,
+                          subject: "Your Knead & Frost Vendor Credentials",
+                          html,
+                        },
+                      });
+                      if (error) throw error;
+                      toast({ title: "Email Sent", description: `Credentials sent to ${vendorEmail}` });
+                    } catch (err: any) {
+                      toast({ title: "Email Failed", description: err.message || "Could not send email", variant: "destructive" });
+                    }
+                  }}
+                >
                   <Mail className="h-4 w-4" />
                   Send Credentials via Email
                 </Button>

@@ -561,7 +561,37 @@ const StudentApprovals = () => {
                 </div>
               )}
               <div className="pt-4 border-t">
-                <Button className="w-full gap-2">
+                <Button 
+                  className="w-full gap-2"
+                  onClick={async () => {
+                    if (!selectedStudent?.profile?.email) {
+                      toast({ title: "No email found", description: "Student has no email address on file.", variant: "destructive" });
+                      return;
+                    }
+                    try {
+                      const { studentCredentialsEmail } = await import("@/lib/emailTemplates");
+                      const html = studentCredentialsEmail({
+                        studentName: `${selectedStudent.profile.first_name} ${selectedStudent.profile.last_name}`,
+                        studentId: selectedStudent.student_code || "N/A",
+                        email: selectedStudent.profile.email,
+                        password: selectedStudent.generated_password || "N/A",
+                        courseName: selectedStudent.advance_payments?.courses?.title,
+                        loginUrl: `${window.location.origin}/login`,
+                      });
+                      const { error } = await supabase.functions.invoke("send-email", {
+                        body: {
+                          to: selectedStudent.profile.email,
+                          subject: "Your Knead & Frost Student Credentials",
+                          html,
+                        },
+                      });
+                      if (error) throw error;
+                      toast({ title: "Email Sent", description: `Credentials sent to ${selectedStudent.profile.email}` });
+                    } catch (err: any) {
+                      toast({ title: "Email Failed", description: err.message || "Could not send email", variant: "destructive" });
+                    }
+                  }}
+                >
                   <Mail className="h-4 w-4" />
                   Send Credentials via Email
                 </Button>

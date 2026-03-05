@@ -167,7 +167,8 @@ export function useMyRecipeBookings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      // Fetch from recipe_batch_memberships (slot-booked entries)
+      const { data: membershipData, error: membershipError } = await supabase
         .from('recipe_batch_memberships')
         .select(`
           *,
@@ -184,8 +185,61 @@ export function useMyRecipeBookings() {
         .eq('student_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data || [];
+      if (membershipError) throw membershipError;
+
+      // Fetch from bookings table (admin-assigned recipes)
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          student_id,
+          course_id,
+          booking_date,
+          time_slot,
+          status,
+          recipe_id,
+          assigned_chef_id,
+          created_at,
+          recipes (id, title),
+          courses (id, title)
+        `)
+        .eq('student_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (bookingsError) throw bookingsError;
+
+      // Collect booking_ids already represented in memberships
+      const membershipBookingIds = new Set(
+        (membershipData || []).map(m => m.booking_id).filter(Boolean)
+      );
+
+      // Convert bookings not already in memberships into a compatible shape
+      const bookingsOnly = (bookingsData || [])
+        .filter(b => !membershipBookingIds.has(b.id))
+        .map(b => ({
+          id: `booking-${b.id}`,
+          student_id: b.student_id,
+          recipe_batch_id: null,
+          booking_id: b.id,
+          is_manual_assignment: false,
+          assigned_by: null,
+          assigned_at: b.created_at,
+          created_at: b.created_at,
+          // Synthesize recipe_batches shape from booking data
+          recipe_batches: {
+            id: null,
+            batch_date: b.booking_date,
+            time_slot: b.time_slot,
+            capacity: 0,
+            is_manually_adjusted: false,
+            recipes: b.recipes,
+            courses: b.courses,
+          },
+          _source: 'booking' as const,
+        }));
+
+      // Merge: memberships first, then bookings-only entries
+      return [...(membershipData || []), ...bookingsOnly];
     }
   });
 }

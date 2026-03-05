@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -20,18 +21,28 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Users, ChefHat, Shield, Search, UserPlus, UserMinus, Loader2, Settings, Save } from "lucide-react";
+import { Users, ChefHat, Shield, Search, UserPlus, UserMinus, Loader2, Settings, Save, Trash2, Send, Copy, Check, Package } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 
-type AppRole = "admin" | "student" | "chef";
+type AppRole = "admin" | "student" | "chef" | "inventory_manager";
 
 // Define all available permissions with categories
 const PERMISSION_CATEGORIES = [
@@ -107,29 +118,48 @@ const Staff = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [dialogAction, setDialogAction] = useState<"add" | "remove" | "permissions" | null>(null);
+  const [dialogAction, setDialogAction] = useState<"add" | "remove" | "permissions" | "create" | null>(null);
   const [selectedRole, setSelectedRole] = useState<AppRole>("chef");
   const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [copiedCreds, setCopiedCreds] = useState(false);
 
-  // Fetch all staff users (only admins and chefs) with their roles
+  // New user form state
+  const [newUser, setNewUser] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    role: "chef" as string,
+    password: "",
+    staffNumber: "",
+  });
+  const [createdCreds, setCreatedCreds] = useState<{ email: string; password: string } | null>(null);
+
+  // Get current user ID for self-deletion check
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    },
+  });
+
+  // Fetch all staff users with their roles
   const { data: usersWithRoles, isLoading } = useQuery({
     queryKey: ["admin-staff"],
     queryFn: async () => {
-      // Get all user roles for admins and chefs
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*")
-        .in("role", ["admin", "chef", "super_admin"]);
+        .in("role", ["admin", "chef", "super_admin", "inventory_manager"]);
 
       if (rolesError) throw rolesError;
 
-      // Get unique user IDs
       const staffUserIds = [...new Set(roles?.map((r) => r.user_id) || [])];
-
       if (staffUserIds.length === 0) return [];
 
-      // Get profiles for staff users only
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
@@ -138,7 +168,6 @@ const Staff = () => {
 
       if (profilesError) throw profilesError;
 
-      // Combine profiles with their roles
       return profiles?.map((profile) => ({
         ...profile,
         roles: roles?.filter((r) => r.user_id === profile.id).map((r) => r.role) || [],
@@ -147,7 +176,7 @@ const Staff = () => {
   });
 
   // Fetch permissions for selected user
-  const { data: selectedUserPermissions, refetch: refetchPermissions } = useQuery({
+  const { data: selectedUserPermissions } = useQuery({
     queryKey: ["staff-permissions", selectedUser?.id],
     queryFn: async () => {
       if (!selectedUser?.id) return {};
@@ -168,12 +197,62 @@ const Staff = () => {
     enabled: !!selectedUser?.id && dialogAction === "permissions",
   });
 
-  // Update local state when permissions are fetched
   useEffect(() => {
     if (selectedUserPermissions) {
       setUserPermissions(selectedUserPermissions);
     }
   }, [selectedUserPermissions]);
+
+  // Create staff mutation
+  const createStaffMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("manage-staff", {
+        body: { action: "create", ...newUser },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to create staff");
+      return data;
+    },
+    onSuccess: (data) => {
+      setCreatedCreds({ email: data.email, password: data.password });
+      toast({ title: "Staff member created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-staff"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error creating staff", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Delete staff mutation
+  const deleteStaffMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("manage-staff", {
+        body: { action: "delete", userId },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to delete staff");
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Staff member deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-staff"] });
+      setDeleteTarget(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error deleting staff", description: error.message, variant: "destructive" });
+      setDeleteTarget(null);
+    },
+  });
 
   // Add role mutation
   const addRoleMutation = useMutation({
@@ -181,7 +260,6 @@ const Staff = () => {
       const { error } = await supabase
         .from("user_roles")
         .insert({ user_id: userId, role });
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -191,11 +269,7 @@ const Staff = () => {
       setSelectedUser(null);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error adding role",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error adding role", description: error.message, variant: "destructive" });
     },
   });
 
@@ -207,7 +281,6 @@ const Staff = () => {
         .delete()
         .eq("user_id", userId)
         .eq("role", role);
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -217,70 +290,91 @@ const Staff = () => {
       setSelectedUser(null);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error removing role",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error removing role", description: error.message, variant: "destructive" });
     },
   });
 
   // Save permissions
   const savePermissions = async () => {
     if (!selectedUser?.id) return;
-    
     setIsSaving(true);
     try {
-      // Get all permission keys
       const allPermissionKeys = PERMISSION_CATEGORIES.flatMap((cat) =>
         cat.permissions.map((p) => p.key)
       );
 
-      // Upsert each permission
       for (const key of allPermissionKeys) {
         const isEnabled = userPermissions[key] || false;
-        
         const { error } = await supabase
           .from("staff_permissions")
           .upsert(
-            {
-              user_id: selectedUser.id,
-              permission_key: key,
-              is_enabled: isEnabled,
-              updated_at: new Date().toISOString(),
-            },
+            { user_id: selectedUser.id, permission_key: key, is_enabled: isEnabled, updated_at: new Date().toISOString() },
             { onConflict: "user_id,permission_key" }
           );
-
         if (error) throw error;
       }
 
       toast({ title: "Permissions saved successfully" });
       queryClient.invalidateQueries({ queryKey: ["staff-permissions", selectedUser.id] });
     } catch (error: any) {
-      toast({
-        title: "Error saving permissions",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error saving permissions", description: error.message, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
   const togglePermission = (key: string) => {
-    setUserPermissions((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    setUserPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const toggleCategoryPermissions = (category: typeof PERMISSION_CATEGORIES[0], enable: boolean) => {
     const newPermissions = { ...userPermissions };
-    category.permissions.forEach((p) => {
-      newPermissions[p.key] = enable;
-    });
+    category.permissions.forEach((p) => { newPermissions[p.key] = enable; });
     setUserPermissions(newPermissions);
+  };
+
+  const sendCredentialsViaEmail = async (email: string, password: string, name: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      await supabase.functions.invoke("send-email", {
+        body: {
+          to: email,
+          subject: "Your Staff Login Credentials - Knead & Frost",
+          html: `
+            <h2>Welcome to Knead & Frost, ${name}!</h2>
+            <p>Your staff account has been created. Here are your login credentials:</p>
+            <table style="border-collapse:collapse;margin:16px 0">
+              <tr><td style="padding:8px;font-weight:bold">Email:</td><td style="padding:8px">${email}</td></tr>
+              <tr><td style="padding:8px;font-weight:bold">Password:</td><td style="padding:8px;font-family:monospace">${password}</td></tr>
+            </table>
+            <p>Please login at the platform and change your password after first login.</p>
+            <p>Best regards,<br/>Knead & Frost Admin Team</p>
+          `,
+        },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      toast({ title: "Credentials sent via email" });
+    } catch {
+      toast({ title: "Failed to send email", variant: "destructive" });
+    }
+  };
+
+  const sendCredentialsViaWhatsApp = (phone: string, email: string, password: string, name: string) => {
+    const message = encodeURIComponent(
+      `Hi ${name},\n\nYour Knead & Frost staff login credentials:\n\nEmail: ${email}\nPassword: ${password}\n\nPlease login and change your password.`
+    );
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
+  };
+
+  const copyCredentials = (email: string, password: string) => {
+    navigator.clipboard.writeText(`Email: ${email}\nPassword: ${password}`);
+    setCopiedCreds(true);
+    setTimeout(() => setCopiedCreds(false), 2000);
+    toast({ title: "Credentials copied to clipboard" });
   };
 
   const filteredUsers = usersWithRoles?.filter((user) => {
@@ -291,21 +385,19 @@ const Staff = () => {
     const matchesRole =
       roleFilter === "all" ||
       (roleFilter === "chef" && user.roles.includes("chef")) ||
-      (roleFilter === "admin" && (user.roles.includes("admin") || user.roles.includes("super_admin")));
+      (roleFilter === "admin" && (user.roles.includes("admin") || user.roles.includes("super_admin"))) ||
+      (roleFilter === "inventory_manager" && user.roles.includes("inventory_manager"));
 
     return matchesSearch && matchesRole;
   });
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case "super_admin":
-        return "default";
-      case "admin":
-        return "destructive";
-      case "chef":
-        return "secondary";
-      default:
-        return "outline";
+      case "super_admin": return "default" as const;
+      case "admin": return "destructive" as const;
+      case "chef": return "secondary" as const;
+      case "inventory_manager": return "outline" as const;
+      default: return "outline" as const;
     }
   };
 
@@ -316,12 +408,38 @@ const Staff = () => {
         return <Shield className="h-3 w-3" />;
       case "chef":
         return <ChefHat className="h-3 w-3" />;
+      case "inventory_manager":
+        return <Package className="h-3 w-3" />;
       default:
         return <Users className="h-3 w-3" />;
     }
   };
 
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case "super_admin": return "Super Admin";
+      case "inventory_manager": return "Inventory Manager";
+      default: return role.charAt(0).toUpperCase() + role.slice(1);
+    }
+  };
+
   const isSuperAdmin = (user: any) => user.roles.includes("super_admin");
+
+  const canDeleteUser = (user: any) => {
+    // Can't delete yourself if you're the only super admin
+    if (user.id === currentUser?.id && isSuperAdmin(user)) {
+      const otherSuperAdmins = usersWithRoles?.filter(
+        (u) => u.id !== currentUser?.id && u.roles.includes("super_admin")
+      );
+      return otherSuperAdmins && otherSuperAdmins.length > 0;
+    }
+    return true;
+  };
+
+  const resetCreateForm = () => {
+    setNewUser({ firstName: "", lastName: "", email: "", phone: "", role: "chef", password: "", staffNumber: "" });
+    setCreatedCreds(null);
+  };
 
   if (isLoading) {
     return (
@@ -339,15 +457,27 @@ const Staff = () => {
       <Header role="admin" userName="Admin" />
 
       <div className="container px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Users & Access Management</h1>
-          <p className="text-muted-foreground">
-            Manage staff roles and section-level access permissions
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Users & Access Management</h1>
+            <p className="text-muted-foreground">
+              Manage staff roles and section-level access permissions
+            </p>
+          </div>
+          <Button
+            className="gap-2"
+            onClick={() => {
+              resetCreateForm();
+              setDialogAction("create");
+            }}
+          >
+            <UserPlus className="h-4 w-4" />
+            Add New Staff
+          </Button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="p-4 flex items-center gap-4">
             <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
               <Shield className="h-6 w-6 text-destructive" />
@@ -370,6 +500,17 @@ const Staff = () => {
               <p className="text-sm text-muted-foreground">Chefs</p>
             </div>
           </Card>
+          <Card className="p-4 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-accent/50 flex items-center justify-center">
+              <Package className="h-6 w-6 text-accent-foreground" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {usersWithRoles?.filter((u) => u.roles.includes("inventory_manager")).length || 0}
+              </p>
+              <p className="text-sm text-muted-foreground">Inventory Managers</p>
+            </div>
+          </Card>
         </div>
 
         {/* Filters */}
@@ -385,13 +526,14 @@ const Staff = () => {
               />
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
+              <SelectTrigger className="w-full md:w-[200px]">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Staff</SelectItem>
                 <SelectItem value="admin">Admins</SelectItem>
                 <SelectItem value="chef">Chefs</SelectItem>
+                <SelectItem value="inventory_manager">Inventory Managers</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -423,15 +565,11 @@ const Staff = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {user.roles.map((role: string) => (
-                      <Badge
-                        key={role}
-                        variant={getRoleBadgeVariant(role)}
-                        className="gap-1"
-                      >
+                      <Badge key={role} variant={getRoleBadgeVariant(role)} className="gap-1">
                         {getRoleIcon(role)}
-                        {role === "super_admin" ? "Super Admin" : role.charAt(0).toUpperCase() + role.slice(1)}
+                        {getRoleLabel(role)}
                       </Badge>
                     ))}
                   </div>
@@ -473,6 +611,17 @@ const Staff = () => {
                         <UserMinus className="h-4 w-4" />
                       </Button>
                     )}
+                    {/* Delete button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleteTarget(user)}
+                      disabled={!canDeleteUser(user)}
+                      title={!canDeleteUser(user) ? "Cannot delete: you are the only super admin" : "Delete user"}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -487,6 +636,203 @@ const Staff = () => {
         </Card>
       </div>
 
+      {/* Create New Staff Dialog */}
+      <Dialog
+        open={dialogAction === "create"}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDialogAction(null);
+            resetCreateForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              {createdCreds ? "Staff Created — Share Credentials" : "Add New Staff Member"}
+            </DialogTitle>
+            <DialogDescription>
+              {createdCreds
+                ? "Share these login credentials with the new staff member."
+                : "Fill in the details to create a new staff account."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!createdCreds ? (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>First Name *</Label>
+                  <Input
+                    value={newUser.firstName}
+                    onChange={(e) => setNewUser((p) => ({ ...p, firstName: e.target.value }))}
+                    placeholder="John"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name *</Label>
+                  <Input
+                    value={newUser.lastName}
+                    onChange={(e) => setNewUser((p) => ({ ...p, lastName: e.target.value }))}
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser((p) => ({ ...p, email: e.target.value }))}
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone Number</Label>
+                <Input
+                  value={newUser.phone}
+                  onChange={(e) => setNewUser((p) => ({ ...p, phone: e.target.value }))}
+                  placeholder="+91 98765 43210"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Staff Number</Label>
+                <Input
+                  value={newUser.staffNumber}
+                  onChange={(e) => setNewUser((p) => ({ ...p, staffNumber: e.target.value }))}
+                  placeholder="e.g., STF-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Role *</Label>
+                <Select value={newUser.role} onValueChange={(v) => setNewUser((p) => ({ ...p, role: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="chef">Chef</SelectItem>
+                    <SelectItem value="inventory_manager">Inventory Manager</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Login Password *</Label>
+                <Input
+                  type="text"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser((p) => ({ ...p, password: e.target.value }))}
+                  placeholder="Set a password (min 6 chars)"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <Card className="p-4 bg-muted/50">
+                <div className="space-y-2 font-mono text-sm">
+                  <div><span className="font-semibold">Email:</span> {createdCreds.email}</div>
+                  <div><span className="font-semibold">Password:</span> {createdCreds.password}</div>
+                </div>
+              </Card>
+
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="gap-2 w-full"
+                  onClick={() => copyCredentials(createdCreds.email, createdCreds.password)}
+                >
+                  {copiedCreds ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copiedCreds ? "Copied!" : "Copy Credentials"}
+                </Button>
+                <Button
+                  className="gap-2 w-full"
+                  onClick={() =>
+                    sendCredentialsViaEmail(
+                      createdCreds.email,
+                      createdCreds.password,
+                      `${newUser.firstName} ${newUser.lastName}`
+                    )
+                  }
+                >
+                  <Send className="h-4 w-4" />
+                  Send via Email
+                </Button>
+                {newUser.phone && (
+                  <Button
+                    variant="secondary"
+                    className="gap-2 w-full"
+                    onClick={() =>
+                      sendCredentialsViaWhatsApp(
+                        newUser.phone,
+                        createdCreds.email,
+                        createdCreds.password,
+                        `${newUser.firstName} ${newUser.lastName}`
+                      )
+                    }
+                  >
+                    <Send className="h-4 w-4" />
+                    Send via WhatsApp
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {!createdCreds ? (
+              <>
+                <Button variant="outline" onClick={() => { setDialogAction(null); resetCreateForm(); }}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => createStaffMutation.mutate()}
+                  disabled={
+                    createStaffMutation.isPending ||
+                    !newUser.firstName ||
+                    !newUser.lastName ||
+                    !newUser.email ||
+                    !newUser.password ||
+                    newUser.password.length < 6
+                  }
+                >
+                  {createStaffMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Create Staff
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => { setDialogAction(null); resetCreateForm(); }}>
+                Done
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Staff Member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{deleteTarget?.first_name} {deleteTarget?.last_name}</strong>'s account,
+              including their profile, roles, and permissions. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteStaffMutation.mutate(deleteTarget.id)}
+              disabled={deleteStaffMutation.isPending}
+            >
+              {deleteStaffMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Add Role Dialog */}
       <Dialog open={dialogAction === "add"} onOpenChange={() => setDialogAction(null)}>
         <DialogContent>
@@ -498,10 +844,7 @@ const Staff = () => {
           </DialogHeader>
 
           <div className="py-4">
-            <Select
-              value={selectedRole}
-              onValueChange={(v) => setSelectedRole(v as AppRole)}
-            >
+            <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as AppRole)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
@@ -512,28 +855,20 @@ const Staff = () => {
                 {!selectedUser?.roles.includes("chef") && (
                   <SelectItem value="chef">Chef</SelectItem>
                 )}
+                {!selectedUser?.roles.includes("inventory_manager") && (
+                  <SelectItem value="inventory_manager">Inventory Manager</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogAction(null)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setDialogAction(null)}>Cancel</Button>
             <Button
-              onClick={() =>
-                addRoleMutation.mutate({
-                  userId: selectedUser.id,
-                  role: selectedRole,
-                })
-              }
+              onClick={() => addRoleMutation.mutate({ userId: selectedUser.id, role: selectedRole })}
               disabled={addRoleMutation.isPending}
             >
-              {addRoleMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Add Role"
-              )}
+              {addRoleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Role"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -550,10 +885,7 @@ const Staff = () => {
           </DialogHeader>
 
           <div className="py-4">
-            <Select
-              value={selectedRole}
-              onValueChange={(v) => setSelectedRole(v as AppRole)}
-            >
+            <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as AppRole)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select role to remove" />
               </SelectTrigger>
@@ -562,7 +894,7 @@ const Staff = () => {
                   .filter((r: string) => r !== "super_admin")
                   .map((role: string) => (
                     <SelectItem key={role} value={role}>
-                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                      {getRoleLabel(role)}
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -570,24 +902,13 @@ const Staff = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogAction(null)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setDialogAction(null)}>Cancel</Button>
             <Button
               variant="destructive"
-              onClick={() =>
-                removeRoleMutation.mutate({
-                  userId: selectedUser.id,
-                  role: selectedRole,
-                })
-              }
+              onClick={() => removeRoleMutation.mutate({ userId: selectedUser.id, role: selectedRole })}
               disabled={removeRoleMutation.isPending}
             >
-              {removeRoleMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Remove Role"
-              )}
+              {removeRoleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remove Role"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -625,35 +946,21 @@ const Staff = () => {
                     <AccordionContent>
                       <div className="space-y-3 pt-2">
                         <div className="flex gap-2 mb-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleCategoryPermissions(category, true)}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => toggleCategoryPermissions(category, true)}>
                             Enable All
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleCategoryPermissions(category, false)}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => toggleCategoryPermissions(category, false)}>
                             Disable All
                           </Button>
                         </div>
                         {category.permissions.map((permission) => (
-                          <div
-                            key={permission.key}
-                            className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50"
-                          >
+                          <div key={permission.key} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50">
                             <Checkbox
                               id={permission.key}
                               checked={userPermissions[permission.key] || false}
                               onCheckedChange={() => togglePermission(permission.key)}
                             />
-                            <label
-                              htmlFor={permission.key}
-                              className="text-sm font-medium cursor-pointer flex-1"
-                            >
+                            <label htmlFor={permission.key} className="text-sm font-medium cursor-pointer flex-1">
                               {permission.label}
                             </label>
                           </div>
@@ -667,15 +974,9 @@ const Staff = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogAction(null)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setDialogAction(null)}>Cancel</Button>
             <Button onClick={savePermissions} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               Save Permissions
             </Button>
           </DialogFooter>

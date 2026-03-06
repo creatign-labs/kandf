@@ -485,7 +485,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
                                 if (!window.confirm("Mark this installment as paid? This cannot be undone.")) return;
                                 setMarkingLeadPaidFor(inst.id);
                                 try {
-                                  const ref = (leadPaymentRefs[inst.id] ?? inst.payment_reference || "").trim();
+                                  const ref = (leadPaymentRefs[inst.id] ?? (inst.payment_reference || "")).trim();
                                   const { error } = await supabase
                                     .from("lead_installments")
                                     .update({

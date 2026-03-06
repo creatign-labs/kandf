@@ -40,6 +40,7 @@ interface Installment {
   due_date: string;
   status: string;
   payment_reference?: string;
+  payment_link_id?: string | null;
 }
 
 const LeadPaymentSetup = () => {
@@ -119,6 +120,7 @@ const LeadPaymentSetup = () => {
           due_date: inst.due_date,
           status: inst.status,
           payment_reference: inst.payment_reference || "",
+          payment_link_id: inst.payment_link_id || null,
         }))
       );
     } else if (lead?.courses?.base_fee && !existingPlan) {
@@ -315,9 +317,10 @@ const LeadPaymentSetup = () => {
     if (!window.confirm("Mark this installment as paid? This action cannot be undone.")) return;
     setMarkingPaidFor(installmentId);
     try {
+      const inst = installments.find(i => i.id === installmentId);
       const { error } = await supabase
         .from("lead_installments")
-        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .update({ status: "paid", paid_at: new Date().toISOString(), payment_reference: inst?.payment_reference || null })
         .eq("id", installmentId);
       if (error) throw error;
 
@@ -571,12 +574,17 @@ const LeadPaymentSetup = () => {
                   </TableCell>
                   <TableCell>{getStatusBadge(inst.status)}</TableCell>
                   <TableCell>
-                    <Input
-                      value={inst.payment_reference || ""}
-                      onChange={(e) => updateInstallment(index, "payment_reference", e.target.value)}
-                      className="h-8 w-32"
-                      placeholder="Ref #"
-                    />
+                    {inst.payment_link_id || inst.status === "paid" ? (
+                      <Input
+                        value={inst.payment_reference || ""}
+                        onChange={(e) => updateInstallment(index, "payment_reference", e.target.value)}
+                        className="h-8 w-32"
+                        placeholder="Ref #"
+                        disabled={inst.status === "paid"}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Generate link first</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -588,7 +596,7 @@ const LeadPaymentSetup = () => {
                                 variant="outline"
                                 size="icon"
                                 className="h-8 w-8 text-green-600 border-green-300 hover:bg-green-50"
-                                disabled={markingPaidFor === inst.id}
+                                disabled={markingPaidFor === inst.id || !inst.payment_reference?.trim()}
                                 onClick={() => markAsPaid(inst.id!, inst.installment_number)}
                               >
                                 {markingPaidFor === inst.id ? (

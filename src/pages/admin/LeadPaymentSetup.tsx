@@ -595,7 +595,7 @@ const LeadPaymentSetup = () => {
                                 variant="outline"
                                 size="icon"
                                 className="h-8 w-8 text-green-600 border-green-300 hover:bg-green-50"
-                                disabled={markingPaidFor === inst.id}
+                                disabled={markingPaidFor === inst.id || !inst.payment_reference?.trim()}
                                 onClick={() => markAsPaid(inst.id!, inst.installment_number)}
                               >
                                 {markingPaidFor === inst.id ? (

@@ -356,6 +356,170 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
             )}
           </Card>
 
+          {/* Lead Payment Plan (from pre-conversion stage) */}
+          {leadInstallments && leadInstallments.installments.length > 0 && (
+            <Card className="p-4 space-y-3">
+              <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <IndianRupee className="h-4 w-4" />
+                Lead Payment Plan
+              </h4>
+              <p className="text-xs text-muted-foreground">Pre-enrollment installments from the leads pipeline.</p>
+              {(() => {
+                const leadPaid = leadInstallments.installments.filter((i: any) => i.status === "paid").length;
+                const leadTotal = leadInstallments.installments.length;
+                const leadPaidAmt = leadInstallments.installments.filter((i: any) => i.status === "paid").reduce((s: number, i: any) => s + Number(i.amount), 0);
+                const leadTotalAmt = leadInstallments.installments.reduce((s: number, i: any) => s + Number(i.amount), 0);
+                return (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Paid {leadPaid} of {leadTotal}</span>
+                    <span className="font-medium">₹{leadPaidAmt.toLocaleString()} / ₹{leadTotalAmt.toLocaleString()}</span>
+                  </div>
+                );
+              })()}
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {leadInstallments.installments.map((inst: any) => (
+                  <div key={inst.id} className="border rounded-md px-3 py-2 space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        {inst.status === "paid" ? (
+                          <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                        ) : (
+                          <Clock className="h-3.5 w-3.5 text-yellow-500" />
+                        )}
+                        <span className="font-medium">{inst.label}</span>
+                        <Badge variant={inst.status === "paid" ? "default" : "secondary"} className="text-xs">
+                          {inst.status === "paid" ? "Paid" : "Pending"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span>₹{Number(inst.amount).toLocaleString()}</span>
+                        <span className="text-xs">{format(new Date(inst.due_date), "dd MMM yyyy")}</span>
+                      </div>
+                    </div>
+
+                    {inst.payment_reference && inst.status === "paid" && (
+                      <div className="text-xs text-muted-foreground font-mono">Ref: {inst.payment_reference}</div>
+                    )}
+
+                    {/* Actions for unpaid installments */}
+                    {inst.status !== "paid" && (
+                      <div className="flex flex-col gap-1.5 pt-1">
+                        {/* Generate / Copy Payment Link */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs flex-1"
+                            disabled={generatingLinkFor === inst.id}
+                            onClick={async () => {
+                              setGeneratingLinkFor(inst.id);
+                              try {
+                                const { data, error } = await supabase.functions.invoke('create-lead-payment-link', {
+                                  body: { installmentId: inst.id, amount: Number(inst.amount) },
+                                });
+                                if (error) throw error;
+                                if (data?.error) throw new Error(data.error);
+                                const shortUrl = data.payment_link?.short_url;
+                                if (shortUrl) {
+                                  await navigator.clipboard.writeText(shortUrl);
+                                  toast.success("Payment link generated & copied!");
+                                } else {
+                                  toast.success("Payment link generated!");
+                                }
+                                queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
+                              } catch (err: any) {
+                                toast.error(err.message || "Failed to generate link");
+                              } finally {
+                                setGeneratingLinkFor(null);
+                              }
+                            }}
+                          >
+                            {generatingLinkFor === inst.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <Link className="h-3 w-3 mr-1" />
+                            )}
+                            {inst.payment_link_id ? "Regenerate Link" : "Generate Link"}
+                          </Button>
+                          {inst.payment_link_id && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={async () => {
+                                  try {
+                                    const { data } = await supabase.functions.invoke('create-lead-payment-link', {
+                                      body: { installmentId: inst.id, amount: Number(inst.amount) },
+                                    });
+                                    const url = data?.payment_link?.short_url;
+                                    if (url) {
+                                      await navigator.clipboard.writeText(url);
+                                      toast.success("Link copied!");
+                                    }
+                                  } catch { /* ignore */ }
+                                }}>
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Copy payment link</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+
+                        {/* Payment Reference + Mark Paid (only after link generated) */}
+                        {inst.payment_link_id && (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              placeholder="Payment reference #"
+                              className="h-7 text-xs flex-1"
+                              value={leadPaymentRefs[inst.id] ?? (inst.payment_reference || "")}
+                              onChange={(e) => setLeadPaymentRefs(prev => ({ ...prev, [inst.id]: e.target.value }))}
+                            />
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="h-7 text-xs"
+                              disabled={
+                                markingLeadPaidFor === inst.id ||
+                                !(leadPaymentRefs[inst.id] ?? inst.payment_reference)?.trim()
+                              }
+                              onClick={async () => {
+                                if (!window.confirm("Mark this installment as paid? This cannot be undone.")) return;
+                                setMarkingLeadPaidFor(inst.id);
+                                try {
+                                  const ref = (leadPaymentRefs[inst.id] ?? inst.payment_reference || "").trim();
+                                  const { error } = await supabase
+                                    .from("lead_installments")
+                                    .update({
+                                      status: "paid",
+                                      paid_at: new Date().toISOString(),
+                                      payment_reference: ref,
+                                    })
+                                    .eq("id", inst.id);
+                                  if (error) throw error;
+                                  toast.success("Installment marked as paid!");
+                                  queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
+                                } catch (err: any) {
+                                  toast.error(err.message || "Failed to mark as paid");
+                                } finally {
+                                  setMarkingLeadPaidFor(null);
+                                }
+                              }}
+                            >
+                              {markingLeadPaidFor === inst.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                "Mark Paid"
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* Online Class Status */}
           <Card className="p-4">
             <div className="flex items-center justify-between">

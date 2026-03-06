@@ -534,7 +534,8 @@ const LeadPaymentSetup = () => {
                 <TableHead>Amount (₹)</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Generate Link</TableHead>
+                <TableHead>Payment Ref.</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

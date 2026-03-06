@@ -254,6 +254,11 @@ const CoursePayment = () => {
                           : `Due: ${format(new Date(payment.due_date), "MMM d, yyyy")}`
                         }
                       </p>
+                      {(payment as any).payment_reference && (
+                        <p className="text-xs text-muted-foreground font-mono">
+                          Ref: {(payment as any).payment_reference}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

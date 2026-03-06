@@ -334,6 +334,7 @@ export type Database = {
           recipe_id: string | null
           status: string
           student_id: string
+          table_number: string | null
           time_slot: string
           updated_at: string
         }
@@ -346,6 +347,7 @@ export type Database = {
           recipe_id?: string | null
           status?: string
           student_id: string
+          table_number?: string | null
           time_slot: string
           updated_at?: string
         }
@@ -358,6 +360,7 @@ export type Database = {
           recipe_id?: string | null
           status?: string
           student_id?: string
+          table_number?: string | null
           time_slot?: string
           updated_at?: string
         }
@@ -1494,6 +1497,7 @@ export type Database = {
           id: string
           paid_at: string | null
           payment_id: string | null
+          payment_reference: string | null
           payment_stage: string
           status: string
           student_id: string
@@ -1507,6 +1511,7 @@ export type Database = {
           id?: string
           paid_at?: string | null
           payment_id?: string | null
+          payment_reference?: string | null
           payment_stage: string
           status?: string
           student_id: string
@@ -1520,6 +1525,7 @@ export type Database = {
           id?: string
           paid_at?: string | null
           payment_id?: string | null
+          payment_reference?: string | null
           payment_stage?: string
           status?: string
           student_id?: string

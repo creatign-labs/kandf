@@ -338,7 +338,7 @@ const InventoryChecklist = () => {
                   <TableHead>Ingredient</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Required</TableHead>
-                  <TableHead>Current Stock</TableHead>
+                  <TableHead>Closing Stock</TableHead>
                   <TableHead>To Purchase</TableHead>
                   <TableHead>Purchased</TableHead>
                 </TableRow>

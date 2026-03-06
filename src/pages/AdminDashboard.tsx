@@ -523,7 +523,7 @@ const AdminDashboard = () => {
                     <div key={item.id} className="p-3 rounded-lg bg-warning/10 border border-warning/20">
                       <div className="font-medium text-sm">{item.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        Current: {item.current_stock} {item.unit} (Need: {item.reorder_level} {item.unit})
+                        Closing: {item.current_stock} {item.unit} (Need: {item.reorder_level} {item.unit})
                       </div>
                     </div>
                   ))}

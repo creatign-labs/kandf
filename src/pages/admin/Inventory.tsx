@@ -230,7 +230,7 @@ const Inventory = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="current">Current Stock</Label>
+                        <Label htmlFor="current">Closing Stock</Label>
                         <Input 
                           id="current" 
                           type="number"
@@ -272,7 +272,7 @@ const Inventory = () => {
                   <TableRow>
                     <TableHead>Ingredient</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Current Stock</TableHead>
+                    <TableHead>Closing Stock</TableHead>
                     <TableHead>Required Stock</TableHead>
                     <TableHead>Stock Status</TableHead>
                     <TableHead>Status</TableHead>

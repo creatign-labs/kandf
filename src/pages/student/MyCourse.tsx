@@ -1,18 +1,15 @@
-import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Clock, CheckCircle, Loader2, Calendar, CalendarCheck, Info } from "lucide-react";
+import { Clock, CheckCircle, Loader2, CalendarCheck, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addMonths, parseISO } from "date-fns";
-import { RecipeSlotBooking } from "@/components/student/RecipeSlotBooking";
 
 const MyCourse = () => {
-  const [bookingRecipeId, setBookingRecipeId] = useState<string | null>(null);
 
   // Fetch user's enrollment with course
   const { data: enrollment, isLoading: enrollmentLoading } = useQuery({
@@ -225,7 +222,7 @@ const MyCourse = () => {
                 const completionDate = getCompletionDate(recipe.id);
                 const existingBooking = getRecipeBooking(recipe.id);
                 const isCompleted = status === 'completed';
-                const isBookingOpen = bookingRecipeId === recipe.id;
+                
                 
                 return (
                   <div key={recipe.id} className="border border-border rounded-lg overflow-hidden">
@@ -255,32 +252,12 @@ const MyCourse = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {!isCompleted && !existingBooking && isActive && (
-                          <Button
-                            variant={isBookingOpen ? "secondary" : "outline"}
-                            size="sm"
-                            onClick={() => setBookingRecipeId(isBookingOpen ? null : recipe.id)}
-                          >
-                            <Calendar className="h-4 w-4 mr-1" />
-                            {isBookingOpen ? "Close" : "Book Slot"}
-                          </Button>
-                        )}
                         {isCompleted && (
                           <Badge variant="outline" className="text-green-600 border-green-600">Done</Badge>
                         )}
                       </div>
                     </div>
                     
-                    {isBookingOpen && enrollment.course_id && (
-                      <div className="border-t border-border bg-muted/30 p-4">
-                        <RecipeSlotBooking 
-                          courseId={enrollment.course_id}
-                          recipeId={recipe.id}
-                          recipeTitle={recipe.title}
-                          onBooked={() => setBookingRecipeId(null)}
-                        />
-                      </div>
-                    )}
                   </div>
                 );
               })}

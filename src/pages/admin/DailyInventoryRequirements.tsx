@@ -300,7 +300,7 @@ const DailyInventoryRequirements = () => {
                   <TableHead>Category</TableHead>
                   <TableHead>Recipe</TableHead>
                   <TableHead className="text-right">Required</TableHead>
-                  <TableHead className="text-right">Current Stock</TableHead>
+                  <TableHead className="text-right">Closing Stock</TableHead>
                   <TableHead className="text-right">To Purchase</TableHead>
                   <TableHead>Status</TableHead>
                   {requirement.status === "approved" && <TableHead>Action</TableHead>}

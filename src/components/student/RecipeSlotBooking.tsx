@@ -17,31 +17,27 @@ import { format, addDays } from "date-fns";
 import { 
   useBookingEligibility, 
   useAvailableRecipeSlots, 
-  useBookRecipeSlot 
+  useBookRecipeSlot
 } from "@/hooks/useRecipeBooking";
 
 interface RecipeSlotBookingProps {
   courseId?: string;
-  recipeId?: string;
-  recipeTitle?: string;
   onBooked?: () => void;
 }
 
-export function RecipeSlotBooking({ courseId, recipeId, recipeTitle, onBooked }: RecipeSlotBookingProps) {
+export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSlot, setSelectedSlot] = useState<{ timeSlot: string; batchId: string | null } | null>(null);
 
   // Use provided props or fall back to eligibility check
   const { data: eligibility, isLoading: eligibilityLoading } = useBookingEligibility();
   
-  // Determine which course/recipe to use
+  // Determine which course to use — recipe is no longer specified
   const effectiveCourseId = courseId || eligibility?.course_id || null;
-  const effectiveRecipeId = recipeId || eligibility?.next_recipe_id || null;
-  const effectiveRecipeTitle = recipeTitle || eligibility?.next_recipe_title || 'Recipe';
 
   const { data: availableSlots, isLoading: slotsLoading } = useAvailableRecipeSlots(
     effectiveCourseId,
-    effectiveRecipeId
+    null
   );
   const bookMutation = useBookRecipeSlot();
 
@@ -53,11 +49,11 @@ export function RecipeSlotBooking({ courseId, recipeId, recipeTitle, onBooked }:
     : [];
 
   const handleBooking = () => {
-    if (!selectedDate || !selectedSlot || !effectiveCourseId || !effectiveRecipeId) return;
+    if (!selectedDate || !selectedSlot || !effectiveCourseId) return;
 
     bookMutation.mutate({
       courseId: effectiveCourseId,
-      recipeId: effectiveRecipeId,
+      recipeId: '', // Generic booking — no recipe specified
       batchDate: format(selectedDate, 'yyyy-MM-dd'),
       timeSlot: selectedSlot.timeSlot
     }, {
@@ -191,10 +187,6 @@ export function RecipeSlotBooking({ courseId, recipeId, recipeTitle, onBooked }:
         <Card className="p-4 md:p-6 border-border/60">
           <h3 className="font-semibold mb-4">Booking Summary</h3>
           <div className="space-y-2 mb-4">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Recipe</span>
-              <span className="font-medium">{effectiveRecipeTitle}</span>
-            </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Date</span>
               <span className="font-medium">{format(selectedDate, 'EEEE, MMMM d, yyyy')}</span>

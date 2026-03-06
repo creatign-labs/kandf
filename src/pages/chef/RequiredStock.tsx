@@ -216,7 +216,7 @@ const RequiredStock = () => {
                 <TableRow>
                   <TableHead>Ingredient</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Current Stock</TableHead>
+                  <TableHead className="text-right">Closing Stock</TableHead>
                   <TableHead className="text-right">Reorder Level</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>

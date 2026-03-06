@@ -4,8 +4,8 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Clock, Calendar, BookOpen, IndianRupee, CheckCircle2 } from "lucide-react";
+
+import { Clock, Calendar, BookOpen, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CourseCard } from "@/components/CourseCard";
@@ -124,9 +124,6 @@ const CourseDetail = () => {
       </div>
     );
   }
-
-  const gstAmount = course.base_fee * 0.18;
-  const totalFee = course.base_fee + gstAmount;
 
   return (
     <div className="min-h-screen bg-background">
@@ -250,26 +247,7 @@ const CourseDetail = () => {
 
             <div className="space-y-6">
               <Card className="sticky top-6">
-                <CardHeader>
-                  <CardTitle>Course Fee</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-lg">
-                      <span>Base Fee</span>
-                      <span className="font-semibold">₹{course.base_fee.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>GST (18%)</span>
-                      <span>₹{gstAmount.toLocaleString()}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between text-xl font-bold">
-                      <span>Total</span>
-                      <span className="text-primary">₹{totalFee.toLocaleString()}</span>
-                    </div>
-                  </div>
-
+                <CardContent className="space-y-4 pt-6">
                   {/* Contact Admissions */}
                   <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
                     <h4 className="font-semibold text-sm mb-1">Interested in this course?</h4>

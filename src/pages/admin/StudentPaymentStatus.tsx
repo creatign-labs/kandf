@@ -203,6 +203,7 @@ const StudentPaymentStatus = () => {
                 <TableHead>Amount</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Paid On</TableHead>
+                <TableHead>Reference #</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -226,6 +227,11 @@ const StudentPaymentStatus = () => {
                   <TableCell>{format(new Date(payment.due_date), "dd MMM yyyy")}</TableCell>
                   <TableCell>
                     {payment.paid_at ? format(new Date(payment.paid_at), "dd MMM yyyy") : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {payment.status === "paid" ? (
+                      <span className="text-sm font-mono">{(payment as any).payment_reference || "—"}</span>
+                    ) : "—"}
                   </TableCell>
                   <TableCell>{getStatusBadge(payment.status, payment.due_date)}</TableCell>
                   <TableCell className="text-right">
@@ -260,9 +266,9 @@ const StudentPaymentStatus = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {(!filteredData || filteredData.length === 0) && (
+               {(!filteredData || filteredData.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No payment records found</p>
                   </TableCell>

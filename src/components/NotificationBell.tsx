@@ -63,7 +63,7 @@ export const NotificationBell = ({ role }: NotificationBellProps) => {
     role === "admin" || role === "super_admin"
       ? "/admin/notifications"
       : role === "chef"
-      ? "/chef"
+      ? "/chef/notifications"
       : "/student/notifications";
 
   return (

@@ -629,7 +629,7 @@ const LeadPaymentSetup = () => {
               ))}
               {installments.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-50" />
                     <p>No installments configured. Click "Add Installment" to begin.</p>
                   </TableCell>

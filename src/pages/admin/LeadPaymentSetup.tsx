@@ -118,6 +118,7 @@ const LeadPaymentSetup = () => {
           amount: inst.amount,
           due_date: inst.due_date,
           status: inst.status,
+          payment_reference: inst.payment_reference || "",
         }))
       );
     } else if (lead?.courses?.base_fee && !existingPlan) {

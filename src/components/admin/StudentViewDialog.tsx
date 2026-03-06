@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { UserCircle, Mail, Phone, Hash, BookOpen, Calendar, MonitorPlay, CreditCard, Loader2, CheckCircle, Clock, XCircle, Trash2, Pencil, Save, X } from "lucide-react";
+import { UserCircle, Mail, Phone, Hash, BookOpen, Calendar, MonitorPlay, CreditCard, Loader2, CheckCircle, Clock, XCircle, Trash2, Pencil, Save, X, FileText } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -48,6 +48,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
   const [editAmount, setEditAmount] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
   const [editStatus, setEditStatus] = useState("");
+  const [editPaymentRef, setEditPaymentRef] = useState("");
   // Fetch payment schedules
   const { data: paymentSchedules, isLoading: paymentsLoading } = useQuery({
     queryKey: ["student-payment-schedules", enrollmentId],
@@ -107,8 +108,8 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
   });
 
   const updatePaymentSchedule = useMutation({
-    mutationFn: async ({ id, amount, due_date, status }: { id: string; amount: number; due_date: string; status: string }) => {
-      const updateData: any = { amount, due_date, status };
+    mutationFn: async ({ id, amount, due_date, status, payment_reference }: { id: string; amount: number; due_date: string; status: string; payment_reference?: string }) => {
+      const updateData: any = { amount, due_date, status, payment_reference: payment_reference || null };
       if (status === "paid" && !paymentSchedules?.find(p => p.id === id && p.status === "paid")) {
         updateData.paid_at = new Date().toISOString();
       }
@@ -133,6 +134,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     setEditAmount(String(ps.amount));
     setEditDueDate(ps.due_date?.split("T")[0] || "");
     setEditStatus(ps.status);
+    setEditPaymentRef((ps as any).payment_reference || "");
   };
 
   const saveEditing = () => {
@@ -146,7 +148,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
       toast.error("Due date is required");
       return;
     }
-    updatePaymentSchedule.mutate({ id: editingPaymentId, amount, due_date: editDueDate, status: editStatus });
+    updatePaymentSchedule.mutate({ id: editingPaymentId, amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef });
   };
 
   if (!enrollment) return null;
@@ -272,6 +274,10 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
                             <Input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)} className="h-8 text-sm" />
                           </div>
                         </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Reference #</label>
+                          <Input placeholder="Payment reference" value={editPaymentRef} onChange={e => setEditPaymentRef(e.target.value)} className="h-8 text-sm" />
+                        </div>
                         <div className="flex items-center gap-2">
                           <Select value={editStatus} onValueChange={setEditStatus}>
                             <SelectTrigger className="h-8 text-sm flex-1">
@@ -296,6 +302,9 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
                         <div className="flex items-center gap-2">
                           {getPaymentStatusIcon(ps.status)}
                           <span>{ps.payment_stage}</span>
+                          {(ps as any).payment_reference && (
+                            <span className="text-xs text-muted-foreground font-mono">Ref: {(ps as any).payment_reference}</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 text-muted-foreground">
                           <span>₹{Number(ps.amount).toLocaleString()}</span>

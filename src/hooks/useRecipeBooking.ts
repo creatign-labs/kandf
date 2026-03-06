@@ -46,7 +46,40 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
   return useQuery({
     queryKey: ['available-recipe-slots', courseId, recipeId],
     queryFn: async (): Promise<AvailableSlot[]> => {
-      if (!courseId || !recipeId) return [];
+      if (!courseId) return [];
+
+      // If recipeId is null, fetch generic slots (all batches for the course)
+      if (!recipeId) {
+        const { data, error } = await supabase
+          .from('batches')
+          .select('*')
+          .eq('course_id', courseId)
+          .eq('booking_enabled', true);
+
+        if (error) throw error;
+
+        // Transform batch data into AvailableSlot format
+        // Generate slots for the next 30 days
+        const slots: AvailableSlot[] = [];
+        const today = new Date();
+        for (let i = 1; i <= 30; i++) {
+          const date = new Date(today);
+          date.setDate(date.getDate() + i);
+          const dateStr = date.toISOString().split('T')[0];
+          
+          for (const batch of (data || [])) {
+            slots.push({
+              batch_date: dateStr,
+              time_slot: batch.time_slot,
+              recipe_batch_id: null,
+              capacity: batch.total_seats,
+              current_count: 0,
+              available_spots: batch.available_seats,
+            });
+          }
+        }
+        return slots;
+      }
 
       const { data, error } = await supabase
         .rpc('get_available_recipe_slots', {
@@ -57,7 +90,7 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
       if (error) throw error;
       return data || [];
     },
-    enabled: !!courseId && !!recipeId
+    enabled: !!courseId
   });
 }
 
@@ -140,11 +173,38 @@ export function useCancelRecipeBooking() {
       
       return result;
     },
-    onSuccess: () => {
+    onSuccess: async (_, bookingId) => {
       toast({
         title: "Booking cancelled",
         description: "Your slot has been released.",
       });
+
+      // Notify admins and super admins about the cancellation
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: profile } = await supabase.from('profiles').select('first_name, last_name').eq('id', user?.id || '').single();
+        const studentName = profile ? `${profile.first_name} ${profile.last_name}` : 'A student';
+        
+        const { data: adminRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .in('role', ['admin', 'super_admin']);
+
+        if (adminRoles && adminRoles.length > 0) {
+          const notifications = adminRoles.map(r => ({
+            user_id: r.user_id,
+            title: 'Booking Cancelled by Student',
+            message: `${studentName} has cancelled their booking.`,
+            type: 'alert',
+            read: false,
+          }));
+          await supabase.from('notifications').insert(notifications);
+        }
+      } catch (e) {
+        // Non-critical: don't block on notification failure
+        console.error('Failed to notify admins about cancellation:', e);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['booking-eligibility'] });
       queryClient.invalidateQueries({ queryKey: ['available-recipe-slots'] });
       queryClient.invalidateQueries({ queryKey: ['my-recipe-bookings'] });

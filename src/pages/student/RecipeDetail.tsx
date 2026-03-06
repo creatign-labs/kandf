@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 import { useParams, Link } from "react-router-dom";
-import { Clock, ChefHat, ArrowLeft, Calendar, CheckCircle, Loader2 } from "lucide-react";
+import { Clock, ChefHat, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -238,12 +238,6 @@ const RecipeDetail = () => {
                 )}
               </Button>
             )}
-            <Button asChild variant={isCompleted ? "default" : "outline"} size="lg" className={isCompleted ? "flex-1" : ""}>
-              <Link to="/student/book-slot">
-                <Calendar className="h-5 w-5 mr-2" />
-                Book Practice Slot
-              </Link>
-            </Button>
           </div>
         </div>
       </div>

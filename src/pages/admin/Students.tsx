@@ -800,9 +800,37 @@ const Students = () => {
               </div>
             )}
             <div className="pt-4 border-t flex gap-2">
-              <Button className="flex-1 gap-2" onClick={() => copyAllCredentials(selectedStudent)}>
-                <Copy className="h-4 w-4" />
-                Copy All Credentials
+              <Button
+                className="flex-1 gap-2"
+                onClick={async () => {
+                  const name = `${selectedStudent?.profile?.first_name} ${selectedStudent?.profile?.last_name}`;
+                  const email = selectedStudent?.profile?.email;
+                  const courseName = selectedStudent?.advance_payments?.courses?.title || '';
+                  try {
+                    const { error } = await supabase.functions.invoke('send-email', {
+                      body: {
+                        to: email,
+                        subject: 'Your Knead & Frost Student Credentials',
+                        type: 'student-credentials',
+                        data: {
+                          studentName: name,
+                          studentId: selectedStudent?.student_code || '',
+                          email,
+                          password: selectedStudent?.generated_password || '',
+                          courseName,
+                          loginUrl: `${window.location.origin}/login`,
+                        },
+                      },
+                    });
+                    if (error) throw error;
+                    toast({ title: "Email sent!", description: `Credentials sent to ${email}` });
+                  } catch (err: any) {
+                    toast({ title: "Email failed", description: err.message, variant: "destructive" });
+                  }
+                }}
+              >
+                <Mail className="h-4 w-4" />
+                Share via Email
               </Button>
               <Button
                 variant="outline"

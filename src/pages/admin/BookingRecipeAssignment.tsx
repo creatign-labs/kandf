@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Bell, Send } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -44,6 +45,7 @@ const BookingRecipeAssignment = () => {
           courses (title)
         `)
         .eq('booking_date', format(selectedDate, 'yyyy-MM-dd'))
+        .in('status', ['confirmed', 'cancelled'])
         .order('time_slot');
 
       if (error) throw error;
@@ -409,13 +411,15 @@ const BookingRecipeAssignment = () => {
               </div>
             ) : bookings && bookings.length > 0 ? (
               <Table>
-                <TableHeader>
+                 <TableHeader>
                   <TableRow>
                     <TableHead>Student</TableHead>
                     <TableHead>Time Slot</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Course</TableHead>
                     <TableHead>Assigned Recipe</TableHead>
                     <TableHead>Assigned Chef</TableHead>
+                    <TableHead>Table No.</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -426,6 +430,13 @@ const BookingRecipeAssignment = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{booking.time_slot}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {booking.status === 'cancelled' ? (
+                          <Badge variant="destructive">Cancelled by Student</Badge>
+                        ) : (
+                          <Badge variant="secondary">{booking.status}</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {booking.courses?.title}
@@ -462,6 +473,7 @@ const BookingRecipeAssignment = () => {
                               chefId: value === "none" ? null : value
                             })
                           }
+                          disabled={booking.status === 'cancelled'}
                         >
                           <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Select chef" />
@@ -475,6 +487,22 @@ const BookingRecipeAssignment = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-muted-foreground">Table</span>
+                          <Input
+                            className="w-16 h-8 text-sm text-center"
+                            placeholder="#"
+                            value={(booking as any).table_number || ""}
+                            onChange={async (e) => {
+                              const val = e.target.value;
+                              await supabase.from('bookings').update({ table_number: val || null }).eq('id', booking.id);
+                              queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+                            }}
+                            disabled={booking.status === 'cancelled'}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -29,11 +29,6 @@ import { toast } from "sonner";
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface StudentViewDialogProps {
   enrollment: any;
@@ -54,10 +49,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
   const [editDueDate, setEditDueDate] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editPaymentRef, setEditPaymentRef] = useState("");
-  const [generatingLinkFor, setGeneratingLinkFor] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // Lead installments no longer used in this dialog
 
   // Fetch payment schedules
   const { data: paymentSchedules, isLoading: paymentsLoading } = useQuery({

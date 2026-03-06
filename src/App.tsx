@@ -69,6 +69,7 @@ import InventoryUsage from "./pages/chef/InventoryUsage";
 import DailyIngredients from "./pages/chef/DailyIngredients";
 import RequiredStock from "./pages/chef/RequiredStock";
 import Schedule from "./pages/chef/Schedule";
+import ChefNotifications from "./pages/chef/Notifications";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/student/Profile";
 import FlowWalkthrough from "./pages/FlowWalkthrough";
@@ -172,6 +173,7 @@ const App = () => (
           <Route path="/chef/required-stock" element={<ProtectedRoute requiredRole="chef"><RequiredStock /></ProtectedRoute>} />
           <Route path="/chef/recipes" element={<ProtectedRoute requiredRole="chef"><ChefRecipes /></ProtectedRoute>} />
           <Route path="/chef/daily-ingredients" element={<ProtectedRoute requiredRole="chef"><DailyIngredients /></ProtectedRoute>} />
+          <Route path="/chef/notifications" element={<ProtectedRoute requiredRole="chef"><ChefNotifications /></ProtectedRoute>} />
           <Route path="/chef/profile" element={<ProtectedRoute requiredRole="chef"><Profile /></ProtectedRoute>} />
           <Route path="/chef/inventory-usage" element={<ProtectedRoute requiredRole="chef"><InventoryUsage /></ProtectedRoute>} />
           

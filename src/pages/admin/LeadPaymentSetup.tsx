@@ -40,6 +40,7 @@ interface Installment {
   due_date: string;
   status: string;
   payment_reference?: string;
+  payment_link_id?: string | null;
 }
 
 const LeadPaymentSetup = () => {

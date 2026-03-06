@@ -54,6 +54,34 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
   const [editDueDate, setEditDueDate] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editPaymentRef, setEditPaymentRef] = useState("");
+  const [generatingLinkFor, setGeneratingLinkFor] = useState<string | null>(null);
+  const [markingLeadPaidFor, setMarkingLeadPaidFor] = useState<string | null>(null);
+  const [leadPaymentRefs, setLeadPaymentRefs] = useState<Record<string, string>>({});
+
+  // Fetch lead installments by matching student email to lead email
+  const { data: leadInstallments, isLoading: leadInstLoading } = useQuery({
+    queryKey: ["student-lead-installments", studentId, profile?.email],
+    queryFn: async () => {
+      if (!profile?.email) return null;
+      // Find lead by email
+      const { data: leads } = await supabase
+        .from("leads")
+        .select("id")
+        .eq("email", profile.email)
+        .limit(1);
+      if (!leads || leads.length === 0) return null;
+      const leadId = leads[0].id;
+      // Fetch installments
+      const { data: installments } = await supabase
+        .from("lead_installments")
+        .select("*, lead_payment_plans(course_id, net_amount)")
+        .eq("lead_id", leadId)
+        .order("installment_number");
+      return { leadId, installments: installments || [] };
+    },
+    enabled: !!studentId && !!profile?.email && open,
+  });
+
   // Fetch payment schedules
   const { data: paymentSchedules, isLoading: paymentsLoading } = useQuery({
     queryKey: ["student-payment-schedules", enrollmentId],

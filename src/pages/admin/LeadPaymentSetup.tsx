@@ -317,9 +317,10 @@ const LeadPaymentSetup = () => {
     if (!window.confirm("Mark this installment as paid? This action cannot be undone.")) return;
     setMarkingPaidFor(installmentId);
     try {
+      const inst = installments.find(i => i.id === installmentId);
       const { error } = await supabase
         .from("lead_installments")
-        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .update({ status: "paid", paid_at: new Date().toISOString(), payment_reference: inst?.payment_reference || null })
         .eq("id", installmentId);
       if (error) throw error;
 

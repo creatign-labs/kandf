@@ -132,27 +132,20 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     },
   });
 
-  const saveInstallment = async (item: UnifiedInstallment) => {
+  type InstallmentItem = typeof unifiedInstallments[0];
+
+  const saveInstallment = async (item: InstallmentItem) => {
     const amount = parseFloat(editAmount);
     if (isNaN(amount) || amount < 0) { toast.error("Invalid amount"); return; }
     if (!editDueDate) { toast.error("Due date is required"); return; }
 
     try {
-      if (item.source === "schedule") {
-        const updateData: any = { amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef || null };
-        if (editStatus === "paid" && item.status !== "paid") updateData.paid_at = new Date().toISOString();
-        if (editStatus !== "paid") updateData.paid_at = null;
-        const { error } = await supabase.from("payment_schedules").update(updateData).eq("id", item.id);
-        if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
-      } else {
-        const updateData: any = { amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef || null };
-        if (editStatus === "paid" && item.status !== "paid") updateData.paid_at = new Date().toISOString();
-        if (editStatus !== "paid") updateData.paid_at = null;
-        const { error } = await supabase.from("lead_installments").update(updateData).eq("id", item.id);
-        if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
-      }
+      const updateData: any = { amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef || null };
+      if (editStatus === "paid" && item.status !== "paid") updateData.paid_at = new Date().toISOString();
+      if (editStatus !== "paid") updateData.paid_at = null;
+      const { error } = await supabase.from("payment_schedules").update(updateData).eq("id", item.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
       toast.success("Installment updated");
       setEditingId(null);
     } catch (err: any) {
@@ -160,18 +153,12 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     }
   };
 
-  const deleteInstallment = async (item: UnifiedInstallment) => {
+  const deleteInstallment = async (item: InstallmentItem) => {
     setDeletingId(item.id);
     try {
-      if (item.source === "schedule") {
-        const { error } = await supabase.from("payment_schedules").delete().eq("id", item.id);
-        if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
-      } else {
-        const { error } = await supabase.from("lead_installments").delete().eq("id", item.id);
-        if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
-      }
+      const { error } = await supabase.from("payment_schedules").delete().eq("id", item.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
       toast.success("Installment deleted");
     } catch (err: any) {
       toast.error(err.message || "Failed to delete");
@@ -180,35 +167,12 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     }
   };
 
-  const startEditing = (item: UnifiedInstallment) => {
+  const startEditing = (item: InstallmentItem) => {
     setEditingId(item.id);
     setEditAmount(String(item.amount));
     setEditDueDate(item.due_date?.split("T")[0] || "");
     setEditStatus(item.status);
     setEditPaymentRef(item.payment_reference || "");
-  };
-
-  const generatePaymentLink = async (item: UnifiedInstallment) => {
-    setGeneratingLinkFor(item.id);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-lead-payment-link', {
-        body: { installmentId: item.id, amount: item.amount },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const shortUrl = data.payment_link?.short_url;
-      if (shortUrl) {
-        await navigator.clipboard.writeText(shortUrl);
-        toast.success("Payment link generated & copied!");
-      } else {
-        toast.success("Payment link generated!");
-      }
-      queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to generate link");
-    } finally {
-      setGeneratingLinkFor(null);
-    }
   };
 
   if (!enrollment) return null;

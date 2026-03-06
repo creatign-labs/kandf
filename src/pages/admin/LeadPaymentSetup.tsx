@@ -39,6 +39,7 @@ interface Installment {
   amount: number;
   due_date: string;
   status: string;
+  payment_reference?: string;
 }
 
 const LeadPaymentSetup = () => {
@@ -117,6 +118,7 @@ const LeadPaymentSetup = () => {
           amount: inst.amount,
           due_date: inst.due_date,
           status: inst.status,
+          payment_reference: inst.payment_reference || "",
         }))
       );
     } else if (lead?.courses?.base_fee && !existingPlan) {
@@ -290,6 +292,7 @@ const LeadPaymentSetup = () => {
           amount: Number(inst.amount),
           due_date: inst.due_date,
           status: inst.status,
+          payment_reference: inst.payment_reference || null,
         };
 
         if (inst.id) {
@@ -532,7 +535,8 @@ const LeadPaymentSetup = () => {
                 <TableHead>Amount (₹)</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Generate Link</TableHead>
+                <TableHead>Payment Ref.</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -566,6 +570,14 @@ const LeadPaymentSetup = () => {
                     />
                   </TableCell>
                   <TableCell>{getStatusBadge(inst.status)}</TableCell>
+                  <TableCell>
+                    <Input
+                      value={inst.payment_reference || ""}
+                      onChange={(e) => updateInstallment(index, "payment_reference", e.target.value)}
+                      className="h-8 w-32"
+                      placeholder="Ref #"
+                    />
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {inst.id && inst.status !== "paid" && (
@@ -627,7 +639,7 @@ const LeadPaymentSetup = () => {
               ))}
               {installments.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-50" />
                     <p>No installments configured. Click "Add Installment" to begin.</p>
                   </TableCell>

@@ -320,9 +320,6 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
                           <div className="flex items-center gap-2">
                             {getPaymentStatusIcon(item.status)}
                             <span className="font-medium">{item.label}</span>
-                            <Badge variant={item.source === "lead" ? "outline" : "secondary"} className="text-[10px] px-1.5 py-0">
-                              {item.source === "lead" ? "Lead" : "Student"}
-                            </Badge>
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <span>₹{item.amount.toLocaleString()}</span>
@@ -334,44 +331,6 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
                         )}
                         {/* Action buttons */}
                         <div className="flex items-center gap-1.5 pt-0.5">
-                          {/* Generate link - only for lead source */}
-                          {item.source === "lead" && item.status !== "paid" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                              disabled={generatingLinkFor === item.id}
-                              onClick={() => generatePaymentLink(item)}
-                            >
-                              {generatingLinkFor === item.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              ) : (
-                                <Link className="h-3 w-3 mr-1" />
-                              )}
-                              {item.payment_link_id ? "Regenerate" : "Generate Link"}
-                            </Button>
-                          )}
-                          {item.source === "lead" && item.payment_link_id && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={async () => {
-                                  try {
-                                    const { data } = await supabase.functions.invoke('create-lead-payment-link', {
-                                      body: { installmentId: item.id, amount: item.amount },
-                                    });
-                                    const url = data?.payment_link?.short_url;
-                                    if (url) {
-                                      await navigator.clipboard.writeText(url);
-                                      toast.success("Link copied!");
-                                    }
-                                  } catch { /* ignore */ }
-                                }}>
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Copy payment link</TooltipContent>
-                            </Tooltip>
-                          )}
                           <div className="flex-1" />
                           {isSuperAdmin && (
                             <>

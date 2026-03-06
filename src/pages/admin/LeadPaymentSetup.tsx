@@ -569,6 +569,14 @@ const LeadPaymentSetup = () => {
                     />
                   </TableCell>
                   <TableCell>{getStatusBadge(inst.status)}</TableCell>
+                  <TableCell>
+                    <Input
+                      value={inst.payment_reference || ""}
+                      onChange={(e) => updateInstallment(index, "payment_reference", e.target.value)}
+                      className="h-8 w-32"
+                      placeholder="Ref #"
+                    />
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {inst.id && inst.status !== "paid" && (

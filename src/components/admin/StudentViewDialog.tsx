@@ -101,52 +101,20 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     enabled: !!enrollment?.batch_id && open,
   });
 
-  // Unified installment list combining both sources
-  type UnifiedInstallment = {
-    id: string;
-    source: "schedule" | "lead";
-    label: string;
-    amount: number;
-    due_date: string;
-    status: string;
-    payment_reference: string | null;
-    payment_link_id: string | null;
-    paid_at: string | null;
-  };
-
-  const unifiedInstallments = useMemo<UnifiedInstallment[]>(() => {
-    const items: UnifiedInstallment[] = [];
-    if (paymentSchedules) {
-      paymentSchedules.forEach((ps) => {
-        items.push({
-          id: ps.id,
-          source: "schedule",
-          label: ps.payment_stage || "Installment",
-          amount: Number(ps.amount),
-          due_date: ps.due_date,
-          status: ps.status,
-          payment_reference: (ps as any).payment_reference || null,
-          payment_link_id: null,
-          paid_at: ps.paid_at || null,
-        });
-      });
-    }
-    if (leadInstallments?.installments) {
-      leadInstallments.installments.forEach((inst: any) => {
-        items.push({
-          id: inst.id,
-          source: "lead",
-          label: inst.label || `Installment ${inst.installment_number}`,
-          amount: Number(inst.amount),
-          due_date: inst.due_date,
-          status: inst.status,
-          payment_reference: inst.payment_reference || null,
-          payment_link_id: inst.payment_link_id || null,
-          paid_at: inst.paid_at || null,
-        });
-      });
-    }
-    // Sort by due_date
+  const unifiedInstallments = useMemo(() => {
+    if (!paymentSchedules) return [];
+    return paymentSchedules.map((ps) => ({
+      id: ps.id,
+      source: "schedule" as const,
+      label: ps.payment_stage || "Installment",
+      amount: Number(ps.amount),
+      due_date: ps.due_date,
+      status: ps.status,
+      payment_reference: (ps as any).payment_reference || null,
+      payment_link_id: null as string | null,
+      paid_at: ps.paid_at || null,
+    }));
+  }, [paymentSchedules]);
     items.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
     return items;
   }, [paymentSchedules, leadInstallments]);

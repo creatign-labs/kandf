@@ -49,21 +49,19 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
   const enrollmentId = enrollment?.id;
   const queryClient = useQueryClient();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editPaymentRef, setEditPaymentRef] = useState("");
   const [generatingLinkFor, setGeneratingLinkFor] = useState<string | null>(null);
-  const [markingLeadPaidFor, setMarkingLeadPaidFor] = useState<string | null>(null);
-  const [leadPaymentRefs, setLeadPaymentRefs] = useState<Record<string, string>>({});
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Fetch lead installments by matching student email to lead email
   const { data: leadInstallments, isLoading: leadInstLoading } = useQuery({
     queryKey: ["student-lead-installments", studentId, profile?.email],
     queryFn: async () => {
       if (!profile?.email) return null;
-      // Find lead by email
       const { data: leads } = await supabase
         .from("leads")
         .select("id")
@@ -71,7 +69,6 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
         .limit(1);
       if (!leads || leads.length === 0) return null;
       const leadId = leads[0].id;
-      // Fetch installments
       const { data: installments } = await supabase
         .from("lead_installments")
         .select("*, lead_payment_plans(course_id, net_amount)")
@@ -124,6 +121,56 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     enabled: !!enrollment?.batch_id && open,
   });
 
+  // Unified installment list combining both sources
+  type UnifiedInstallment = {
+    id: string;
+    source: "schedule" | "lead";
+    label: string;
+    amount: number;
+    due_date: string;
+    status: string;
+    payment_reference: string | null;
+    payment_link_id: string | null;
+    paid_at: string | null;
+  };
+
+  const unifiedInstallments = useMemo<UnifiedInstallment[]>(() => {
+    const items: UnifiedInstallment[] = [];
+    if (paymentSchedules) {
+      paymentSchedules.forEach((ps) => {
+        items.push({
+          id: ps.id,
+          source: "schedule",
+          label: ps.payment_stage || "Installment",
+          amount: Number(ps.amount),
+          due_date: ps.due_date,
+          status: ps.status,
+          payment_reference: (ps as any).payment_reference || null,
+          payment_link_id: null,
+          paid_at: ps.paid_at || null,
+        });
+      });
+    }
+    if (leadInstallments?.installments) {
+      leadInstallments.installments.forEach((inst: any) => {
+        items.push({
+          id: inst.id,
+          source: "lead",
+          label: inst.label || `Installment ${inst.installment_number}`,
+          amount: Number(inst.amount),
+          due_date: inst.due_date,
+          status: inst.status,
+          payment_reference: inst.payment_reference || null,
+          payment_link_id: inst.payment_link_id || null,
+          paid_at: inst.paid_at || null,
+        });
+      });
+    }
+    // Sort by due_date
+    items.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+    return items;
+  }, [paymentSchedules, leadInstallments]);
+
   const deleteEnrollment = useMutation({
     mutationFn: async () => {
       await supabase.from("payment_schedules").delete().eq("enrollment_id", enrollmentId);
@@ -140,65 +187,90 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     },
   });
 
-  const updatePaymentSchedule = useMutation({
-    mutationFn: async ({ id, amount, due_date, status, payment_reference }: { id: string; amount: number; due_date: string; status: string; payment_reference?: string }) => {
-      const updateData: any = { amount, due_date, status, payment_reference: payment_reference || null };
-      if (status === "paid" && !paymentSchedules?.find(p => p.id === id && p.status === "paid")) {
-        updateData.paid_at = new Date().toISOString();
-      }
-      if (status !== "paid") {
-        updateData.paid_at = null;
-      }
-      const { error } = await supabase.from("payment_schedules").update(updateData).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Payment schedule updated");
-      queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
-      setEditingPaymentId(null);
-    },
-    onError: (err: any) => {
-      toast.error(err.message || "Failed to update payment");
-    },
-  });
+  const saveInstallment = async (item: UnifiedInstallment) => {
+    const amount = parseFloat(editAmount);
+    if (isNaN(amount) || amount < 0) { toast.error("Invalid amount"); return; }
+    if (!editDueDate) { toast.error("Due date is required"); return; }
 
-  const startEditing = (ps: any) => {
-    setEditingPaymentId(ps.id);
-    setEditAmount(String(ps.amount));
-    setEditDueDate(ps.due_date?.split("T")[0] || "");
-    setEditStatus(ps.status);
-    setEditPaymentRef((ps as any).payment_reference || "");
+    try {
+      if (item.source === "schedule") {
+        const updateData: any = { amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef || null };
+        if (editStatus === "paid" && item.status !== "paid") updateData.paid_at = new Date().toISOString();
+        if (editStatus !== "paid") updateData.paid_at = null;
+        const { error } = await supabase.from("payment_schedules").update(updateData).eq("id", item.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
+      } else {
+        const updateData: any = { amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef || null };
+        if (editStatus === "paid" && item.status !== "paid") updateData.paid_at = new Date().toISOString();
+        if (editStatus !== "paid") updateData.paid_at = null;
+        const { error } = await supabase.from("lead_installments").update(updateData).eq("id", item.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
+      }
+      toast.success("Installment updated");
+      setEditingId(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update");
+    }
   };
 
-  const saveEditing = () => {
-    if (!editingPaymentId) return;
-    const amount = parseFloat(editAmount);
-    if (isNaN(amount) || amount < 0) {
-      toast.error("Invalid amount");
-      return;
+  const deleteInstallment = async (item: UnifiedInstallment) => {
+    setDeletingId(item.id);
+    try {
+      if (item.source === "schedule") {
+        const { error } = await supabase.from("payment_schedules").delete().eq("id", item.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
+      } else {
+        const { error } = await supabase.from("lead_installments").delete().eq("id", item.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
+      }
+      toast.success("Installment deleted");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete");
+    } finally {
+      setDeletingId(null);
     }
-    if (!editDueDate) {
-      toast.error("Due date is required");
-      return;
+  };
+
+  const startEditing = (item: UnifiedInstallment) => {
+    setEditingId(item.id);
+    setEditAmount(String(item.amount));
+    setEditDueDate(item.due_date?.split("T")[0] || "");
+    setEditStatus(item.status);
+    setEditPaymentRef(item.payment_reference || "");
+  };
+
+  const generatePaymentLink = async (item: UnifiedInstallment) => {
+    setGeneratingLinkFor(item.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-lead-payment-link', {
+        body: { installmentId: item.id, amount: item.amount },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const shortUrl = data.payment_link?.short_url;
+      if (shortUrl) {
+        await navigator.clipboard.writeText(shortUrl);
+        toast.success("Payment link generated & copied!");
+      } else {
+        toast.success("Payment link generated!");
+      }
+      queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate link");
+    } finally {
+      setGeneratingLinkFor(null);
     }
-    updatePaymentSchedule.mutate({ id: editingPaymentId, amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef });
   };
 
   if (!enrollment) return null;
 
-  const paidCount = paymentSchedules?.filter(p => p.status === "paid").length || 0;
-  const totalSchedules = paymentSchedules?.length || 0;
-  const totalPaid = paymentSchedules?.filter(p => p.status === "paid").reduce((s, p) => s + Number(p.amount), 0) || 0;
-  const totalDue = paymentSchedules?.reduce((s, p) => s + Number(p.amount), 0) || 0;
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active": return "bg-green-500";
-      case "completed": return "bg-blue-500";
-      case "on_hold": return "bg-yellow-500";
-      default: return "bg-muted";
-    }
-  };
+  const paidItems = unifiedInstallments.filter(i => i.status === "paid");
+  const totalPaid = paidItems.reduce((s, i) => s + i.amount, 0);
+  const totalAmount = unifiedInstallments.reduce((s, i) => s + i.amount, 0);
 
   const getPaymentStatusIcon = (status: string) => {
     switch (status) {

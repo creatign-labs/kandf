@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, CheckCircle, Clock, Loader2, UserCheck, Mail, Copy, Eye, EyeOff, Trash2, Pencil, XCircle, Ban } from "lucide-react";
+import { Search, CheckCircle, Clock, Loader2, UserCheck, Mail, Eye, EyeOff, Trash2, Pencil, XCircle, Ban } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -214,10 +214,6 @@ const StudentApprovals = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: "Copied to clipboard" });
-  };
 
   const handleEditClick = (approval: any) => {
     setEditingApproval(approval);
@@ -491,7 +487,7 @@ const StudentApprovals = () => {
         </Card>
 
         {/* Credentials Dialog */}
-        <Dialog open={!!selectedStudent} onOpenChange={() => setSelectedStudent(null)}>
+        <Dialog open={!!selectedStudent} onOpenChange={() => { setSelectedStudent(null); setShowPassword(false); }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Student Credentials</DialogTitle>
@@ -506,30 +502,12 @@ const StudentApprovals = () => {
               {selectedStudent?.student_code && (
                 <div>
                   <label className="text-sm font-medium">Student ID</label>
-                  <div className="flex items-center gap-2">
-                    <Input value={selectedStudent.student_code} readOnly className="font-mono font-bold" />
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => copyToClipboard(selectedStudent.student_code)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Input value={selectedStudent.student_code} readOnly className="font-mono font-bold" />
                 </div>
               )}
               <div>
                 <label className="text-sm font-medium">Email</label>
-                <div className="flex items-center gap-2">
-                  <Input value={selectedStudent?.profile?.email || "N/A"} readOnly />
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={() => copyToClipboard(selectedStudent?.profile?.email || "")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Input value={selectedStudent?.profile?.email || "N/A"} readOnly />
               </div>
               {selectedStudent?.generated_password && (
                 <div>
@@ -547,17 +525,7 @@ const StudentApprovals = () => {
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => copyToClipboard(selectedStudent.generated_password)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Share these credentials with the student securely
-                  </p>
                 </div>
               )}
               <div className="pt-4 border-t">
@@ -593,7 +561,7 @@ const StudentApprovals = () => {
                   }}
                 >
                   <Mail className="h-4 w-4" />
-                  Send Credentials via Email
+                  Share via Email
                 </Button>
               </div>
             </div>

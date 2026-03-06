@@ -292,6 +292,7 @@ const LeadPaymentSetup = () => {
           amount: Number(inst.amount),
           due_date: inst.due_date,
           status: inst.status,
+          payment_reference: inst.payment_reference || null,
         };
 
         if (inst.id) {

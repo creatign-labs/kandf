@@ -57,27 +57,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
   const [generatingLinkFor, setGeneratingLinkFor] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Fetch lead installments by matching student email to lead email
-  const { data: leadInstallments, isLoading: leadInstLoading } = useQuery({
-    queryKey: ["student-lead-installments", studentId, profile?.email],
-    queryFn: async () => {
-      if (!profile?.email) return null;
-      const { data: leads } = await supabase
-        .from("leads")
-        .select("id")
-        .eq("email", profile.email)
-        .limit(1);
-      if (!leads || leads.length === 0) return null;
-      const leadId = leads[0].id;
-      const { data: installments } = await supabase
-        .from("lead_installments")
-        .select("*, lead_payment_plans(course_id, net_amount)")
-        .eq("lead_id", leadId)
-        .order("installment_number");
-      return { leadId, installments: installments || [] };
-    },
-    enabled: !!studentId && !!profile?.email && open,
-  });
+  // Lead installments no longer used in this dialog
 
   // Fetch payment schedules
   const { data: paymentSchedules, isLoading: paymentsLoading } = useQuery({

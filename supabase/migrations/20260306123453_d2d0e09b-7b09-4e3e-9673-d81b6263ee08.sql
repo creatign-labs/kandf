@@ -1,0 +1,1 @@
+ALTER TABLE public.lead_installments ADD COLUMN IF NOT EXISTS payment_reference TEXT;

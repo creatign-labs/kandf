@@ -1215,6 +1215,7 @@ export type Database = {
           lead_id: string
           paid_at: string | null
           payment_link_id: string | null
+          payment_reference: string | null
           plan_id: string
           razorpay_payment_id: string | null
           status: string
@@ -1230,6 +1231,7 @@ export type Database = {
           lead_id: string
           paid_at?: string | null
           payment_link_id?: string | null
+          payment_reference?: string | null
           plan_id: string
           razorpay_payment_id?: string | null
           status?: string
@@ -1245,6 +1247,7 @@ export type Database = {
           lead_id?: string
           paid_at?: string | null
           payment_link_id?: string | null
+          payment_reference?: string | null
           plan_id?: string
           razorpay_payment_id?: string | null
           status?: string

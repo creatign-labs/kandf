@@ -573,12 +573,17 @@ const LeadPaymentSetup = () => {
                   </TableCell>
                   <TableCell>{getStatusBadge(inst.status)}</TableCell>
                   <TableCell>
-                    <Input
-                      value={inst.payment_reference || ""}
-                      onChange={(e) => updateInstallment(index, "payment_reference", e.target.value)}
-                      className="h-8 w-32"
-                      placeholder="Ref #"
-                    />
+                    {inst.payment_link_id || inst.status === "paid" ? (
+                      <Input
+                        value={inst.payment_reference || ""}
+                        onChange={(e) => updateInstallment(index, "payment_reference", e.target.value)}
+                        className="h-8 w-32"
+                        placeholder="Ref #"
+                        disabled={inst.status === "paid"}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Generate link first</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">

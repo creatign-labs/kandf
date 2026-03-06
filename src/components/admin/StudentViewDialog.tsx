@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { UserCircle, Mail, Phone, Hash, BookOpen, Calendar, MonitorPlay, CreditCard, Loader2, CheckCircle, Clock, XCircle, Trash2, Pencil, Save, X, FileText, Link, ExternalLink, Copy, IndianRupee } from "lucide-react";
+import { UserCircle, Mail, Phone, Hash, BookOpen, Calendar, MonitorPlay, Loader2, CheckCircle, Clock, XCircle, Trash2, Pencil, Save, X, IndianRupee } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -29,11 +29,6 @@ import { toast } from "sonner";
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface StudentViewDialogProps {
   enrollment: any;
@@ -54,30 +49,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
   const [editDueDate, setEditDueDate] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editPaymentRef, setEditPaymentRef] = useState("");
-  const [generatingLinkFor, setGeneratingLinkFor] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // Fetch lead installments by matching student email to lead email
-  const { data: leadInstallments, isLoading: leadInstLoading } = useQuery({
-    queryKey: ["student-lead-installments", studentId, profile?.email],
-    queryFn: async () => {
-      if (!profile?.email) return null;
-      const { data: leads } = await supabase
-        .from("leads")
-        .select("id")
-        .eq("email", profile.email)
-        .limit(1);
-      if (!leads || leads.length === 0) return null;
-      const leadId = leads[0].id;
-      const { data: installments } = await supabase
-        .from("lead_installments")
-        .select("*, lead_payment_plans(course_id, net_amount)")
-        .eq("lead_id", leadId)
-        .order("installment_number");
-      return { leadId, installments: installments || [] };
-    },
-    enabled: !!studentId && !!profile?.email && open,
-  });
 
   // Fetch payment schedules
   const { data: paymentSchedules, isLoading: paymentsLoading } = useQuery({
@@ -121,55 +93,20 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     enabled: !!enrollment?.batch_id && open,
   });
 
-  // Unified installment list combining both sources
-  type UnifiedInstallment = {
-    id: string;
-    source: "schedule" | "lead";
-    label: string;
-    amount: number;
-    due_date: string;
-    status: string;
-    payment_reference: string | null;
-    payment_link_id: string | null;
-    paid_at: string | null;
-  };
-
-  const unifiedInstallments = useMemo<UnifiedInstallment[]>(() => {
-    const items: UnifiedInstallment[] = [];
-    if (paymentSchedules) {
-      paymentSchedules.forEach((ps) => {
-        items.push({
-          id: ps.id,
-          source: "schedule",
-          label: ps.payment_stage || "Installment",
-          amount: Number(ps.amount),
-          due_date: ps.due_date,
-          status: ps.status,
-          payment_reference: (ps as any).payment_reference || null,
-          payment_link_id: null,
-          paid_at: ps.paid_at || null,
-        });
-      });
-    }
-    if (leadInstallments?.installments) {
-      leadInstallments.installments.forEach((inst: any) => {
-        items.push({
-          id: inst.id,
-          source: "lead",
-          label: inst.label || `Installment ${inst.installment_number}`,
-          amount: Number(inst.amount),
-          due_date: inst.due_date,
-          status: inst.status,
-          payment_reference: inst.payment_reference || null,
-          payment_link_id: inst.payment_link_id || null,
-          paid_at: inst.paid_at || null,
-        });
-      });
-    }
-    // Sort by due_date
-    items.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
-    return items;
-  }, [paymentSchedules, leadInstallments]);
+  const unifiedInstallments = useMemo(() => {
+    if (!paymentSchedules) return [];
+    return paymentSchedules.map((ps) => ({
+      id: ps.id,
+      source: "schedule" as const,
+      label: ps.payment_stage || "Installment",
+      amount: Number(ps.amount),
+      due_date: ps.due_date,
+      status: ps.status,
+      payment_reference: (ps as any).payment_reference || null,
+      payment_link_id: null as string | null,
+      paid_at: ps.paid_at || null,
+    }));
+  }, [paymentSchedules]);
 
   const deleteEnrollment = useMutation({
     mutationFn: async () => {
@@ -187,27 +124,20 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     },
   });
 
-  const saveInstallment = async (item: UnifiedInstallment) => {
+  type InstallmentItem = typeof unifiedInstallments[0];
+
+  const saveInstallment = async (item: InstallmentItem) => {
     const amount = parseFloat(editAmount);
     if (isNaN(amount) || amount < 0) { toast.error("Invalid amount"); return; }
     if (!editDueDate) { toast.error("Due date is required"); return; }
 
     try {
-      if (item.source === "schedule") {
-        const updateData: any = { amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef || null };
-        if (editStatus === "paid" && item.status !== "paid") updateData.paid_at = new Date().toISOString();
-        if (editStatus !== "paid") updateData.paid_at = null;
-        const { error } = await supabase.from("payment_schedules").update(updateData).eq("id", item.id);
-        if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
-      } else {
-        const updateData: any = { amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef || null };
-        if (editStatus === "paid" && item.status !== "paid") updateData.paid_at = new Date().toISOString();
-        if (editStatus !== "paid") updateData.paid_at = null;
-        const { error } = await supabase.from("lead_installments").update(updateData).eq("id", item.id);
-        if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
-      }
+      const updateData: any = { amount, due_date: editDueDate, status: editStatus, payment_reference: editPaymentRef || null };
+      if (editStatus === "paid" && item.status !== "paid") updateData.paid_at = new Date().toISOString();
+      if (editStatus !== "paid") updateData.paid_at = null;
+      const { error } = await supabase.from("payment_schedules").update(updateData).eq("id", item.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
       toast.success("Installment updated");
       setEditingId(null);
     } catch (err: any) {
@@ -215,18 +145,12 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     }
   };
 
-  const deleteInstallment = async (item: UnifiedInstallment) => {
+  const deleteInstallment = async (item: InstallmentItem) => {
     setDeletingId(item.id);
     try {
-      if (item.source === "schedule") {
-        const { error } = await supabase.from("payment_schedules").delete().eq("id", item.id);
-        if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
-      } else {
-        const { error } = await supabase.from("lead_installments").delete().eq("id", item.id);
-        if (error) throw error;
-        queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
-      }
+      const { error } = await supabase.from("payment_schedules").delete().eq("id", item.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
       toast.success("Installment deleted");
     } catch (err: any) {
       toast.error(err.message || "Failed to delete");
@@ -235,35 +159,12 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
     }
   };
 
-  const startEditing = (item: UnifiedInstallment) => {
+  const startEditing = (item: InstallmentItem) => {
     setEditingId(item.id);
     setEditAmount(String(item.amount));
     setEditDueDate(item.due_date?.split("T")[0] || "");
     setEditStatus(item.status);
     setEditPaymentRef(item.payment_reference || "");
-  };
-
-  const generatePaymentLink = async (item: UnifiedInstallment) => {
-    setGeneratingLinkFor(item.id);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-lead-payment-link', {
-        body: { installmentId: item.id, amount: item.amount },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const shortUrl = data.payment_link?.short_url;
-      if (shortUrl) {
-        await navigator.clipboard.writeText(shortUrl);
-        toast.success("Payment link generated & copied!");
-      } else {
-        toast.success("Payment link generated!");
-      }
-      queryClient.invalidateQueries({ queryKey: ["student-lead-installments", studentId, profile?.email] });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to generate link");
-    } finally {
-      setGeneratingLinkFor(null);
-    }
   };
 
   if (!enrollment) return null;
@@ -358,7 +259,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
               <IndianRupee className="h-4 w-4" />
               Payment Plan
             </h4>
-            {(paymentsLoading || leadInstLoading) ? (
+            {paymentsLoading ? (
               <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>
             ) : unifiedInstallments.length === 0 ? (
               <p className="text-sm text-muted-foreground">No installments found.</p>
@@ -411,9 +312,6 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
                           <div className="flex items-center gap-2">
                             {getPaymentStatusIcon(item.status)}
                             <span className="font-medium">{item.label}</span>
-                            <Badge variant={item.source === "lead" ? "outline" : "secondary"} className="text-[10px] px-1.5 py-0">
-                              {item.source === "lead" ? "Lead" : "Student"}
-                            </Badge>
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <span>₹{item.amount.toLocaleString()}</span>
@@ -425,44 +323,6 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
                         )}
                         {/* Action buttons */}
                         <div className="flex items-center gap-1.5 pt-0.5">
-                          {/* Generate link - only for lead source */}
-                          {item.source === "lead" && item.status !== "paid" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                              disabled={generatingLinkFor === item.id}
-                              onClick={() => generatePaymentLink(item)}
-                            >
-                              {generatingLinkFor === item.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              ) : (
-                                <Link className="h-3 w-3 mr-1" />
-                              )}
-                              {item.payment_link_id ? "Regenerate" : "Generate Link"}
-                            </Button>
-                          )}
-                          {item.source === "lead" && item.payment_link_id && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={async () => {
-                                  try {
-                                    const { data } = await supabase.functions.invoke('create-lead-payment-link', {
-                                      body: { installmentId: item.id, amount: item.amount },
-                                    });
-                                    const url = data?.payment_link?.short_url;
-                                    if (url) {
-                                      await navigator.clipboard.writeText(url);
-                                      toast.success("Link copied!");
-                                    }
-                                  } catch { /* ignore */ }
-                                }}>
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Copy payment link</TooltipContent>
-                            </Tooltip>
-                          )}
                           <div className="flex-1" />
                           {isSuperAdmin && (
                             <>

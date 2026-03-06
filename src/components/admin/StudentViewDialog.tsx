@@ -115,9 +115,6 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
       paid_at: ps.paid_at || null,
     }));
   }, [paymentSchedules]);
-    items.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
-    return items;
-  }, [paymentSchedules, leadInstallments]);
 
   const deleteEnrollment = useMutation({
     mutationFn: async () => {

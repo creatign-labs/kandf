@@ -39,6 +39,7 @@ interface Installment {
   amount: number;
   due_date: string;
   status: string;
+  payment_reference?: string;
 }
 
 const LeadPaymentSetup = () => {

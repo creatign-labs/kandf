@@ -21,12 +21,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { UserCircle, Mail, Phone, Hash, BookOpen, Calendar, MonitorPlay, CreditCard, Loader2, CheckCircle, Clock, XCircle, Trash2 } from "lucide-react";
+import { UserCircle, Mail, Phone, Hash, BookOpen, Calendar, MonitorPlay, CreditCard, Loader2, CheckCircle, Clock, XCircle, Trash2, Pencil, Save, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StudentViewDialogProps {
   enrollment: any;
@@ -42,7 +44,10 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
   const enrollmentId = enrollment?.id;
   const queryClient = useQueryClient();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editStatus, setEditStatus] = useState("");
   // Fetch payment schedules
   const { data: paymentSchedules, isLoading: paymentsLoading } = useQuery({
     queryKey: ["student-payment-schedules", enrollmentId],
@@ -87,9 +92,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
 
   const deleteEnrollment = useMutation({
     mutationFn: async () => {
-      // Delete payment schedules first (referencing enrollment)
       await supabase.from("payment_schedules").delete().eq("enrollment_id", enrollmentId);
-      // Delete the enrollment
       const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
       if (error) throw error;
     },
@@ -102,6 +105,49 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
       toast.error(err.message || "Failed to delete enrollment");
     },
   });
+
+  const updatePaymentSchedule = useMutation({
+    mutationFn: async ({ id, amount, due_date, status }: { id: string; amount: number; due_date: string; status: string }) => {
+      const updateData: any = { amount, due_date, status };
+      if (status === "paid" && !paymentSchedules?.find(p => p.id === id && p.status === "paid")) {
+        updateData.paid_at = new Date().toISOString();
+      }
+      if (status !== "paid") {
+        updateData.paid_at = null;
+      }
+      const { error } = await supabase.from("payment_schedules").update(updateData).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Payment schedule updated");
+      queryClient.invalidateQueries({ queryKey: ["student-payment-schedules", enrollmentId] });
+      setEditingPaymentId(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to update payment");
+    },
+  });
+
+  const startEditing = (ps: any) => {
+    setEditingPaymentId(ps.id);
+    setEditAmount(String(ps.amount));
+    setEditDueDate(ps.due_date?.split("T")[0] || "");
+    setEditStatus(ps.status);
+  };
+
+  const saveEditing = () => {
+    if (!editingPaymentId) return;
+    const amount = parseFloat(editAmount);
+    if (isNaN(amount) || amount < 0) {
+      toast.error("Invalid amount");
+      return;
+    }
+    if (!editDueDate) {
+      toast.error("Due date is required");
+      return;
+    }
+    updatePaymentSchedule.mutate({ id: editingPaymentId, amount, due_date: editDueDate, status: editStatus });
+  };
 
   if (!enrollment) return null;
 
@@ -212,18 +258,56 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
                   <span className="text-muted-foreground">Paid {paidCount} of {totalSchedules} installments</span>
                   <span className="font-medium">₹{totalPaid.toLocaleString()} / ₹{totalDue.toLocaleString()}</span>
                 </div>
-                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
                   {paymentSchedules?.map((ps) => (
-                    <div key={ps.id} className="flex items-center justify-between text-sm border rounded-md px-3 py-1.5">
-                      <div className="flex items-center gap-2">
-                        {getPaymentStatusIcon(ps.status)}
-                        <span>{ps.payment_stage}</span>
+                    editingPaymentId === ps.id ? (
+                      <div key={ps.id} className="border rounded-md px-3 py-2 space-y-2 bg-muted/30">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-muted-foreground">Amount (₹)</label>
+                            <Input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="h-8 text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Due Date</label>
+                            <Input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)} className="h-8 text-sm" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Select value={editStatus} onValueChange={setEditStatus}>
+                            <SelectTrigger className="h-8 text-sm flex-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="paid">Paid</SelectItem>
+                              <SelectItem value="overdue">Overdue</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={saveEditing} disabled={updatePaymentSchedule.isPending}>
+                            {updatePaymentSchedule.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setEditingPaymentId(null)}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 text-muted-foreground">
-                        <span>₹{Number(ps.amount).toLocaleString()}</span>
-                        <span className="text-xs">{format(new Date(ps.due_date), "dd MMM")}</span>
+                    ) : (
+                      <div key={ps.id} className="flex items-center justify-between text-sm border rounded-md px-3 py-1.5">
+                        <div className="flex items-center gap-2">
+                          {getPaymentStatusIcon(ps.status)}
+                          <span>{ps.payment_stage}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <span>₹{Number(ps.amount).toLocaleString()}</span>
+                          <span className="text-xs">{format(new Date(ps.due_date), "dd MMM")}</span>
+                          {isSuperAdmin && (
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => startEditing(ps)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )
                   ))}
                 </div>
               </>

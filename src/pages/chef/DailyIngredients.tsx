@@ -34,7 +34,7 @@ const DailyIngredients = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const formattedDate = format(selectedDate, "yyyy-MM-dd");
 
-  // Fetch bookings assigned to this chef with recipes for the selected date
+  // Fetch bookings assigned to this chef for the selected date
   const { data: bookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ["chef-daily-bookings", formattedDate],
     queryFn: async () => {
@@ -56,11 +56,33 @@ const DailyIngredients = () => {
         .not("recipe_id", "is", null);
 
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
-  // Fetch recipe ingredients
+  // Fetch recipe batches for the selected date that the chef can see
+  const { data: recipeBatches, isLoading: batchesLoading } = useQuery({
+    queryKey: ["chef-daily-recipe-batches", formattedDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recipe_batches")
+        .select(`
+          id,
+          recipe_id,
+          time_slot,
+          status,
+          recipes(id, title),
+          recipe_batch_memberships(id, student_id)
+        `)
+        .eq("batch_date", formattedDate)
+        .in("status", ["scheduled", "in_progress"]);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch all recipe ingredients
   const { data: recipeIngredients, isLoading: ingredientsLoading } = useQuery({
     queryKey: ["recipe-ingredients-all"],
     queryFn: async () => {
@@ -74,17 +96,18 @@ const DailyIngredients = () => {
         `);
 
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
-  // Calculate ingredient requirements (no stock/cost info)
+  // Merge both data sources to get recipe → student count mapping
   const calculateRequirements = (): IngredientRequirement[] => {
-    if (!bookings || !recipeIngredients) return [];
+    if (!recipeIngredients) return [];
 
-    // Count students per recipe
     const recipeStudentCount: Record<string, { count: number; title: string }> = {};
-    bookings.forEach((booking: any) => {
+
+    // Source 1: Individual bookings (each booking = 1 student)
+    (bookings || []).forEach((booking: any) => {
       if (booking.recipe_id) {
         if (!recipeStudentCount[booking.recipe_id]) {
           recipeStudentCount[booking.recipe_id] = {
@@ -96,10 +119,31 @@ const DailyIngredients = () => {
       }
     });
 
+    // Source 2: Recipe batches (student count from memberships)
+    (recipeBatches || []).forEach((batch: any) => {
+      if (!batch.recipe_id) return;
+      const memberCount = batch.recipe_batch_memberships?.length || 0;
+      if (memberCount === 0 && recipeStudentCount[batch.recipe_id]) return; // already counted via bookings
+
+      if (!recipeStudentCount[batch.recipe_id]) {
+        recipeStudentCount[batch.recipe_id] = {
+          count: 0,
+          title: batch.recipes?.title || "Unknown Recipe",
+        };
+      }
+      // Add members not already counted from bookings
+      recipeStudentCount[batch.recipe_id].count = Math.max(
+        recipeStudentCount[batch.recipe_id].count,
+        memberCount
+      );
+    });
+
     // Calculate total ingredients needed
     const ingredientMap: Record<string, IngredientRequirement> = {};
 
     Object.entries(recipeStudentCount).forEach(([recipeId, { count, title }]) => {
+      if (count === 0) return; // skip recipes with no students
+
       const ingredients = recipeIngredients.filter(
         (ri: any) => ri.recipe_id === recipeId
       );
@@ -133,12 +177,22 @@ const DailyIngredients = () => {
   };
 
   const requirements = calculateRequirements();
-  const totalStudents = bookings?.length || 0;
-  const uniqueRecipes = [
-    ...new Set(bookings?.map((b: any) => b.recipe_id).filter(Boolean)),
-  ].length;
 
-  const isLoading = bookingsLoading || ingredientsLoading;
+  // Count unique recipes from both sources
+  const allRecipeIds = new Set<string>();
+  (bookings || []).forEach((b: any) => b.recipe_id && allRecipeIds.add(b.recipe_id));
+  (recipeBatches || []).forEach((b: any) => b.recipe_id && allRecipeIds.add(b.recipe_id));
+  const uniqueRecipes = allRecipeIds.size;
+
+  // Count total students from both sources
+  const bookingStudents = bookings?.length || 0;
+  const batchStudents = (recipeBatches || []).reduce(
+    (sum: number, b: any) => sum + (b.recipe_batch_memberships?.length || 0),
+    0
+  );
+  const totalStudents = Math.max(bookingStudents, batchStudents);
+
+  const isLoading = bookingsLoading || batchesLoading || ingredientsLoading;
 
   if (isLoading) {
     return (
@@ -228,7 +282,7 @@ const DailyIngredients = () => {
           {requirements.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No assigned bookings with recipes for this date</p>
+              <p>No assigned sessions with ingredients for this date</p>
             </div>
           ) : (
             <div className="rounded-md border">

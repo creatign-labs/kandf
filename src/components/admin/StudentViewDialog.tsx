@@ -267,7 +267,7 @@ export const StudentViewDialog = ({ enrollment, open, onOpenChange, onManageOnli
               <IndianRupee className="h-4 w-4" />
               Payment Plan
             </h4>
-            {(paymentsLoading || leadInstLoading) ? (
+            {paymentsLoading ? (
               <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>
             ) : unifiedInstallments.length === 0 ? (
               <p className="text-sm text-muted-foreground">No installments found.</p>

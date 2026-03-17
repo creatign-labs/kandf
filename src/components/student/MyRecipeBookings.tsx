@@ -271,10 +271,13 @@ export function MyRecipeBookings() {
         <div>
           <h2 className="text-xl font-semibold mb-4">Past Sessions</h2>
           <div className="space-y-4">
-            {pastBookings.map((booking) => {
+            {pastBookings.map((booking: any) => {
               const batch = booking.recipe_batches;
               if (!batch) return null;
               const status = getBookingStatus(booking);
+              const recipeName = booking._recipe?.title || batch.recipes?.title;
+              const chefName = booking._assigned_chef_id && chefProfiles?.[booking._assigned_chef_id];
+              const tableNumber = booking._table_number;
 
               return (
                 <Card key={booking.id} className="p-4 md:p-6 border-border/60 opacity-75">
@@ -282,18 +285,36 @@ export function MyRecipeBookings() {
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         <h3 className="font-semibold flex items-center gap-2">
-                          <ChefHat className="h-4 w-4 text-muted-foreground" />
-                          {batch.recipes?.title}
+                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                          {format(parseISO(batch.batch_date), 'MMMM d, yyyy')}
                         </h3>
                         <Badge variant={status.variant} className="gap-1">
                           {status.icon}
                           {status.label}
                         </Badge>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        <span>{format(parseISO(batch.batch_date), 'MMMM d, yyyy')}</span>
-                        <span className="mx-2">•</span>
+                      <div className="text-sm text-muted-foreground space-y-1">
                         <span>{batch.time_slot}</span>
+                        <span className="mx-2">•</span>
+                        <span>{batch.courses?.title}</span>
+                        {recipeName && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span>Recipe: {recipeName}</span>
+                          </>
+                        )}
+                        {chefName && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span>Chef: {chefName}</span>
+                          </>
+                        )}
+                        {tableNumber && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span>Table: {tableNumber}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -313,7 +313,7 @@ export function useMyRecipeBookings() {
       });
 
       // Merge: memberships first, then bookings-only entries
-      return [...(membershipData || []), ...bookingsOnly];
+      return [...enrichedMemberships, ...bookingsOnly];
     }
   });
 }

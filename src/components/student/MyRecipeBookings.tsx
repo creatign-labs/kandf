@@ -10,7 +10,9 @@ import {
   Users,
   CheckCircle2,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  UtensilsCrossed,
+  Hash
 } from "lucide-react";
 import { format, parseISO, isAfter, startOfDay, addDays } from "date-fns";
 import { useMyRecipeBookings, useCancelRecipeBooking } from "@/hooks/useRecipeBooking";
@@ -66,6 +68,26 @@ export function MyRecipeBookings() {
         .eq('status', 'no_show');
       return count || 0;
     }
+  });
+
+  // Collect unique chef IDs and fetch their names
+  const chefIds = [...new Set(
+    (bookings || []).map((b: any) => b._assigned_chef_id).filter(Boolean)
+  )];
+  
+  const { data: chefProfiles } = useQuery({
+    queryKey: ['chef-profiles', chefIds],
+    queryFn: async () => {
+      if (chefIds.length === 0) return {};
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', chefIds);
+      const map: Record<string, string> = {};
+      data?.forEach(p => { map[p.id] = `${p.first_name} ${p.last_name}`.trim(); });
+      return map;
+    },
+    enabled: chefIds.length > 0,
   });
 
   const today = startOfDay(new Date());
@@ -153,10 +175,13 @@ export function MyRecipeBookings() {
         <h2 className="text-xl font-semibold mb-4">Upcoming Sessions</h2>
         {upcomingBookings.length > 0 ? (
           <div className="space-y-4">
-            {upcomingBookings.map((booking) => {
+            {upcomingBookings.map((booking: any) => {
               const batch = booking.recipe_batches;
               if (!batch) return null;
               const status = getBookingStatus(booking);
+              const recipeName = booking._recipe?.title || batch.recipes?.title;
+              const chefName = booking._assigned_chef_id && chefProfiles?.[booking._assigned_chef_id];
+              const tableNumber = booking._table_number;
 
               return (
                 <Card key={booking.id} className="p-4 md:p-6 border-border/60">
@@ -164,8 +189,8 @@ export function MyRecipeBookings() {
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-3">
                         <h3 className="text-lg font-semibold flex items-center gap-2">
-                          <ChefHat className="h-5 w-5 text-primary" />
-                          {batch.recipes?.title}
+                          <CalendarIcon className="h-5 w-5 text-primary" />
+                          {format(parseISO(batch.batch_date), 'EEEE, MMMM d, yyyy')}
                         </h3>
                         <Badge variant={status.variant} className="gap-1">
                           {status.icon}
@@ -177,12 +202,6 @@ export function MyRecipeBookings() {
                       </div>
                       <div className="space-y-2 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
-                          <CalendarIcon className="h-4 w-4" />
-                          <span>
-                            {format(parseISO(batch.batch_date), 'EEEE, MMMM d, yyyy')}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           <span>{batch.time_slot}</span>
                         </div>
@@ -190,6 +209,24 @@ export function MyRecipeBookings() {
                           <Users className="h-4 w-4" />
                           <span>{batch.courses?.title}</span>
                         </div>
+                        {recipeName && (
+                          <div className="flex items-center gap-2">
+                            <UtensilsCrossed className="h-4 w-4" />
+                            <span>Recipe: <span className="text-foreground font-medium">{recipeName}</span></span>
+                          </div>
+                        )}
+                        {chefName && (
+                          <div className="flex items-center gap-2">
+                            <ChefHat className="h-4 w-4" />
+                            <span>Chef: <span className="text-foreground font-medium">{chefName}</span></span>
+                          </div>
+                        )}
+                        {tableNumber && (
+                          <div className="flex items-center gap-2">
+                            <Hash className="h-4 w-4" />
+                            <span>Table: <span className="text-foreground font-medium">{tableNumber}</span></span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     {booking.booking_id && canCancel(batch.batch_date) && (
@@ -234,10 +271,13 @@ export function MyRecipeBookings() {
         <div>
           <h2 className="text-xl font-semibold mb-4">Past Sessions</h2>
           <div className="space-y-4">
-            {pastBookings.map((booking) => {
+            {pastBookings.map((booking: any) => {
               const batch = booking.recipe_batches;
               if (!batch) return null;
               const status = getBookingStatus(booking);
+              const recipeName = booking._recipe?.title || batch.recipes?.title;
+              const chefName = booking._assigned_chef_id && chefProfiles?.[booking._assigned_chef_id];
+              const tableNumber = booking._table_number;
 
               return (
                 <Card key={booking.id} className="p-4 md:p-6 border-border/60 opacity-75">
@@ -245,18 +285,36 @@ export function MyRecipeBookings() {
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         <h3 className="font-semibold flex items-center gap-2">
-                          <ChefHat className="h-4 w-4 text-muted-foreground" />
-                          {batch.recipes?.title}
+                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                          {format(parseISO(batch.batch_date), 'MMMM d, yyyy')}
                         </h3>
                         <Badge variant={status.variant} className="gap-1">
                           {status.icon}
                           {status.label}
                         </Badge>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        <span>{format(parseISO(batch.batch_date), 'MMMM d, yyyy')}</span>
-                        <span className="mx-2">•</span>
+                      <div className="text-sm text-muted-foreground space-y-1">
                         <span>{batch.time_slot}</span>
+                        <span className="mx-2">•</span>
+                        <span>{batch.courses?.title}</span>
+                        {recipeName && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span>Recipe: {recipeName}</span>
+                          </>
+                        )}
+                        {chefName && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span>Chef: {chefName}</span>
+                          </>
+                        )}
+                        {tableNumber && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span>Table: {tableNumber}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

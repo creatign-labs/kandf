@@ -259,6 +259,7 @@ export function useMyRecipeBookings() {
           status,
           recipe_id,
           assigned_chef_id,
+          table_number,
           created_at,
           recipes (id, title),
           courses (id, title)
@@ -285,7 +286,6 @@ export function useMyRecipeBookings() {
           assigned_by: null,
           assigned_at: b.created_at,
           created_at: b.created_at,
-          // Synthesize recipe_batches shape from booking data
           recipe_batches: {
             id: null,
             batch_date: b.booking_date,
@@ -296,10 +296,24 @@ export function useMyRecipeBookings() {
             courses: b.courses,
           },
           _source: 'booking' as const,
+          _assigned_chef_id: b.assigned_chef_id,
+          _table_number: b.table_number,
+          _recipe: b.recipes,
         }));
 
+      // Also enrich membership data with booking-level info
+      const enrichedMemberships = (membershipData || []).map(m => {
+        const matchingBooking = (bookingsData || []).find(b => b.id === m.booking_id);
+        return {
+          ...m,
+          _assigned_chef_id: matchingBooking?.assigned_chef_id || null,
+          _table_number: matchingBooking?.table_number || null,
+          _recipe: matchingBooking?.recipes || m.recipe_batches?.recipes || null,
+        };
+      });
+
       // Merge: memberships first, then bookings-only entries
-      return [...(membershipData || []), ...bookingsOnly];
+      return [...enrichedMemberships, ...bookingsOnly];
     }
   });
 }

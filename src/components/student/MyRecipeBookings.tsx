@@ -10,7 +10,9 @@ import {
   Users,
   CheckCircle2,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  UtensilsCrossed,
+  Hash
 } from "lucide-react";
 import { format, parseISO, isAfter, startOfDay, addDays } from "date-fns";
 import { useMyRecipeBookings, useCancelRecipeBooking } from "@/hooks/useRecipeBooking";

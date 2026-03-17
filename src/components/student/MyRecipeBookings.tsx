@@ -70,6 +70,26 @@ export function MyRecipeBookings() {
     }
   });
 
+  // Collect unique chef IDs and fetch their names
+  const chefIds = [...new Set(
+    (bookings || []).map((b: any) => b._assigned_chef_id).filter(Boolean)
+  )];
+  
+  const { data: chefProfiles } = useQuery({
+    queryKey: ['chef-profiles', chefIds],
+    queryFn: async () => {
+      if (chefIds.length === 0) return {};
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', chefIds);
+      const map: Record<string, string> = {};
+      data?.forEach(p => { map[p.id] = `${p.first_name} ${p.last_name}`.trim(); });
+      return map;
+    },
+    enabled: chefIds.length > 0,
+  });
+
   const today = startOfDay(new Date());
   const tomorrow = addDays(today, 1);
 

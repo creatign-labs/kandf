@@ -105,7 +105,7 @@ export function useBookRecipeSlot() {
       timeSlot
     }: {
       courseId: string;
-      recipeId: string;
+      recipeId: string | null;
       batchDate: string;
       timeSlot: string;
     }): Promise<BookingResult> => {
@@ -116,7 +116,7 @@ export function useBookRecipeSlot() {
         .rpc('book_recipe_slot', {
           p_student_id: user.id,
           p_course_id: courseId,
-          p_recipe_id: recipeId,
+          p_recipe_id: recipeId || null,
           p_batch_date: batchDate,
           p_time_slot: timeSlot
         });

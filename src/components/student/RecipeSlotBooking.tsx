@@ -53,7 +53,7 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
 
     bookMutation.mutate({
       courseId: effectiveCourseId,
-      recipeId: '', // Generic booking — no recipe specified
+      recipeId: null,
       batchDate: format(selectedDate, 'yyyy-MM-dd'),
       timeSlot: selectedSlot.timeSlot
     }, {

@@ -259,6 +259,7 @@ export function useMyRecipeBookings() {
           status,
           recipe_id,
           assigned_chef_id,
+          table_number,
           created_at,
           recipes (id, title),
           courses (id, title)

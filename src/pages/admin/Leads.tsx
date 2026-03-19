@@ -164,8 +164,8 @@ const Leads = () => {
             <div className="text-sm text-muted-foreground">Contacted</div>
           </Card>
           <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-orange-500">{stageCounts["interested"] || 0}</div>
-            <div className="text-sm text-muted-foreground">Interested</div>
+            <div className="text-2xl font-bold text-orange-500">{stageCounts["qualified"] || 0}</div>
+            <div className="text-sm text-muted-foreground">Qualified</div>
           </Card>
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-yellow-500">{stageCounts["follow-up"] || 0}</div>

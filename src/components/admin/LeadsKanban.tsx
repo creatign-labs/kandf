@@ -28,7 +28,7 @@ interface LeadsKanbanProps {
 const STAGES = [
   { id: "new", label: "New", color: "bg-blue-500" },
   { id: "contacted", label: "Contacted", color: "bg-purple-500" },
-  { id: "interested", label: "Interested", color: "bg-orange-500" },
+  { id: "qualified", label: "Qualified", color: "bg-orange-500" },
   { id: "follow-up", label: "Follow Up", color: "bg-yellow-500" },
   { id: "converted", label: "Converted", color: "bg-green-500" },
   { id: "lost", label: "Lost", color: "bg-red-500" },
@@ -178,7 +178,7 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
                             <span>{format(new Date(lead.created_at), "MMM d")}</span>
                           </div>
                         </div>
-                        {(lead.stage === "contacted" || lead.stage === "interested") && (
+                        {(lead.stage === "contacted" || lead.stage === "qualified") && (
                           <Button
                             variant="outline"
                             size="sm"

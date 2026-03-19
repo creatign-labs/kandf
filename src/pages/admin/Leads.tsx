@@ -55,12 +55,38 @@ const Leads = () => {
         .from("leads")
         .select(`
           *,
-          courses (title)
+          courses (id, title)
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: allCourses } = useQuery({
+    queryKey: ["courses-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("courses").select("id, title").order("title");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const updateCourseMutation = useMutation({
+    mutationFn: async ({ leadId, courseId }: { leadId: string; courseId: string | null }) => {
+      const { error } = await supabase
+        .from("leads")
+        .update({ course_id: courseId })
+        .eq("id", leadId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast({ title: "Course updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -102,7 +128,7 @@ const Leads = () => {
         return "bg-blue-500";
       case "contacted":
         return "bg-purple-500";
-      case "interested":
+      case "qualified":
         return "bg-orange-500";
       case "follow-up":
         return "bg-yellow-500";
@@ -118,9 +144,9 @@ const Leads = () => {
   const getNextStages = (currentStage: string) => {
     const stageFlow: Record<string, string[]> = {
       new: ["contacted", "lost"],
-      contacted: ["interested", "follow-up", "lost"],
-      interested: ["follow-up", "converted", "lost"],
-      "follow-up": ["interested", "converted", "lost"],
+      contacted: ["qualified", "follow-up", "lost"],
+      qualified: ["follow-up", "converted", "lost"],
+      "follow-up": ["qualified", "converted", "lost"],
       converted: [],
       lost: ["new"],
     };
@@ -164,8 +190,8 @@ const Leads = () => {
             <div className="text-sm text-muted-foreground">Contacted</div>
           </Card>
           <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-orange-500">{stageCounts["interested"] || 0}</div>
-            <div className="text-sm text-muted-foreground">Interested</div>
+            <div className="text-2xl font-bold text-orange-500">{stageCounts["qualified"] || 0}</div>
+            <div className="text-sm text-muted-foreground">Qualified</div>
           </Card>
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-yellow-500">{stageCounts["follow-up"] || 0}</div>
@@ -202,7 +228,7 @@ const Leads = () => {
                   <SelectItem value="all">All Stages</SelectItem>
                   <SelectItem value="new">New</SelectItem>
                   <SelectItem value="contacted">Contacted</SelectItem>
-                  <SelectItem value="interested">Interested</SelectItem>
+                  <SelectItem value="qualified">Qualified</SelectItem>
                   <SelectItem value="follow-up">Follow-up</SelectItem>
                   <SelectItem value="converted">Converted</SelectItem>
                   <SelectItem value="lost">Lost</SelectItem>
@@ -297,7 +323,7 @@ const Leads = () => {
                                     {stage.charAt(0).toUpperCase() + stage.slice(1).replace("-", " ")}
                                   </DropdownMenuItem>
                                 ))}
-                                {lead.stage === "interested" && (
+                                {lead.stage === "qualified" && (
                                   <DropdownMenuItem
                                     onClick={() => navigate(`/admin/lead-payment/${lead.id}`)}
                                   >
@@ -383,7 +409,28 @@ const Leads = () => {
             )}
             <div>
               <p className="text-sm text-muted-foreground">Interested In</p>
-              <p className="font-medium">{selectedLead?.courses?.title || "Not specified"}</p>
+              <Select
+                value={selectedLead?.course_id || "none"}
+                onValueChange={(value) => {
+                  const courseId = value === "none" ? null : value;
+                  updateCourseMutation.mutate({ leadId: selectedLead.id, courseId });
+                  setSelectedLead((prev: any) => prev ? {
+                    ...prev,
+                    course_id: courseId,
+                    courses: allCourses?.find(c => c.id === courseId) || null,
+                  } : null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a course" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not specified</SelectItem>
+                  {allCourses?.map(course => (
+                    <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Source</p>

@@ -409,7 +409,28 @@ const Leads = () => {
             )}
             <div>
               <p className="text-sm text-muted-foreground">Interested In</p>
-              <p className="font-medium">{selectedLead?.courses?.title || "Not specified"}</p>
+              <Select
+                value={selectedLead?.course_id || "none"}
+                onValueChange={(value) => {
+                  const courseId = value === "none" ? null : value;
+                  updateCourseMutation.mutate({ leadId: selectedLead.id, courseId });
+                  setSelectedLead((prev: any) => prev ? {
+                    ...prev,
+                    course_id: courseId,
+                    courses: allCourses?.find(c => c.id === courseId) || null,
+                  } : null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a course" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not specified</SelectItem>
+                  {allCourses?.map(course => (
+                    <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Source</p>

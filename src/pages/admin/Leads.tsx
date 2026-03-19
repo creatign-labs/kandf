@@ -102,7 +102,7 @@ const Leads = () => {
         return "bg-blue-500";
       case "contacted":
         return "bg-purple-500";
-      case "interested":
+      case "qualified":
         return "bg-orange-500";
       case "follow-up":
         return "bg-yellow-500";

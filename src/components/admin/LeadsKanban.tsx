@@ -28,7 +28,7 @@ interface LeadsKanbanProps {
 const STAGES = [
   { id: "new", label: "New", color: "bg-blue-500" },
   { id: "contacted", label: "Contacted", color: "bg-purple-500" },
-  { id: "interested", label: "Interested", color: "bg-orange-500" },
+  { id: "qualified", label: "Qualified", color: "bg-orange-500" },
   { id: "follow-up", label: "Follow Up", color: "bg-yellow-500" },
   { id: "converted", label: "Converted", color: "bg-green-500" },
   { id: "lost", label: "Lost", color: "bg-red-500" },

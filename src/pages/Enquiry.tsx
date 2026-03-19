@@ -55,11 +55,16 @@ const Enquiry = () => {
         });
 
       if (error) throw error;
+
+      // Send acknowledgment email (fire-and-forget, don't block form success)
+      supabase.functions.invoke("send-enquiry-ack", {
+        body: { to: data.email, name: data.name },
+      }).catch((err) => console.error("Failed to send ack email:", err));
     },
     onSuccess: () => {
       toast({
         title: "Enquiry Submitted!",
-        description: "We'll get back to you within 24 hours.",
+        description: "We'll get back to you within 24 hours. A confirmation has been sent to your email.",
       });
       setFormData({ name: "", email: "", phone: "", courseId: "", message: "" });
     },

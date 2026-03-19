@@ -473,7 +473,22 @@ const LeadPaymentSetup = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Course</p>
-              <p className="font-medium">{lead.courses?.title || "Not specified"}</p>
+              <Select
+                value={lead.course_id || "none"}
+                onValueChange={(value) => {
+                  updateLeadCourseMutation.mutate(value === "none" ? null : value);
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a course" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not specified</SelectItem>
+                  {allCourses?.map(course => (
+                    <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </Card>

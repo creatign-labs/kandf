@@ -63,13 +63,40 @@ const LeadPaymentSetup = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leads")
-        .select("*, courses(title, base_fee)")
+        .select("*, courses(id, title, base_fee)")
         .eq("id", leadId!)
         .single();
       if (error) throw error;
       return data;
     },
     enabled: !!leadId,
+  });
+
+  // Fetch all courses for the course selector
+  const { data: allCourses } = useQuery({
+    queryKey: ["courses-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("courses").select("id, title, base_fee").order("title");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const updateLeadCourseMutation = useMutation({
+    mutationFn: async (courseId: string | null) => {
+      const { error } = await supabase
+        .from("leads")
+        .update({ course_id: courseId })
+        .eq("id", leadId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lead-detail", leadId] });
+      toast({ title: "Course updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
   });
 
   // Fetch existing payment plan

@@ -118,9 +118,9 @@ const Leads = () => {
   const getNextStages = (currentStage: string) => {
     const stageFlow: Record<string, string[]> = {
       new: ["contacted", "lost"],
-      contacted: ["interested", "follow-up", "lost"],
-      interested: ["follow-up", "converted", "lost"],
-      "follow-up": ["interested", "converted", "lost"],
+      contacted: ["qualified", "follow-up", "lost"],
+      qualified: ["follow-up", "converted", "lost"],
+      "follow-up": ["qualified", "converted", "lost"],
       converted: [],
       lost: ["new"],
     };

@@ -297,7 +297,7 @@ const Leads = () => {
                                     {stage.charAt(0).toUpperCase() + stage.slice(1).replace("-", " ")}
                                   </DropdownMenuItem>
                                 ))}
-                                {lead.stage === "interested" && (
+                                {lead.stage === "qualified" && (
                                   <DropdownMenuItem
                                     onClick={() => navigate(`/admin/lead-payment/${lead.id}`)}
                                   >

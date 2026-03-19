@@ -55,12 +55,38 @@ const Leads = () => {
         .from("leads")
         .select(`
           *,
-          courses (title)
+          courses (id, title)
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: allCourses } = useQuery({
+    queryKey: ["courses-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("courses").select("id, title").order("title");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const updateCourseMutation = useMutation({
+    mutationFn: async ({ leadId, courseId }: { leadId: string; courseId: string | null }) => {
+      const { error } = await supabase
+        .from("leads")
+        .update({ course_id: courseId })
+        .eq("id", leadId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast({ title: "Course updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 

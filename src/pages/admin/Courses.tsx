@@ -284,7 +284,7 @@ const Courses = () => {
         <Input
           id="title"
           value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
           placeholder="e.g., Basic Baking Fundamentals"
           required
         />

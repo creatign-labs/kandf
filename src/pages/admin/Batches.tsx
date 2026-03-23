@@ -455,7 +455,7 @@ const Batches = () => {
                         type="date"
                         value={formData.start_date}
                         onChange={(e) =>
-                          setFormData({ ...formData, start_date: e.target.value })
+                          setFormData(prev => ({ ...prev, start_date: e.target.value }))
                         }
                       />
                     </div>

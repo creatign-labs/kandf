@@ -182,7 +182,7 @@ const Financials = () => {
 
         {/* Revenue Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6">
-          <StatsCard title="Revenue Collected" value={`₹${((revenue?.collected || 0) / 1000).toFixed(1)}k`} icon={DollarSign} variant="success" />
+          <StatsCard title="Revenue Collected" value={`₹${((revenue?.collected || 0) / 1000).toFixed(1)}k`} icon={IndianRupee} variant="success" />
           <StatsCard title="Pending" value={`₹${((revenue?.pending || 0) / 1000).toFixed(1)}k`} icon={TrendingUp} variant="default" />
           <StatsCard title="Overdue" value={`₹${(overdueTotal / 1000).toFixed(1)}k`} icon={AlertTriangle} variant="warning" />
           <StatsCard title="Overdue Count" value={String(overdueSchedules?.length || 0)} icon={RefreshCw} variant="warning" />

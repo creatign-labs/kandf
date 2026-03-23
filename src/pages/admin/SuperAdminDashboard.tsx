@@ -183,7 +183,7 @@ const SuperAdminDashboard = () => {
           <StatsCard title="Pending Approvals" value={String(pendingApprovals || 0)} icon={ClipboardCheck} variant={pendingApprovals ? "warning" : "default"} />
           <StatsCard title="No-Shows (30d)" value={String(noShowCount || 0)} icon={Users} variant="default" />
           <StatsCard title="Placements" value={String(placementCount || 0)} icon={TrendingUp} variant="success" />
-          <StatsCard title="Overdue Payments" value={`₹${((revenueData?.overdue || 0) / 1000).toFixed(1)}k`} icon={DollarSign} variant="warning" />
+          <StatsCard title="Overdue Payments" value={`₹${((revenueData?.overdue || 0) / 1000).toFixed(1)}k`} icon={IndianRupee} variant="warning" />
         </div>
 
         {/* Charts */}

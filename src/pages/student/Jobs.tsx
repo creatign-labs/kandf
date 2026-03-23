@@ -197,7 +197,7 @@ const Jobs = () => {
                           </span>
                           {job.salary_range && (
                             <span className="flex items-center gap-1">
-                              <DollarSign className="h-4 w-4" />{job.salary_range}
+                              <IndianRupee className="h-4 w-4" />{job.salary_range}
                             </span>
                           )}
                           <span className="flex items-center gap-1">

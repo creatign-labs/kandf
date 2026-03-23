@@ -380,7 +380,7 @@ const Batches = () => {
                     <Select
                       value={formData.course_id}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, course_id: value })
+                        setFormData(prev => ({ ...prev, course_id: value }))
                       }
                     >
                       <SelectTrigger>

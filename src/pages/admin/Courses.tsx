@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Clock, Users, DollarSign, Loader2, Trash2, ChefHat, Search } from "lucide-react";
+import { Plus, Edit, Clock, Users, IndianRupee, Loader2, Trash2, ChefHat, Search } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";

@@ -102,6 +102,8 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/signup" element={<SignupDisabled />} />
           <Route path="/vendor/signup" element={<VendorSignup />} />
           <Route path="/vendor/awaiting-approval" element={<VendorAwaitingApproval />} />

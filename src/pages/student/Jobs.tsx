@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Briefcase, MapPin, Clock, DollarSign, Search, Loader2, Lock, AlertCircle } from "lucide-react";
+import { Briefcase, MapPin, Clock, IndianRupee, Search, Loader2, Lock, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -197,7 +197,7 @@ const Jobs = () => {
                           </span>
                           {job.salary_range && (
                             <span className="flex items-center gap-1">
-                              <DollarSign className="h-4 w-4" />{job.salary_range}
+                              <IndianRupee className="h-4 w-4" />{job.salary_range}
                             </span>
                           )}
                           <span className="flex items-center gap-1">

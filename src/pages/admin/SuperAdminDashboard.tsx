@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatsCard } from "@/components/StatsCard";
 import { 
-  DollarSign, Users, TrendingUp, Package, Award, AlertTriangle, 
+  IndianRupee, Users, TrendingUp, Package, Award, AlertTriangle, 
   ClipboardCheck, FileText, BarChart3 
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -173,7 +173,7 @@ const SuperAdminDashboard = () => {
 
         {/* Financial Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6">
-          <StatsCard title="Revenue Collected" value={`₹${((revenueData?.collected || 0) / 1000).toFixed(1)}k`} icon={DollarSign} variant="success" />
+          <StatsCard title="Revenue Collected" value={`₹${((revenueData?.collected || 0) / 1000).toFixed(1)}k`} icon={IndianRupee} variant="success" />
           <StatsCard title="Outstanding" value={`₹${((revenueData?.outstanding || 0) / 1000).toFixed(1)}k`} icon={AlertTriangle} variant="warning" />
           <StatsCard title="Inventory Value" value={`₹${((inventoryVal || 0) / 1000).toFixed(1)}k`} icon={Package} variant="default" />
           <StatsCard title="Completion Rate" value={`${completionRate || 0}%`} icon={Award} variant="primary" />
@@ -183,7 +183,7 @@ const SuperAdminDashboard = () => {
           <StatsCard title="Pending Approvals" value={String(pendingApprovals || 0)} icon={ClipboardCheck} variant={pendingApprovals ? "warning" : "default"} />
           <StatsCard title="No-Shows (30d)" value={String(noShowCount || 0)} icon={Users} variant="default" />
           <StatsCard title="Placements" value={String(placementCount || 0)} icon={TrendingUp} variant="success" />
-          <StatsCard title="Overdue Payments" value={`₹${((revenueData?.overdue || 0) / 1000).toFixed(1)}k`} icon={DollarSign} variant="warning" />
+          <StatsCard title="Overdue Payments" value={`₹${((revenueData?.overdue || 0) / 1000).toFixed(1)}k`} icon={IndianRupee} variant="warning" />
         </div>
 
         {/* Charts */}

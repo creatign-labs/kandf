@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExportButton } from "@/components/ExportButton";
 import { StatsCard } from "@/components/StatsCard";
-import { DollarSign, TrendingUp, AlertTriangle, RefreshCw, Loader2, Plus } from "lucide-react";
+import { IndianRupee, TrendingUp, AlertTriangle, RefreshCw, Loader2, Plus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -182,7 +182,7 @@ const Financials = () => {
 
         {/* Revenue Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6">
-          <StatsCard title="Revenue Collected" value={`₹${((revenue?.collected || 0) / 1000).toFixed(1)}k`} icon={DollarSign} variant="success" />
+          <StatsCard title="Revenue Collected" value={`₹${((revenue?.collected || 0) / 1000).toFixed(1)}k`} icon={IndianRupee} variant="success" />
           <StatsCard title="Pending" value={`₹${((revenue?.pending || 0) / 1000).toFixed(1)}k`} icon={TrendingUp} variant="default" />
           <StatsCard title="Overdue" value={`₹${(overdueTotal / 1000).toFixed(1)}k`} icon={AlertTriangle} variant="warning" />
           <StatsCard title="Overdue Count" value={String(overdueSchedules?.length || 0)} icon={RefreshCw} variant="warning" />

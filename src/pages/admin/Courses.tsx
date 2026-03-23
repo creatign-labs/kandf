@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Clock, Users, DollarSign, Loader2, Trash2, ChefHat, Search } from "lucide-react";
+import { Plus, Edit, Clock, Users, IndianRupee, Loader2, Trash2, ChefHat, Search } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -284,7 +284,7 @@ const Courses = () => {
         <Input
           id="title"
           value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
           placeholder="e.g., Basic Baking Fundamentals"
           required
         />
@@ -294,7 +294,7 @@ const Courses = () => {
         <Textarea
           id="description"
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
           placeholder="Course description..."
           required
         />
@@ -305,7 +305,7 @@ const Courses = () => {
           <Input
             id="duration"
             value={formData.duration}
-            onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
             placeholder="e.g., 3 months"
             required
           />
@@ -316,7 +316,7 @@ const Courses = () => {
             id="base_fee"
             type="number"
             value={formData.base_fee}
-            onChange={(e) => setFormData({ ...formData, base_fee: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, base_fee: e.target.value }))}
             placeholder="e.g., 15000"
             required
           />
@@ -324,7 +324,7 @@ const Courses = () => {
       </div>
       <div className="space-y-2">
         <Label htmlFor="level">Level</Label>
-        <Select value={formData.level} onValueChange={(v) => setFormData({ ...formData, level: v })}>
+        <Select value={formData.level} onValueChange={(v) => setFormData(prev => ({ ...prev, level: v }))}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -462,7 +462,7 @@ const Courses = () => {
                       {course.duration}
                     </div>
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
+                      <IndianRupee className="h-4 w-4" />
                       ₹{course.base_fee.toLocaleString()}
                     </div>
                     <div className="flex items-center gap-2">

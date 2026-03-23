@@ -380,7 +380,7 @@ const Batches = () => {
                     <Select
                       value={formData.course_id}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, course_id: value })
+                        setFormData(prev => ({ ...prev, course_id: value }))
                       }
                     >
                       <SelectTrigger>
@@ -403,7 +403,7 @@ const Batches = () => {
                       placeholder="e.g., Morning Batch A"
                       value={formData.batch_name}
                       onChange={(e) =>
-                        setFormData({ ...formData, batch_name: e.target.value })
+                        setFormData(prev => ({ ...prev, batch_name: e.target.value }))
                       }
                     />
                   </div>
@@ -416,7 +416,7 @@ const Batches = () => {
                         placeholder="e.g., 9:00 AM - 12:00 PM"
                         value={formData.time_slot}
                         onChange={(e) =>
-                          setFormData({ ...formData, time_slot: e.target.value })
+                          setFormData(prev => ({ ...prev, time_slot: e.target.value }))
                         }
                       />
                     </div>
@@ -427,7 +427,7 @@ const Batches = () => {
                         placeholder="e.g., Mon, Wed, Fri"
                         value={formData.days}
                         onChange={(e) =>
-                          setFormData({ ...formData, days: e.target.value })
+                          setFormData(prev => ({ ...prev, days: e.target.value }))
                         }
                       />
                     </div>
@@ -441,10 +441,10 @@ const Batches = () => {
                         type="number"
                         value={formData.total_seats || ""}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
+                          setFormData(prev => ({
+                            ...prev,
                             total_seats: parseInt(e.target.value),
-                          })
+                          }))
                         }
                       />
                     </div>
@@ -455,7 +455,7 @@ const Batches = () => {
                         type="date"
                         value={formData.start_date}
                         onChange={(e) =>
-                          setFormData({ ...formData, start_date: e.target.value })
+                          setFormData(prev => ({ ...prev, start_date: e.target.value }))
                         }
                       />
                     </div>

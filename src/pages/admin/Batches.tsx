@@ -441,10 +441,10 @@ const Batches = () => {
                         type="number"
                         value={formData.total_seats || ""}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
+                          setFormData(prev => ({
+                            ...prev,
                             total_seats: parseInt(e.target.value),
-                          })
+                          }))
                         }
                       />
                     </div>

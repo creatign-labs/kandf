@@ -305,7 +305,7 @@ const Courses = () => {
           <Input
             id="duration"
             value={formData.duration}
-            onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
             placeholder="e.g., 3 months"
             required
           />

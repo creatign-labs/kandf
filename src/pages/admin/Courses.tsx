@@ -484,7 +484,7 @@ const Courses = () => {
                       <DialogHeader>
                         <DialogTitle>Edit Course</DialogTitle>
                       </DialogHeader>
-                      <CourseForm />
+                      {courseFormJSX}
                     </DialogContent>
                   </Dialog>
                   <Button

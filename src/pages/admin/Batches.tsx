@@ -403,7 +403,7 @@ const Batches = () => {
                       placeholder="e.g., Morning Batch A"
                       value={formData.batch_name}
                       onChange={(e) =>
-                        setFormData({ ...formData, batch_name: e.target.value })
+                        setFormData(prev => ({ ...prev, batch_name: e.target.value }))
                       }
                     />
                   </div>

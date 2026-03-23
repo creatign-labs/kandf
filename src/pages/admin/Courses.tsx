@@ -441,7 +441,7 @@ const Courses = () => {
               <DialogHeader>
                 <DialogTitle>Create New Course</DialogTitle>
               </DialogHeader>
-              <CourseForm />
+              {courseFormJSX}
             </DialogContent>
           </Dialog>
         </div>

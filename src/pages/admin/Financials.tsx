@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExportButton } from "@/components/ExportButton";
 import { StatsCard } from "@/components/StatsCard";
-import { DollarSign, TrendingUp, AlertTriangle, RefreshCw, Loader2, Plus } from "lucide-react";
+import { IndianRupee, TrendingUp, AlertTriangle, RefreshCw, Loader2, Plus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";

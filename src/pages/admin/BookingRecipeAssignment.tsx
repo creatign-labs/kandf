@@ -489,25 +489,26 @@ const BookingRecipeAssignment = () => {
                         </Select>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">Table</span>
-                          <Input
-                            className="w-16 h-8 text-sm text-center"
-                            placeholder="#"
-                            value={(booking as any).table_number || ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              // Update local state immediately, debounce DB save
-                              const bookingId = booking.id;
-                              if ((window as any).__tableTimer) clearTimeout((window as any).__tableTimer);
-                              (window as any).__tableTimer = setTimeout(async () => {
-                                await supabase.from('bookings').update({ table_number: val || null }).eq('id', bookingId);
-                                queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
-                              }, 800);
-                            }}
-                            disabled={booking.status === 'cancelled'}
-                          />
-                        </div>
+                        <Select
+                          value={(booking as any).table_number || ""}
+                          onValueChange={async (val) => {
+                            const bookingId = booking.id;
+                            await supabase.from('bookings').update({ table_number: val || null }).eq('id', bookingId);
+                            queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+                          }}
+                          disabled={booking.status === 'cancelled'}
+                        >
+                          <SelectTrigger className="w-20 h-8 text-sm">
+                            <SelectValue placeholder="#" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 25 }, (_, i) => (
+                              <SelectItem key={i + 1} value={String(i + 1)}>
+                                {i + 1}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                     </TableRow>
                   ))}

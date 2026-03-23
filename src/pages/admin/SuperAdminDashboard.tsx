@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatsCard } from "@/components/StatsCard";
 import { 
-  DollarSign, Users, TrendingUp, Package, Award, AlertTriangle, 
+  IndianRupee, Users, TrendingUp, Package, Award, AlertTriangle, 
   ClipboardCheck, FileText, BarChart3 
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";

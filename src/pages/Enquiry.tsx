@@ -48,7 +48,7 @@ const Enquiry = () => {
           name: data.name,
           email: data.email,
           phone: data.phone || null,
-          course_id: data.courseId || null,
+          course_id: data.courseId && data.courseId !== "not-sure" ? data.courseId : null,
           message: data.message,
           stage: "new",
           source: "website",

@@ -324,7 +324,7 @@ const Courses = () => {
       </div>
       <div className="space-y-2">
         <Label htmlFor="level">Level</Label>
-        <Select value={formData.level} onValueChange={(v) => setFormData({ ...formData, level: v })}>
+        <Select value={formData.level} onValueChange={(v) => setFormData(prev => ({ ...prev, level: v }))}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>

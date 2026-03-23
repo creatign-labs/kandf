@@ -316,7 +316,7 @@ const Courses = () => {
             id="base_fee"
             type="number"
             value={formData.base_fee}
-            onChange={(e) => setFormData({ ...formData, base_fee: e.target.value })}
+            onChange={(e) => setFormData(prev => ({ ...prev, base_fee: e.target.value }))}
             placeholder="e.g., 15000"
             required
           />

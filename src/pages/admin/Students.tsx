@@ -805,21 +805,25 @@ const Students = () => {
                 onClick={async () => {
                   const name = `${selectedStudent?.profile?.first_name} ${selectedStudent?.profile?.last_name}`;
                   const email = selectedStudent?.profile?.email;
-                  const courseName = selectedStudent?.advance_payments?.courses?.title || '';
+                  if (!email) {
+                    toast({ title: "No email found", description: "Student has no email address on file.", variant: "destructive" });
+                    return;
+                  }
                   try {
+                    const { studentCredentialsEmail } = await import("@/lib/emailTemplates");
+                    const html = studentCredentialsEmail({
+                      studentName: name,
+                      studentId: selectedStudent?.student_code || 'N/A',
+                      email,
+                      password: selectedStudent?.generated_password || 'N/A',
+                      courseName: selectedStudent?.advance_payments?.courses?.title,
+                      loginUrl: `${window.location.origin}/login`,
+                    });
                     const { error } = await supabase.functions.invoke('send-email', {
                       body: {
                         to: email,
                         subject: 'Your Knead & Frost Student Credentials',
-                        type: 'student-credentials',
-                        data: {
-                          studentName: name,
-                          studentId: selectedStudent?.student_code || '',
-                          email,
-                          password: selectedStudent?.generated_password || '',
-                          courseName,
-                          loginUrl: `${window.location.origin}/login`,
-                        },
+                        html,
                       },
                     });
                     if (error) throw error;

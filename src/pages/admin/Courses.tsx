@@ -302,13 +302,18 @@ const Courses = () => {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="course-duration">Duration</Label>
-          <Input
-            id="course-duration"
-            value={formData.duration}
-            onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
-            placeholder="e.g., 3 months"
-            required
-          />
+          <Select value={formData.duration} onValueChange={(v) => setFormData(prev => ({ ...prev, duration: v }))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select duration" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <SelectItem key={m} value={`${m} month${m > 1 ? 's' : ''}`}>
+                  {m} month{m > 1 ? 's' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="course-base-fee">Base Fee (₹)</Label>

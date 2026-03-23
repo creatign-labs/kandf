@@ -427,7 +427,7 @@ const Batches = () => {
                         placeholder="e.g., Mon, Wed, Fri"
                         value={formData.days}
                         onChange={(e) =>
-                          setFormData({ ...formData, days: e.target.value })
+                          setFormData(prev => ({ ...prev, days: e.target.value }))
                         }
                       />
                     </div>

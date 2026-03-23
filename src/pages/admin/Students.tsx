@@ -819,14 +819,19 @@ const Students = () => {
                       courseName: selectedStudent?.advance_payments?.courses?.title,
                       loginUrl: `${window.location.origin}/login`,
                     });
-                    const { error } = await supabase.functions.invoke('send-email', {
+                    const { data, error } = await supabase.functions.invoke('send-email', {
                       body: {
                         to: email,
                         subject: 'Your Knead & Frost Student Credentials',
                         html,
                       },
                     });
-                    if (error) throw error;
+                    if (error) {
+                      throw new Error(data?.error || error.message || 'Failed to send email');
+                    }
+                    if (!data?.success) {
+                      throw new Error(data?.error || 'Failed to send email');
+                    }
                     toast({ title: "Email sent!", description: `Credentials sent to ${email}` });
                   } catch (err: any) {
                     toast({ title: "Email failed", description: err.message, variant: "destructive" });

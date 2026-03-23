@@ -495,10 +495,15 @@ const BookingRecipeAssignment = () => {
                             className="w-16 h-8 text-sm text-center"
                             placeholder="#"
                             value={(booking as any).table_number || ""}
-                            onChange={async (e) => {
+                            onChange={(e) => {
                               const val = e.target.value;
-                              await supabase.from('bookings').update({ table_number: val || null }).eq('id', booking.id);
-                              queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+                              // Update local state immediately, debounce DB save
+                              const bookingId = booking.id;
+                              if ((window as any).__tableTimer) clearTimeout((window as any).__tableTimer);
+                              (window as any).__tableTimer = setTimeout(async () => {
+                                await supabase.from('bookings').update({ table_number: val || null }).eq('id', bookingId);
+                                queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+                              }, 800);
                             }}
                             disabled={booking.status === 'cancelled'}
                           />

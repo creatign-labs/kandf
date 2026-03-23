@@ -416,7 +416,7 @@ const Batches = () => {
                         placeholder="e.g., 9:00 AM - 12:00 PM"
                         value={formData.time_slot}
                         onChange={(e) =>
-                          setFormData({ ...formData, time_slot: e.target.value })
+                          setFormData(prev => ({ ...prev, time_slot: e.target.value }))
                         }
                       />
                     </div>

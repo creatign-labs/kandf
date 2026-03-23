@@ -173,7 +173,7 @@ const SuperAdminDashboard = () => {
 
         {/* Financial Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6">
-          <StatsCard title="Revenue Collected" value={`₹${((revenueData?.collected || 0) / 1000).toFixed(1)}k`} icon={DollarSign} variant="success" />
+          <StatsCard title="Revenue Collected" value={`₹${((revenueData?.collected || 0) / 1000).toFixed(1)}k`} icon={IndianRupee} variant="success" />
           <StatsCard title="Outstanding" value={`₹${((revenueData?.outstanding || 0) / 1000).toFixed(1)}k`} icon={AlertTriangle} variant="warning" />
           <StatsCard title="Inventory Value" value={`₹${((inventoryVal || 0) / 1000).toFixed(1)}k`} icon={Package} variant="default" />
           <StatsCard title="Completion Rate" value={`${completionRate || 0}%`} icon={Award} variant="primary" />

@@ -277,12 +277,12 @@ const Courses = () => {
     );
   };
 
-  const CourseForm = () => (
+  const courseFormJSX = (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="title">Course Title</Label>
+        <Label htmlFor="course-title">Course Title</Label>
         <Input
-          id="title"
+          id="course-title"
           value={formData.title}
           onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
           placeholder="e.g., Basic Baking Fundamentals"
@@ -290,9 +290,9 @@ const Courses = () => {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="course-description">Description</Label>
         <Textarea
-          id="description"
+          id="course-description"
           value={formData.description}
           onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
           placeholder="Course description..."
@@ -301,9 +301,9 @@ const Courses = () => {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="duration">Duration</Label>
+          <Label htmlFor="course-duration">Duration</Label>
           <Input
-            id="duration"
+            id="course-duration"
             value={formData.duration}
             onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
             placeholder="e.g., 3 months"
@@ -311,9 +311,9 @@ const Courses = () => {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="base_fee">Base Fee (₹)</Label>
+          <Label htmlFor="course-base-fee">Base Fee (₹)</Label>
           <Input
-            id="base_fee"
+            id="course-base-fee"
             type="number"
             value={formData.base_fee}
             onChange={(e) => setFormData(prev => ({ ...prev, base_fee: e.target.value }))}
@@ -323,7 +323,7 @@ const Courses = () => {
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="level">Level</Label>
+        <Label htmlFor="course-level">Level</Label>
         <Select value={formData.level} onValueChange={(v) => setFormData(prev => ({ ...prev, level: v }))}>
           <SelectTrigger>
             <SelectValue />
@@ -441,7 +441,7 @@ const Courses = () => {
               <DialogHeader>
                 <DialogTitle>Create New Course</DialogTitle>
               </DialogHeader>
-              <CourseForm />
+              {courseFormJSX}
             </DialogContent>
           </Dialog>
         </div>
@@ -484,7 +484,7 @@ const Courses = () => {
                       <DialogHeader>
                         <DialogTitle>Edit Course</DialogTitle>
                       </DialogHeader>
-                      <CourseForm />
+                      {courseFormJSX}
                     </DialogContent>
                   </Dialog>
                   <Button

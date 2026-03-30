@@ -2044,6 +2044,7 @@ export type Database = {
           instructions: string | null
           module_id: string | null
           prep_time: number | null
+          recipe_code: string | null
           title: string
           updated_at: string
           version: number
@@ -2060,6 +2061,7 @@ export type Database = {
           instructions?: string | null
           module_id?: string | null
           prep_time?: number | null
+          recipe_code?: string | null
           title: string
           updated_at?: string
           version?: number
@@ -2076,6 +2078,7 @@ export type Database = {
           instructions?: string | null
           module_id?: string | null
           prep_time?: number | null
+          recipe_code?: string | null
           title?: string
           updated_at?: string
           version?: number

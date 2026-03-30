@@ -41,6 +41,7 @@ const Courses = () => {
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: "",
+    course_code: "",
     description: "",
     duration: "",
     level: "Beginner",

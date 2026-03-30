@@ -284,15 +284,27 @@ const Courses = () => {
 
   const courseFormJSX = (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="course-title">Course Title</Label>
-        <Input
-          id="course-title"
-          value={formData.title}
-          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-          placeholder="e.g., Basic Baking Fundamentals"
-          required
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="course-title">Course Title</Label>
+          <Input
+            id="course-title"
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            placeholder="e.g., Basic Baking Fundamentals"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="course-code">Course Code</Label>
+          <Input
+            id="course-code"
+            value={formData.course_code}
+            onChange={(e) => setFormData(prev => ({ ...prev, course_code: e.target.value }))}
+            placeholder="e.g., BK-101"
+            maxLength={20}
+          />
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="course-description">Description</Label>

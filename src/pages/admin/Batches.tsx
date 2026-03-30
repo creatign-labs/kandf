@@ -263,6 +263,13 @@ const Batches = () => {
       total_seats: batch.total_seats,
       start_date: batch.start_date || "",
     });
+    // Parse time slot back into start/end
+    const timeParts = batch.time_slot?.split(" - ") || [];
+    setStartTime(timeParts[0] || "");
+    setEndTime(timeParts[1] || "");
+    // Parse days back into selected array
+    const daysParsed = batch.days?.split(", ").filter((d: string) => WEEK_DAYS.includes(d as any)) || [];
+    setSelectedDays(daysParsed);
     setIsDialogOpen(true);
   };
 

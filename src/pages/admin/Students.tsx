@@ -69,6 +69,7 @@ const Students = () => {
   const [editStatus, setEditStatus] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [credentialsStudent, setCredentialsStudent] = useState<any>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Sync tab from URL
   useEffect(() => {

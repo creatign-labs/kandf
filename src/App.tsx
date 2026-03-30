@@ -86,6 +86,8 @@ import VendorApprovals from "./pages/admin/VendorApprovals";
 import PurchaseOrders from "./pages/admin/PurchaseOrders";
 import BatchCalendar from "./pages/admin/BatchCalendar";
 import LeadPaymentSetup from "./pages/admin/LeadPaymentSetup";
+import RequiredDailyIngredients from "./pages/admin/RequiredDailyIngredients";
+import AttendanceManagement from "./pages/admin/AttendanceManagement";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -170,6 +172,8 @@ const App = () => (
           <Route path="/admin/purchase-orders" element={<ProtectedRoute requiredRole="admin"><PurchaseOrders /></ProtectedRoute>} />
           <Route path="/admin/batch-calendar" element={<ProtectedRoute requiredRole="admin"><BatchCalendar /></ProtectedRoute>} />
           <Route path="/admin/lead-payment/:leadId" element={<ProtectedRoute requiredRole="admin"><LeadPaymentSetup /></ProtectedRoute>} />
+          <Route path="/admin/required-daily-ingredients" element={<ProtectedRoute requiredRole="admin"><RequiredDailyIngredients /></ProtectedRoute>} />
+          <Route path="/admin/attendance-management" element={<ProtectedRoute requiredRole="admin"><AttendanceManagement /></ProtectedRoute>} />
           
           <Route path="/chef" element={<ProtectedRoute requiredRole="chef"><ChefDashboard /></ProtectedRoute>} />
           <Route path="/chef/schedule" element={<ProtectedRoute requiredRole="chef"><Schedule /></ProtectedRoute>} />

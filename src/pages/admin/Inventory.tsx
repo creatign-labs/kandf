@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import {
@@ -20,7 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, AlertTriangle, Plus, Package, Loader2 } from "lucide-react";
+import { Search, AlertTriangle, Plus, Package, Loader2, Utensils } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -182,6 +183,12 @@ const Inventory = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">Current Inventory</h2>
             <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/admin/required-daily-ingredients">
+                  <Utensils className="h-4 w-4 mr-2" />
+                  Required Daily Ingredients
+                </Link>
+              </Button>
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input 

@@ -106,22 +106,40 @@ Deno.serve(async (req) => {
       console.log("Created student auth user:", studentId);
     }
 
-    // Update profile to enrolled
+    // Upsert profile to enrolled (handles case where profile was deleted or doesn't exist)
     const nameParts = (lead.name || "").trim().split(/\s+/);
-    await supabaseAdmin.from("profiles").update({
+    const profileData = {
+      id: studentId,
       enrollment_status: "enrolled",
       first_name: nameParts[0] || "Student",
       last_name: nameParts.slice(1).join(" ") || "",
       phone: lead.phone || null,
+      email: lead.email,
       updated_at: new Date().toISOString(),
-    }).eq("id", studentId);
+    };
+    
+    const { error: profileError } = await supabaseAdmin.from("profiles").upsert(profileData, { onConflict: "id" });
+    if (profileError) {
+      console.error("Failed to upsert profile:", profileError);
+    } else {
+      console.log("Profile upserted for student:", studentId);
+    }
+
+    // Ensure student role exists
+    await supabaseAdmin.from("user_roles").upsert(
+      { user_id: studentId, role: "student" },
+      { onConflict: "user_id,role" }
+    );
 
     // Create student_access_approvals record
-    await supabaseAdmin.from("student_access_approvals").insert({
+    const { error: approvalError } = await supabaseAdmin.from("student_access_approvals").upsert({
       student_id: studentId,
       advance_payment_id: null,
       status: "pending",
-    });
+    }, { onConflict: "student_id" });
+    if (approvalError) {
+      console.error("Failed to create approval record:", approvalError);
+    }
 
     // Notify admins
     const { data: adminUsers } = await supabaseAdmin

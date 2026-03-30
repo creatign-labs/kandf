@@ -17,10 +17,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Loader2, Package, Users, ChefHat } from "lucide-react";
+import { CalendarIcon, Loader2, Package, Users, ChefHat, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface IngredientRequirement {
   ingredientName: string;
@@ -28,6 +29,13 @@ interface IngredientRequirement {
   category: string;
   totalRequired: number;
   recipes: string[];
+}
+
+interface ScheduledRecipe {
+  recipeId: string;
+  recipeTitle: string;
+  studentCount: number;
+  ingredientCount: number;
 }
 
 const DailyIngredients = () => {
@@ -60,7 +68,7 @@ const DailyIngredients = () => {
     },
   });
 
-  // Fetch recipe batches for the selected date that the chef can see
+  // Fetch recipe batches for the selected date
   const { data: recipeBatches, isLoading: batchesLoading } = useQuery({
     queryKey: ["chef-daily-recipe-batches", formattedDate],
     queryFn: async () => {
@@ -100,10 +108,8 @@ const DailyIngredients = () => {
     },
   });
 
-  // Merge both data sources to get recipe → student count mapping
-  const calculateRequirements = (): IngredientRequirement[] => {
-    if (!recipeIngredients) return [];
-
+  // Build recipe → student count mapping
+  const getRecipeStudentCount = (): Record<string, { count: number; title: string }> => {
     const recipeStudentCount: Record<string, { count: number; title: string }> = {};
 
     // Source 1: Individual bookings (each booking = 1 student)
@@ -123,7 +129,6 @@ const DailyIngredients = () => {
     (recipeBatches || []).forEach((batch: any) => {
       if (!batch.recipe_id) return;
       const memberCount = batch.recipe_batch_memberships?.length || 0;
-      if (memberCount === 0 && recipeStudentCount[batch.recipe_id]) return; // already counted via bookings
 
       if (!recipeStudentCount[batch.recipe_id]) {
         recipeStudentCount[batch.recipe_id] = {
@@ -131,18 +136,40 @@ const DailyIngredients = () => {
           title: batch.recipes?.title || "Unknown Recipe",
         };
       }
-      // Add members not already counted from bookings
       recipeStudentCount[batch.recipe_id].count = Math.max(
         recipeStudentCount[batch.recipe_id].count,
         memberCount
       );
     });
 
-    // Calculate total ingredients needed
+    return recipeStudentCount;
+  };
+
+  const recipeStudentCount = getRecipeStudentCount();
+
+  // Get scheduled recipes summary with ingredient status
+  const getScheduledRecipes = (): ScheduledRecipe[] => {
+    return Object.entries(recipeStudentCount).map(([recipeId, { count, title }]) => {
+      const ingredientCount = (recipeIngredients || []).filter(
+        (ri: any) => ri.recipe_id === recipeId
+      ).length;
+      return {
+        recipeId,
+        recipeTitle: title,
+        studentCount: count,
+        ingredientCount,
+      };
+    });
+  };
+
+  // Calculate total ingredients needed
+  const calculateRequirements = (): IngredientRequirement[] => {
+    if (!recipeIngredients) return [];
+
     const ingredientMap: Record<string, IngredientRequirement> = {};
 
     Object.entries(recipeStudentCount).forEach(([recipeId, { count, title }]) => {
-      if (count === 0) return; // skip recipes with no students
+      const studentCount = Math.max(count, 1); // At least 1 student worth if class exists
 
       const ingredients = recipeIngredients.filter(
         (ri: any) => ri.recipe_id === recipeId
@@ -152,7 +179,7 @@ const DailyIngredients = () => {
         if (!ing.inventory) return;
 
         const key = ing.inventory_id;
-        const quantityNeeded = ing.quantity_per_student * count;
+        const quantityNeeded = ing.quantity_per_student * studentCount;
 
         if (!ingredientMap[key]) {
           ingredientMap[key] = {
@@ -176,21 +203,12 @@ const DailyIngredients = () => {
     );
   };
 
+  const scheduledRecipes = getScheduledRecipes();
   const requirements = calculateRequirements();
+  const recipesWithNoIngredients = scheduledRecipes.filter(r => r.ingredientCount === 0);
 
-  // Count unique recipes from both sources
-  const allRecipeIds = new Set<string>();
-  (bookings || []).forEach((b: any) => b.recipe_id && allRecipeIds.add(b.recipe_id));
-  (recipeBatches || []).forEach((b: any) => b.recipe_id && allRecipeIds.add(b.recipe_id));
-  const uniqueRecipes = allRecipeIds.size;
-
-  // Count total students from both sources
-  const bookingStudents = bookings?.length || 0;
-  const batchStudents = (recipeBatches || []).reduce(
-    (sum: number, b: any) => sum + (b.recipe_batch_memberships?.length || 0),
-    0
-  );
-  const totalStudents = Math.max(bookingStudents, batchStudents);
+  const uniqueRecipes = scheduledRecipes.length;
+  const totalStudents = scheduledRecipes.reduce((sum, r) => sum + r.studentCount, 0);
 
   const isLoading = bookingsLoading || batchesLoading || ingredientsLoading;
 
@@ -275,6 +293,57 @@ const DailyIngredients = () => {
           </Card>
         </div>
 
+        {/* Scheduled Recipes Overview */}
+        {scheduledRecipes.length > 0 && (
+          <Card className="p-6 mb-6">
+            <h2 className="text-xl font-bold mb-4">Scheduled Recipes</h2>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Recipe</TableHead>
+                    <TableHead className="text-right">Students</TableHead>
+                    <TableHead className="text-right">Ingredients Configured</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {scheduledRecipes.map((recipe) => (
+                    <TableRow key={recipe.recipeId}>
+                      <TableCell className="font-medium">{recipe.recipeTitle}</TableCell>
+                      <TableCell className="text-right">{recipe.studentCount}</TableCell>
+                      <TableCell className="text-right">{recipe.ingredientCount}</TableCell>
+                      <TableCell>
+                        {recipe.ingredientCount > 0 ? (
+                          <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            Ready
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive">
+                            No Ingredients Set
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        )}
+
+        {/* Warning for recipes without ingredients */}
+        {recipesWithNoIngredients.length > 0 && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {recipesWithNoIngredients.length === 1
+                ? `The recipe "${recipesWithNoIngredients[0].recipeTitle}" does not have ingredients configured. Please contact the admin to set up ingredient requirements.`
+                : `${recipesWithNoIngredients.length} recipes (${recipesWithNoIngredients.map(r => r.recipeTitle).join(", ")}) do not have ingredients configured. Please contact the admin to set up ingredient requirements.`}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Requirements Table */}
         <Card className="p-6">
           <h2 className="text-xl font-bold mb-4">Ingredient Requirements</h2>
@@ -282,7 +351,11 @@ const DailyIngredients = () => {
           {requirements.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No assigned sessions with ingredients for this date</p>
+              {scheduledRecipes.length > 0 ? (
+                <p>No ingredients configured for the scheduled recipes. Admin needs to add ingredient details to each recipe.</p>
+              ) : (
+                <p>No assigned sessions for this date</p>
+              )}
             </div>
           ) : (
             <div className="rounded-md border">

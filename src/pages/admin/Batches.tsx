@@ -525,7 +525,7 @@ const Batches = () => {
                     disabled={
                       !formData.batch_name ||
                       !formData.course_id ||
-                      !formData.time_slot ||
+                      (!startTime || !endTime) ||
                       saveMutation.isPending
                     }
                   >

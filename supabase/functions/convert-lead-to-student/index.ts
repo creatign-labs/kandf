@@ -106,15 +106,24 @@ Deno.serve(async (req) => {
       console.log("Created student auth user:", studentId);
     }
 
-    // Update profile to enrolled
+    // Upsert profile to enrolled (handles case where profile was deleted or doesn't exist)
     const nameParts = (lead.name || "").trim().split(/\s+/);
-    await supabaseAdmin.from("profiles").update({
+    const profileData = {
+      id: studentId,
       enrollment_status: "enrolled",
       first_name: nameParts[0] || "Student",
       last_name: nameParts.slice(1).join(" ") || "",
       phone: lead.phone || null,
+      email: lead.email,
       updated_at: new Date().toISOString(),
-    }).eq("id", studentId);
+    };
+    
+    const { error: profileError } = await supabaseAdmin.from("profiles").upsert(profileData, { onConflict: "id" });
+    if (profileError) {
+      console.error("Failed to upsert profile:", profileError);
+    } else {
+      console.log("Profile upserted for student:", studentId);
+    }
 
     // Create student_access_approvals record
     await supabaseAdmin.from("student_access_approvals").insert({

@@ -3,32 +3,47 @@ import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, ChefHat, Clock, Loader2, Package } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Search, ChefHat, Clock, Loader2, Package, Plus, Trash2, Youtube } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Link } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const AdminRecipes = () => {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    recipe_code: "",
+    description: "",
+    course_id: "",
+    difficulty: "Easy",
+    prep_time: "",
+    cook_time: "",
+    video_url: "",
+    instructions: "",
+  });
+  const [selectedIngredients, setSelectedIngredients] = useState<
+    { inventory_id: string; quantity_per_student: number }[]
+  >([]);
 
-  // Fetch all recipes with course info
   const { data: recipes, isLoading } = useQuery({
     queryKey: ["admin-recipes"],
     queryFn: async () => {
@@ -36,63 +51,121 @@ const AdminRecipes = () => {
         .from("recipes")
         .select("*, courses(id, title), modules(id, title)")
         .order("title");
-
       if (error) throw error;
       return data;
     },
   });
 
-  // Fetch courses for filter
   const { data: courses } = useQuery({
     queryKey: ["courses-list"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("courses")
-        .select("id, title")
-        .order("title");
-
+      const { data, error } = await supabase.from("courses").select("id, title").order("title");
       if (error) throw error;
       return data;
     },
   });
 
-  // Fetch recipe ingredient counts
+  const { data: inventoryItems } = useQuery({
+    queryKey: ["inventory-items-for-recipe"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("inventory").select("id, name, unit").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: ingredientCounts } = useQuery({
     queryKey: ["recipe-ingredient-counts"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recipe_ingredients")
-        .select("recipe_id");
-
+      const { data, error } = await supabase.from("recipe_ingredients").select("recipe_id");
       if (error) throw error;
-
       const counts: Record<string, number> = {};
-      data?.forEach((ri) => {
-        counts[ri.recipe_id] = (counts[ri.recipe_id] || 0) + 1;
-      });
+      data?.forEach((ri) => { counts[ri.recipe_id] = (counts[ri.recipe_id] || 0) + 1; });
       return counts;
     },
   });
 
+  const createRecipeMutation = useMutation({
+    mutationFn: async () => {
+      const { data: newRecipe, error } = await supabase
+        .from("recipes")
+        .insert({
+          title: formData.title,
+          recipe_code: formData.recipe_code || null,
+          description: formData.description || null,
+          course_id: formData.course_id,
+          difficulty: formData.difficulty,
+          prep_time: formData.prep_time ? parseInt(formData.prep_time) : null,
+          cook_time: formData.cook_time ? parseInt(formData.cook_time) : null,
+          video_url: formData.video_url || null,
+          instructions: formData.instructions || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      // Add ingredients
+      if (selectedIngredients.length > 0 && newRecipe) {
+        const { error: ingError } = await supabase.from("recipe_ingredients").insert(
+          selectedIngredients.map((ing) => ({
+            recipe_id: newRecipe.id,
+            inventory_id: ing.inventory_id,
+            quantity_per_student: ing.quantity_per_student,
+          }))
+        );
+        if (ingError) throw ingError;
+      }
+      return newRecipe;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-recipes"] });
+      queryClient.invalidateQueries({ queryKey: ["recipe-ingredient-counts"] });
+      toast({ title: "Recipe created successfully" });
+      setIsAddDialogOpen(false);
+      resetForm();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({
+      title: "", recipe_code: "", description: "", course_id: "",
+      difficulty: "Easy", prep_time: "", cook_time: "", video_url: "", instructions: "",
+    });
+    setSelectedIngredients([]);
+  };
+
+  const addIngredient = () => {
+    setSelectedIngredients([...selectedIngredients, { inventory_id: "", quantity_per_student: 0 }]);
+  };
+
+  const updateIngredient = (index: number, field: string, value: any) => {
+    setSelectedIngredients((prev) =>
+      prev.map((ing, i) => (i === index ? { ...ing, [field]: value } : ing))
+    );
+  };
+
+  const removeIngredient = (index: number) => {
+    setSelectedIngredients((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const filteredRecipes = recipes?.filter((recipe) => {
     const matchesSearch =
       recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCourse =
-      courseFilter === "all" || recipe.course_id === courseFilter;
+      recipe.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (recipe as any).recipe_code?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCourse = courseFilter === "all" || recipe.course_id === courseFilter;
     return matchesSearch && matchesCourse;
   });
 
   const getDifficultyColor = (difficulty: string | null) => {
     switch (difficulty?.toLowerCase()) {
-      case "easy":
-        return "bg-green-500";
-      case "medium":
-        return "bg-yellow-500";
-      case "hard":
-        return "bg-red-500";
-      default:
-        return "bg-muted";
+      case "easy": return "bg-green-500";
+      case "medium": return "bg-yellow-500";
+      case "hard": return "bg-red-500";
+      default: return "bg-muted";
     }
   };
 
@@ -117,12 +190,186 @@ const AdminRecipes = () => {
             <h1 className="text-4xl font-bold text-foreground mb-2">Recipe Library</h1>
             <p className="text-muted-foreground">Manage all recipes and their ingredients</p>
           </div>
-          <Button asChild>
-            <Link to="/admin/recipe-ingredients">
-              <Package className="h-4 w-4 mr-2" />
-              Manage Ingredients
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" onClick={resetForm}>
+                  <Plus className="h-4 w-4" />
+                  Add New Recipe
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Recipe</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Recipe Title *</Label>
+                      <Input
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="e.g., Apple Pie"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Recipe Code</Label>
+                      <Input
+                        value={formData.recipe_code}
+                        onChange={(e) => setFormData({ ...formData, recipe_code: e.target.value })}
+                        placeholder="e.g., RCP-001"
+                        maxLength={20}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Course *</Label>
+                    <Select value={formData.course_id} onValueChange={(v) => setFormData({ ...formData, course_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select course" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courses?.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Recipe description..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Difficulty</Label>
+                      <Select value={formData.difficulty} onValueChange={(v) => setFormData({ ...formData, difficulty: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Easy">Easy</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="Hard">Hard</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Prep Time (min)</Label>
+                      <Input
+                        type="number"
+                        value={formData.prep_time}
+                        onChange={(e) => setFormData({ ...formData, prep_time: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cook Time (min)</Label>
+                      <Input
+                        type="number"
+                        value={formData.cook_time}
+                        onChange={(e) => setFormData({ ...formData, cook_time: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Youtube className="h-4 w-4 text-red-500" />
+                      YouTube Video URL
+                    </Label>
+                    <Input
+                      value={formData.video_url}
+                      onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      maxLength={500}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Instructions</Label>
+                    <Textarea
+                      value={formData.instructions}
+                      onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                      placeholder="Step by step instructions..."
+                      className="min-h-[100px]"
+                      maxLength={5000}
+                    />
+                  </div>
+
+                  {/* Ingredients Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        Ingredients (from Inventory)
+                      </Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addIngredient} className="gap-1">
+                        <Plus className="h-3 w-3" /> Add Ingredient
+                      </Button>
+                    </div>
+                    {selectedIngredients.length > 0 ? (
+                      <div className="space-y-2 border rounded-md p-3">
+                        {selectedIngredients.map((ing, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <Select
+                              value={ing.inventory_id}
+                              onValueChange={(v) => updateIngredient(idx, "inventory_id", v)}
+                            >
+                              <SelectTrigger className="flex-1">
+                                <SelectValue placeholder="Select ingredient" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {inventoryItems?.map((item) => (
+                                  <SelectItem key={item.id} value={item.id}>
+                                    {item.name} ({item.unit})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              type="number"
+                              placeholder="Qty/student"
+                              className="w-32"
+                              value={ing.quantity_per_student || ""}
+                              onChange={(e) => updateIngredient(idx, "quantity_per_student", Number(e.target.value))}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive h-8 w-8"
+                              onClick={() => removeIngredient(idx)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No ingredients added yet</p>
+                    )}
+                  </div>
+
+                  <Button
+                    className="w-full"
+                    onClick={() => createRecipeMutation.mutate()}
+                    disabled={!formData.title || !formData.course_id || createRecipeMutation.isPending}
+                  >
+                    {createRecipeMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
+                    ) : (
+                      "Create Recipe"
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button variant="outline" asChild>
+              <Link to="/admin/recipe-ingredients">
+                <Package className="h-4 w-4 mr-2" />
+                Manage Ingredients
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -131,7 +378,7 @@ const AdminRecipes = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search recipes..."
+                placeholder="Search recipes by name or code..."
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -144,9 +391,7 @@ const AdminRecipes = () => {
               <SelectContent>
                 <SelectItem value="all">All Courses</SelectItem>
                 {courses?.map((course) => (
-                  <SelectItem key={course.id} value={course.id}>
-                    {course.title}
-                  </SelectItem>
+                  <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -161,16 +406,24 @@ const AdminRecipes = () => {
               className="overflow-hidden border-border/60 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => setSelectedRecipe(recipe)}
             >
-              <div className="h-40 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+              <div className="h-40 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center relative">
                 <ChefHat className="h-16 w-16 text-primary/50" />
+                {recipe.video_url && (
+                  <Badge className="absolute top-2 right-2 bg-red-500 gap-1">
+                    <Youtube className="h-3 w-3" /> Video
+                  </Badge>
+                )}
               </div>
               <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold">{recipe.title}</h3>
+                  <div>
+                    <h3 className="font-semibold">{recipe.title}</h3>
+                    {(recipe as any).recipe_code && (
+                      <span className="text-xs text-muted-foreground font-mono">{(recipe as any).recipe_code}</span>
+                    )}
+                  </div>
                   {recipe.difficulty && (
-                    <Badge className={getDifficultyColor(recipe.difficulty)}>
-                      {recipe.difficulty}
-                    </Badge>
+                    <Badge className={getDifficultyColor(recipe.difficulty)}>{recipe.difficulty}</Badge>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
@@ -178,16 +431,10 @@ const AdminRecipes = () => {
                 </p>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   {recipe.prep_time && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Prep: {recipe.prep_time}m
-                    </span>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Prep: {recipe.prep_time}m</span>
                   )}
                   {recipe.cook_time && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Cook: {recipe.cook_time}m
-                    </span>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Cook: {recipe.cook_time}m</span>
                   )}
                 </div>
                 <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
@@ -206,9 +453,7 @@ const AdminRecipes = () => {
           <Card className="p-8 text-center">
             <ChefHat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No recipes found</h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search or filter criteria
-            </p>
+            <p className="text-muted-foreground">Try adjusting your search or filter criteria</p>
           </Card>
         )}
 
@@ -219,35 +464,28 @@ const AdminRecipes = () => {
               <DialogTitle className="flex items-center gap-2">
                 <ChefHat className="h-5 w-5 text-primary" />
                 {selectedRecipe?.title}
+                {(selectedRecipe as any)?.recipe_code && (
+                  <Badge variant="outline" className="font-mono text-xs">{(selectedRecipe as any).recipe_code}</Badge>
+                )}
               </DialogTitle>
             </DialogHeader>
-
             <div className="space-y-6 py-4">
               {selectedRecipe?.video_url && (
                 <VideoPlayer videoUrl={selectedRecipe.video_url} title={selectedRecipe.title} />
               )}
-
               <div className="flex flex-wrap gap-3">
                 {selectedRecipe?.difficulty && (
-                  <Badge className={getDifficultyColor(selectedRecipe.difficulty)}>
-                    {selectedRecipe.difficulty}
-                  </Badge>
+                  <Badge className={getDifficultyColor(selectedRecipe.difficulty)}>{selectedRecipe.difficulty}</Badge>
                 )}
-                {selectedRecipe?.prep_time && (
-                  <Badge variant="outline">Prep: {selectedRecipe.prep_time} min</Badge>
-                )}
-                {selectedRecipe?.cook_time && (
-                  <Badge variant="outline">Cook: {selectedRecipe.cook_time} min</Badge>
-                )}
+                {selectedRecipe?.prep_time && <Badge variant="outline">Prep: {selectedRecipe.prep_time} min</Badge>}
+                {selectedRecipe?.cook_time && <Badge variant="outline">Cook: {selectedRecipe.cook_time} min</Badge>}
               </div>
-
               {selectedRecipe?.description && (
                 <div>
                   <h4 className="font-semibold mb-2">Description</h4>
                   <p className="text-muted-foreground">{selectedRecipe.description}</p>
                 </div>
               )}
-
               {selectedRecipe?.ingredients && (
                 <div>
                   <h4 className="font-semibold mb-2">Ingredients</h4>
@@ -258,13 +496,10 @@ const AdminRecipes = () => {
                   </ul>
                 </div>
               )}
-
               {selectedRecipe?.instructions && (
                 <div>
                   <h4 className="font-semibold mb-2">Instructions</h4>
-                  <div className="prose prose-sm text-muted-foreground whitespace-pre-line">
-                    {selectedRecipe.instructions}
-                  </div>
+                  <div className="prose prose-sm text-muted-foreground whitespace-pre-line">{selectedRecipe.instructions}</div>
                 </div>
               )}
             </div>

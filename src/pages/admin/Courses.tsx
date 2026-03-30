@@ -375,11 +375,14 @@ const Courses = () => {
                 <div
                   key={recipe.id}
                   className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                  onClick={() => toggleRecipe(recipe.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleRecipe(recipe.id);
+                  }}
                 >
                   <Checkbox
                     checked={selectedRecipeIds.includes(recipe.id)}
-                    onCheckedChange={() => toggleRecipe(recipe.id)}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{recipe.title}</p>

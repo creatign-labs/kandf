@@ -432,28 +432,62 @@ const Batches = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="time_slot">Time Slot</Label>
-                      <Input
-                        id="time_slot"
-                        placeholder="e.g., 9:00 AM - 12:00 PM"
-                        value={formData.time_slot}
-                        onChange={(e) =>
-                          setFormData(prev => ({ ...prev, time_slot: e.target.value }))
-                        }
-                      />
+                  <div className="space-y-2">
+                    <Label>Time Slot</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Start Time</span>
+                        <Select value={startTime} onValueChange={setStartTime}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Start time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIME_OPTIONS.map((t) => (
+                              <SelectItem key={`start-${t}`} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">End Time</span>
+                        <Select value={endTime} onValueChange={setEndTime}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="End time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIME_OPTIONS.map((t) => (
+                              <SelectItem key={`end-${t}`} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="days">Days</Label>
-                      <Input
-                        id="days"
-                        placeholder="e.g., Mon, Wed, Fri"
-                        value={formData.days}
-                        onChange={(e) =>
-                          setFormData(prev => ({ ...prev, days: e.target.value }))
-                        }
-                      />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Days</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {WEEK_DAYS.map((day) => {
+                        const isSelected = selectedDays.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() =>
+                              setSelectedDays((prev) =>
+                                isSelected ? prev.filter((d) => d !== day) : [...prev, day]
+                              )
+                            }
+                            className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-foreground border-border hover:bg-muted"
+                            }`}
+                          >
+                            {day.slice(0, 3)}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 

@@ -1,0 +1,1 @@
+DELETE FROM student_access_approvals WHERE student_id NOT IN (SELECT id FROM profiles);

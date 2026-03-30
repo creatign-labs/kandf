@@ -461,6 +461,18 @@ const AdminDashboard = () => {
                     Student Payment Status
                   </Link>
                 </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/required-daily-ingredients">
+                    <Utensils className="h-4 w-4 mr-2" />
+                    Required Daily Ingredients
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/attendance-management">
+                    <ClipboardCheck className="h-4 w-4 mr-2" />
+                    Attendance Management
+                  </Link>
+                </Button>
               </div>
             </Card>
 

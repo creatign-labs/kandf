@@ -120,11 +120,13 @@ const Batches = () => {
 
         if (error) throw error;
       } else {
+        const timeSlot = startTime && endTime ? `${startTime} - ${endTime}` : formData.time_slot;
+        const days = selectedDays.length > 0 ? selectedDays.join(", ") : formData.days;
         const { error } = await supabase.from("batches").insert({
           batch_name: formData.batch_name,
           course_id: formData.course_id,
-          time_slot: formData.time_slot,
-          days: formData.days,
+          time_slot: timeSlot,
+          days: days,
           total_seats: formData.total_seats,
           available_seats: formData.total_seats,
           start_date: formData.start_date || null,

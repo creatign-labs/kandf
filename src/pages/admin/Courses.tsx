@@ -224,6 +224,7 @@ const Courses = () => {
     setEditingCourse(course);
     setFormData({
       title: course.title,
+      course_code: course.course_code || "",
       description: course.description,
       duration: course.duration,
       level: course.level,

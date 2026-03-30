@@ -55,6 +55,7 @@ const StudentApprovals = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editStatus, setEditStatus] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const queryClient = useQueryClient();
 
   // Check if current user is super_admin

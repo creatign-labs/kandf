@@ -210,6 +210,7 @@ const Courses = () => {
   const resetForm = () => {
     setFormData({
       title: "",
+      course_code: "",
       description: "",
       duration: "",
       level: "Beginner",

@@ -155,6 +155,7 @@ const Courses = () => {
         .from("courses")
         .update({
           title: data.title,
+          course_code: data.course_code || null,
           description: data.description,
           duration: data.duration,
           level: data.level,

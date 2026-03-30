@@ -465,6 +465,7 @@ export type Database = {
       courses: {
         Row: {
           base_fee: number
+          course_code: string | null
           created_at: string
           description: string
           duration: string
@@ -477,6 +478,7 @@ export type Database = {
         }
         Insert: {
           base_fee: number
+          course_code?: string | null
           created_at?: string
           description: string
           duration: string
@@ -489,6 +491,7 @@ export type Database = {
         }
         Update: {
           base_fee?: number
+          course_code?: string | null
           created_at?: string
           description?: string
           duration?: string

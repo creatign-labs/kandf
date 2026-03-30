@@ -69,6 +69,7 @@ const Students = () => {
   const [editStatus, setEditStatus] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [credentialsStudent, setCredentialsStudent] = useState<any>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Sync tab from URL
   useEffect(() => {
@@ -807,6 +808,7 @@ const Students = () => {
             <div className="pt-4 border-t flex gap-2">
               <Button
                 className="flex-1 gap-2"
+                disabled={sendingEmail}
                 onClick={async () => {
                   const name = `${selectedStudent?.profile?.first_name} ${selectedStudent?.profile?.last_name}`;
                   const email = selectedStudent?.profile?.email;
@@ -814,6 +816,7 @@ const Students = () => {
                     toast({ title: "No email found", description: "Student has no email address on file.", variant: "destructive" });
                     return;
                   }
+                  setSendingEmail(true);
                   try {
                     const { studentCredentialsEmail } = await import("@/lib/emailTemplates");
                     const html = studentCredentialsEmail({
@@ -832,19 +835,24 @@ const Students = () => {
                       },
                     });
                     if (error) {
+                      console.error('Send email error:', error);
                       throw new Error(data?.error || error.message || 'Failed to send email');
                     }
                     if (!data?.success) {
+                      console.error('Send email response:', data);
                       throw new Error(data?.error || 'Failed to send email');
                     }
                     toast({ title: "Email sent!", description: `Credentials sent to ${email}` });
                   } catch (err: any) {
-                    toast({ title: "Email failed", description: err.message, variant: "destructive" });
+                    console.error('Share via email catch:', err);
+                    toast({ title: "Email failed", description: err.message || "An unexpected error occurred", variant: "destructive" });
+                  } finally {
+                    setSendingEmail(false);
                   }
                 }}
               >
-                <Mail className="h-4 w-4" />
-                Share via Email
+                {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                {sendingEmail ? "Sending..." : "Share via Email"}
               </Button>
               <Button
                 variant="outline"

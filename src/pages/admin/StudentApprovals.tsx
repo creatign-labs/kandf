@@ -55,6 +55,7 @@ const StudentApprovals = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editStatus, setEditStatus] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const queryClient = useQueryClient();
 
   // Check if current user is super_admin
@@ -531,11 +532,13 @@ const StudentApprovals = () => {
               <div className="pt-4 border-t">
                 <Button 
                   className="w-full gap-2"
+                  disabled={sendingEmail}
                   onClick={async () => {
                     if (!selectedStudent?.profile?.email) {
                       toast({ title: "No email found", description: "Student has no email address on file.", variant: "destructive" });
                       return;
                     }
+                    setSendingEmail(true);
                     try {
                       const { studentCredentialsEmail } = await import("@/lib/emailTemplates");
                       const html = studentCredentialsEmail({
@@ -546,22 +549,32 @@ const StudentApprovals = () => {
                         courseName: selectedStudent.advance_payments?.courses?.title,
                         loginUrl: `${window.location.origin}/login`,
                       });
-                      const { error } = await supabase.functions.invoke("send-email", {
+                      const { data, error } = await supabase.functions.invoke("send-email", {
                         body: {
                           to: selectedStudent.profile.email,
                           subject: "Your Knead & Frost Student Credentials",
                           html,
                         },
                       });
-                      if (error) throw error;
+                      if (error) {
+                        console.error('Send email error:', error);
+                        throw new Error(data?.error || error.message || 'Failed to send email');
+                      }
+                      if (!data?.success) {
+                        console.error('Send email response:', data);
+                        throw new Error(data?.error || 'Failed to send email');
+                      }
                       toast({ title: "Email Sent", description: `Credentials sent to ${selectedStudent.profile.email}` });
                     } catch (err: any) {
+                      console.error('Share via email catch:', err);
                       toast({ title: "Email Failed", description: err.message || "Could not send email", variant: "destructive" });
+                    } finally {
+                      setSendingEmail(false);
                     }
                   }}
                 >
-                  <Mail className="h-4 w-4" />
-                  Share via Email
+                  {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                  {sendingEmail ? "Sending..." : "Share via Email"}
                 </Button>
               </div>
             </div>

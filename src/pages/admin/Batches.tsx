@@ -248,6 +248,9 @@ const Batches = () => {
       start_date: "",
     });
     setEditingBatch(null);
+    setSelectedDays([]);
+    setStartTime("");
+    setEndTime("");
   };
 
   const handleEdit = (batch: any) => {

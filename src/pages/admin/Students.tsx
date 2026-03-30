@@ -299,10 +299,12 @@ const Students = () => {
     };
   }, [enrollments]);
 
-  const pendingCount = pendingApprovals?.filter(a => a.status === "pending").length || 0;
-  const approvedCount = pendingApprovals?.filter(a => a.status === "approved").length || 0;
-  const rejectedCount = pendingApprovals?.filter(a => a.status === "rejected").length || 0;
-  const awaitingCount = pendingApprovals?.length || 0;
+  // Only count approvals that have a valid profile (not orphaned)
+  const validApprovals = pendingApprovals?.filter(a => a.profile) || [];
+  const pendingCount = validApprovals.filter(a => a.status === "pending").length;
+  const approvedCount = validApprovals.filter(a => a.status === "approved").length;
+  const rejectedCount = validApprovals.filter(a => a.status === "rejected").length;
+  const awaitingCount = validApprovals.length;
 
   const getStatusColor = (status: string) => {
     switch (status) {

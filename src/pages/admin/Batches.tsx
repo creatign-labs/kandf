@@ -34,9 +34,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
+const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+
+const TIME_OPTIONS = [
+  "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM",
+  "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM", "12:00 AM",
+];
+
 const Batches = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any>(null);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [formData, setFormData] = useState({
     batch_name: "",
     course_id: "",
@@ -93,13 +103,15 @@ const Batches = () => {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (editingBatch) {
+        const timeSlot = startTime && endTime ? `${startTime} - ${endTime}` : formData.time_slot;
+        const days = selectedDays.length > 0 ? selectedDays.join(", ") : formData.days;
         const { error } = await supabase
           .from("batches")
           .update({
             batch_name: formData.batch_name,
             course_id: formData.course_id,
-            time_slot: formData.time_slot,
-            days: formData.days,
+            time_slot: timeSlot,
+            days: days,
             total_seats: formData.total_seats,
             available_seats: formData.total_seats - (editingBatch.enrolled_count || 0),
             start_date: formData.start_date || null,
@@ -108,11 +120,13 @@ const Batches = () => {
 
         if (error) throw error;
       } else {
+        const timeSlot = startTime && endTime ? `${startTime} - ${endTime}` : formData.time_slot;
+        const days = selectedDays.length > 0 ? selectedDays.join(", ") : formData.days;
         const { error } = await supabase.from("batches").insert({
           batch_name: formData.batch_name,
           course_id: formData.course_id,
-          time_slot: formData.time_slot,
-          days: formData.days,
+          time_slot: timeSlot,
+          days: days,
           total_seats: formData.total_seats,
           available_seats: formData.total_seats,
           start_date: formData.start_date || null,
@@ -234,6 +248,9 @@ const Batches = () => {
       start_date: "",
     });
     setEditingBatch(null);
+    setSelectedDays([]);
+    setStartTime("");
+    setEndTime("");
   };
 
   const handleEdit = (batch: any) => {
@@ -246,6 +263,13 @@ const Batches = () => {
       total_seats: batch.total_seats,
       start_date: batch.start_date || "",
     });
+    // Parse time slot back into start/end
+    const timeParts = batch.time_slot?.split(" - ") || [];
+    setStartTime(timeParts[0] || "");
+    setEndTime(timeParts[1] || "");
+    // Parse days back into selected array
+    const daysParsed = batch.days?.split(", ").filter((d: string) => WEEK_DAYS.includes(d as any)) || [];
+    setSelectedDays(daysParsed);
     setIsDialogOpen(true);
   };
 
@@ -408,28 +432,62 @@ const Batches = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="time_slot">Time Slot</Label>
-                      <Input
-                        id="time_slot"
-                        placeholder="e.g., 9:00 AM - 12:00 PM"
-                        value={formData.time_slot}
-                        onChange={(e) =>
-                          setFormData(prev => ({ ...prev, time_slot: e.target.value }))
-                        }
-                      />
+                  <div className="space-y-2">
+                    <Label>Time Slot</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Start Time</span>
+                        <Select value={startTime} onValueChange={setStartTime}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Start time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIME_OPTIONS.map((t) => (
+                              <SelectItem key={`start-${t}`} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">End Time</span>
+                        <Select value={endTime} onValueChange={setEndTime}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="End time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIME_OPTIONS.map((t) => (
+                              <SelectItem key={`end-${t}`} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="days">Days</Label>
-                      <Input
-                        id="days"
-                        placeholder="e.g., Mon, Wed, Fri"
-                        value={formData.days}
-                        onChange={(e) =>
-                          setFormData(prev => ({ ...prev, days: e.target.value }))
-                        }
-                      />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Days</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {WEEK_DAYS.map((day) => {
+                        const isSelected = selectedDays.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() =>
+                              setSelectedDays((prev) =>
+                                isSelected ? prev.filter((d) => d !== day) : [...prev, day]
+                              )
+                            }
+                            className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-foreground border-border hover:bg-muted"
+                            }`}
+                          >
+                            {day.slice(0, 3)}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -467,7 +525,7 @@ const Batches = () => {
                     disabled={
                       !formData.batch_name ||
                       !formData.course_id ||
-                      !formData.time_slot ||
+                      (!startTime || !endTime) ||
                       saveMutation.isPending
                     }
                   >

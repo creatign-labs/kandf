@@ -276,11 +276,14 @@ const Students = () => {
   // Awaiting tab filters
   const filteredApprovals = useMemo(() => {
     if (!pendingApprovals) return [];
+    // Filter out orphaned records where profile no longer exists
     return pendingApprovals.filter(approval => {
-      const matchesSearch = 
-        approval.profile?.first_name?.toLowerCase().includes(awaitingSearch.toLowerCase()) ||
-        approval.profile?.last_name?.toLowerCase().includes(awaitingSearch.toLowerCase()) ||
-        approval.profile?.phone?.includes(awaitingSearch);
+      if (!approval.profile) return false;
+      const searchLower = awaitingSearch.toLowerCase();
+      const matchesSearch = !awaitingSearch ||
+        (approval.profile?.first_name?.toLowerCase().includes(searchLower)) ||
+        (approval.profile?.last_name?.toLowerCase().includes(searchLower)) ||
+        (approval.profile?.phone?.includes(awaitingSearch));
       const matchesStatus = approvalStatusFilter === "all" || approval.status === approvalStatusFilter;
       return matchesSearch && matchesStatus;
     });

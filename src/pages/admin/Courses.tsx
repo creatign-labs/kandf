@@ -265,13 +265,8 @@ const Courses = () => {
 
   // Filter recipes for selection - exclude recipes already linked to other courses
   const availableRecipes = allRecipes?.filter((recipe) => {
-    // Include if: no course_id, or is being edited and belongs to this course, or is already selected
-    const isAvailable = !recipe.course_id || 
-      (editingCourse && recipe.course_id === editingCourse.id) ||
-      selectedRecipeIds.includes(recipe.id);
-    
     const matchesSearch = recipe.title.toLowerCase().includes(recipeSearchQuery.toLowerCase());
-    return isAvailable && matchesSearch;
+    return matchesSearch;
   }) || [];
 
   const toggleRecipe = (recipeId: string) => {

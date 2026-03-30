@@ -116,6 +116,7 @@ const Courses = () => {
       // Create the course first
       const { data: newCourse, error } = await supabase.from("courses").insert({
         title: data.title,
+        course_code: data.course_code || null,
         description: data.description,
         duration: data.duration,
         level: data.level,

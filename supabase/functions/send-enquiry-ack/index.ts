@@ -53,9 +53,10 @@ Deno.serve(async (req) => {
       </div>
       <div class="body">
         <h2>Hi ${name || "there"},</h2>
-        <p>Thank you for contacting <strong>Knead & Frost</strong>! We have received your enquiry and our team will get in touch with you shortly.</p>
-        <p>We typically respond within 24 hours during business days. In the meantime, feel free to explore our courses on our website.</p>
-        <p>Warm regards,<br/><strong>The Knead & Frost Team</strong></p>
+        <p>Thanks for showing interest in <strong>Knead & Frost Academy</strong>!</p>
+        <p>Our team will contact you shortly to help you with your enquiry and guide you through our courses and programs.</p>
+        <p>We look forward to being a part of your baking journey!</p>
+        <p>Warm regards,<br/><strong>The Knead & Frost Academy Team</strong></p>
       </div>
       <div class="footer">
         <p>This is an automated message from Knead & Frost. Please do not reply.</p>

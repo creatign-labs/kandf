@@ -196,18 +196,25 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
               <span className="font-medium">{selectedSlot.timeSlot}</span>
             </div>
           </div>
-          <Button 
-            size="lg" 
-            className="w-full" 
-            onClick={handleBooking}
-            disabled={bookMutation.isPending}
-          >
-            {bookMutation.isPending ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Booking...</>
-            ) : (
-              'Confirm Booking'
-            )}
-          </Button>
+          {bookMutation.isSuccess ? (
+            <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 font-semibold">
+              <CheckCircle className="h-5 w-5" />
+              Booking Confirmed!
+            </div>
+          ) : (
+            <Button 
+              size="lg" 
+              className="w-full" 
+              onClick={handleBooking}
+              disabled={bookMutation.isPending}
+            >
+              {bookMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Booking...</>
+              ) : (
+                'Confirm Booking'
+              )}
+            </Button>
+          )}
         </Card>
       )}
     </div>

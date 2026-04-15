@@ -382,6 +382,7 @@ const Courses = () => {
                   }}
                 >
                   <Checkbox
+                    type="button"
                     checked={selectedRecipeIds.includes(recipe.id)}
                     onCheckedChange={() => toggleRecipe(recipe.id)}
                     onClick={(e) => e.stopPropagation()}

@@ -383,6 +383,9 @@ const Courses = () => {
                 >
                   <Checkbox
                     checked={selectedRecipeIds.includes(recipe.id)}
+                    onCheckedChange={() => toggleRecipe(recipe.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.preventDefault()}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{recipe.title}</p>

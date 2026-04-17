@@ -120,7 +120,15 @@ Deno.serve(async (req) => {
       enrollmentStatus: string 
     }> = [];
 
-    const courseId = 'a1111111-1111-1111-1111-111111111111'; // Foundation Baking
+    // Find any existing course dynamically (no hardcoded UUIDs).
+    // If no course exists yet, demo enrollments / chef specializations / future batches are skipped.
+    const { data: anyCourse } = await supabaseAdmin
+      .from('courses')
+      .select('id')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const courseId: string | null = anyCourse?.id ?? null;
 
     for (const user of demoUsers) {
       // Create auth user with confirmed email
@@ -157,8 +165,8 @@ Deno.serve(async (req) => {
           }, { onConflict: 'user_id,role' });
         }
 
-        // Create enrollment for student that needs it
-        if (user.needsEnrollment) {
+        // Create enrollment for student that needs it (only if a course exists)
+        if (user.needsEnrollment && courseId) {
           // First, ensure we have a future batch
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
@@ -191,8 +199,8 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Add chef specializations if chef
-        if (user.roles.includes('chef')) {
+        // Add chef specializations if chef (only if a course exists)
+        if (user.roles.includes('chef') && courseId) {
           const recipes = await supabaseAdmin
             .from('recipes')
             .select('id')
@@ -252,9 +260,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create future batches for booking tests (next 7 days)
+    // Create future batches for booking tests (next 7 days) — only if a course exists
     const futureBatches = [];
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; courseId && i <= 7; i++) {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + i);
       const dateStr = futureDate.toISOString().split('T')[0];

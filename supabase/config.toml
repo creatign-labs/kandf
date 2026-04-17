@@ -62,3 +62,12 @@ verify_jwt = false
 
 [functions.send-enquiry-ack]
 verify_jwt = false
+
+[functions.clear-sample-data]
+verify_jwt = false
+
+[functions.export-database-snapshot]
+verify_jwt = false
+
+[functions.import-real-users]
+verify_jwt = false

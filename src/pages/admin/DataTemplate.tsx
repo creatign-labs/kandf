@@ -3,11 +3,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Download, FileSpreadsheet, Check, Upload, AlertCircle, Loader2, CheckCircle2, Trash2, RefreshCw, Database } from "lucide-react";
+import { Copy, Download, FileSpreadsheet, Check, Upload, AlertCircle, Loader2, CheckCircle2, Trash2, RefreshCw, Database, Users, Archive, ShieldAlert } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import * as XLSX from "xlsx";
+import JSZip from "jszip";
 
 interface TemplateSection {
   title: string;
@@ -29,8 +31,8 @@ const templates: TemplateSection[] = [
       "level: Beginner, Intermediate, or Advanced",
       "duration: e.g., '3 months', '6 weeks'",
       "base_fee: Number only (no currency symbol)",
-      "image_url: Optional - full URL to course image"
-    ]
+      "image_url: Optional — full URL to course image",
+    ],
   },
   {
     title: "Modules",
@@ -38,10 +40,7 @@ const templates: TemplateSection[] = [
     description: "Course modules - create after courses",
     headers: ["course_title", "title", "description", "order_index"],
     example: ["Foundation Baking", "Introduction to Baking", "Learn the basics of baking equipment and ingredients", "1"],
-    notes: [
-      "course_title: Must match exactly with course title",
-      "order_index: Number starting from 1"
-    ]
+    notes: ["course_title: Must match exactly with course title", "order_index: Number starting from 1"],
   },
   {
     title: "Recipes",
@@ -49,24 +48,24 @@ const templates: TemplateSection[] = [
     description: "Recipe library - create after modules",
     headers: ["course_title", "module_title", "title", "description", "difficulty", "prep_time", "cook_time", "ingredients", "instructions", "video_url"],
     example: [
-      "Foundation Baking", 
-      "Introduction to Baking", 
-      "Classic Chocolate Chip Cookies", 
-      "Learn to make perfect cookies every time", 
-      "Easy", 
-      "15", 
-      "12", 
+      "Foundation Baking",
+      "Introduction to Baking",
+      "Classic Chocolate Chip Cookies",
+      "Learn to make perfect cookies every time",
+      "Easy",
+      "15",
+      "12",
       "200g flour;100g butter;150g sugar;100g chocolate chips;1 egg;1 tsp vanilla",
       "1. Preheat oven to 180°C|2. Cream butter and sugar|3. Add egg and vanilla|4. Mix in flour|5. Fold in chocolate chips|6. Bake for 12 minutes",
-      "https://youtube.com/watch?v=example"
+      "https://youtube.com/watch?v=example",
     ],
     notes: [
       "difficulty: Easy, Medium, or Hard",
       "prep_time/cook_time: Minutes (number only)",
       "ingredients: Separate with semicolons (;)",
       "instructions: Separate steps with pipes (|)",
-      "video_url: Optional - YouTube or other video URL"
-    ]
+      "video_url: Optional — YouTube or other video URL",
+    ],
   },
   {
     title: "Assessments",
@@ -74,10 +73,7 @@ const templates: TemplateSection[] = [
     description: "Quiz assessments - create after modules",
     headers: ["course_title", "module_title", "title", "description", "duration_minutes", "passing_score"],
     example: ["Foundation Baking", "Introduction to Baking", "Module 1 Quiz", "Test your knowledge of baking basics", "30", "60"],
-    notes: [
-      "duration_minutes: Time allowed in minutes",
-      "passing_score: Minimum percentage to pass (0-100)"
-    ]
+    notes: ["duration_minutes: Time allowed in minutes", "passing_score: Minimum percentage to pass (0-100)"],
   },
   {
     title: "Questions",
@@ -85,10 +81,7 @@ const templates: TemplateSection[] = [
     description: "Quiz questions - create after assessments",
     headers: ["assessment_title", "question_text", "option_1", "option_2", "option_3", "option_4", "correct_answer", "points"],
     example: ["Module 1 Quiz", "What temperature should butter be for creaming?", "Frozen", "Cold from fridge", "Room temperature", "Melted", "Room temperature", "1"],
-    notes: [
-      "correct_answer: Must match exactly one of the options",
-      "points: Points awarded for correct answer"
-    ]
+    notes: ["correct_answer: Must match exactly one of the options", "points: Points awarded for correct answer"],
   },
   {
     title: "Inventory",
@@ -96,11 +89,7 @@ const templates: TemplateSection[] = [
     description: "Kitchen inventory items",
     headers: ["name", "category", "unit", "current_stock", "required_stock", "reorder_level", "cost_per_unit"],
     example: ["All-Purpose Flour", "Dry Ingredients", "kg", "50", "100", "20", "45"],
-    notes: [
-      "category: e.g., Dry Ingredients, Dairy, Chocolate, Equipment",
-      "unit: e.g., kg, g, L, ml, pcs",
-      "All numbers without currency symbols"
-    ]
+    notes: ["category: e.g., Dry Ingredients, Dairy, Chocolate, Equipment", "unit: e.g., kg, g, L, ml, pcs", "All numbers without currency symbols"],
   },
   {
     title: "Batches",
@@ -108,11 +97,7 @@ const templates: TemplateSection[] = [
     description: "Course schedule batches",
     headers: ["course_title", "batch_name", "start_date", "days", "time_slot", "total_seats"],
     example: ["Foundation Baking", "January 2025 Morning", "2025-01-15", "Mon-Wed-Fri", "9:00 AM - 12:00 PM", "20"],
-    notes: [
-      "start_date: Format YYYY-MM-DD",
-      "days: e.g., 'Mon-Wed-Fri', 'Tue-Thu', 'Sat-Sun'",
-      "time_slot: e.g., '9:00 AM - 12:00 PM'"
-    ]
+    notes: ["start_date: Format YYYY-MM-DD", "days: e.g., 'Mon-Wed-Fri', 'Tue-Thu', 'Sat-Sun'", "time_slot: e.g., '9:00 AM - 12:00 PM'"],
   },
   {
     title: "Jobs",
@@ -120,35 +105,47 @@ const templates: TemplateSection[] = [
     description: "Job postings for students",
     headers: ["title", "company", "location", "type", "salary_range", "description", "requirement_1", "requirement_2", "requirement_3", "requirement_4"],
     example: ["Pastry Chef", "Grand Hotel", "Mumbai", "Full-time", "₹35,000 - ₹45,000/month", "Looking for a skilled pastry chef to join our team", "2+ years experience", "Baking certification", "Team player", "Creative mindset"],
-    notes: [
-      "type: Full-time, Part-time, or Internship",
-      "requirement columns: Leave empty if not needed"
-    ]
-  }
+    notes: ["type: Full-time, Part-time, or Internship", "requirement columns: Leave empty if not needed"],
+  },
 ];
+
+const usersTemplate: TemplateSection = {
+  title: "Users",
+  tableName: "users",
+  description: "Auth users — creates account + assigns role + emails temp password",
+  headers: ["email", "first_name", "last_name", "phone", "role"],
+  example: ["jane@example.com", "Jane", "Doe", "+91 98765 43210", "student"],
+  notes: [
+    "role: student, chef, admin, super_admin, inventory_manager, or vendor",
+    "phone: Optional",
+    "A 12-char temp password is auto-generated and emailed via Resend",
+  ],
+};
 
 const DataTemplate = () => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
   const [importResults, setImportResults] = useState<Record<string, { success: number; failed: number }>>({});
   const [clearing, setClearing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [tableCounts, setTableCounts] = useState<Record<string, number> | null>(null);
   const [loadingCounts, setLoadingCounts] = useState(false);
+  const [userImporting, setUserImporting] = useState(false);
+  const [userResults, setUserResults] = useState<Array<{ email: string; success: boolean; message: string; emailed?: boolean }> | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const userFileRef = useRef<HTMLInputElement | null>(null);
 
   const fetchTableCounts = async () => {
     setLoadingCounts(true);
     try {
-      const tables = ['courses', 'modules', 'recipes', 'assessments', 'questions', 'inventory', 'batches', 'jobs'] as const;
+      const tables = ["courses", "modules", "recipes", "assessments", "questions", "inventory", "batches", "jobs"] as const;
       const counts: Record<string, number> = {};
-      
-      await Promise.all(tables.map(async (table) => {
-        const { count, error } = await supabase
-          .from(table)
-          .select('*', { count: 'exact', head: true });
-        counts[table] = error ? -1 : (count ?? 0);
-      }));
-      
+      await Promise.all(
+        tables.map(async (table) => {
+          const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true });
+          counts[table] = error ? -1 : count ?? 0;
+        }),
+      );
       setTableCounts(counts);
     } catch {
       toast.error("Failed to fetch record counts");
@@ -161,7 +158,47 @@ const DataTemplate = () => {
     fetchTableCounts();
   }, []);
 
-  const handleClearDemoData = async () => {
+  const handleBackup = async () => {
+    setExporting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke("export-database-snapshot", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Export failed");
+
+      const zip = new JSZip();
+      const tables = data.tables as Record<string, { csv: string; rowCount: number; error?: string }>;
+      const summary: string[] = ["table,row_count,error"];
+      for (const [table, info] of Object.entries(tables)) {
+        if (info.csv) zip.file(`${table}.csv`, info.csv);
+        summary.push(`${table},${info.rowCount},${info.error || ""}`);
+      }
+      zip.file("_summary.csv", summary.join("\n"));
+      zip.file("_timestamp.txt", data.timestamp);
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `kandf-backup-${new Date().toISOString().split("T")[0]}-${Date.now()}.zip`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Backup downloaded successfully");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to export";
+      toast.error(msg);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleClearSampleData = async (dryRun: boolean) => {
     setClearing(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -169,17 +206,46 @@ const DataTemplate = () => {
         toast.error("Not authenticated");
         return;
       }
+      const { data, error } = await supabase.functions.invoke("clear-sample-data", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { dryRun },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Clear failed");
 
+      if (dryRun) {
+        const tc = data.tableCounts as Record<string, number>;
+        const totalRows = Object.values(tc).reduce((a, b) => a + (b > 0 ? b : 0), 0);
+        toast.success(`Dry run: would delete ${totalRows} rows + ${data.usersToDelete} users (preserving ${data.preservedDemoUsers} @demo.com users)`, { duration: 8000 });
+      } else {
+        const tc = data.tableCounts as Record<string, number>;
+        const totalDeleted = Object.values(tc).filter((v) => v > 0).reduce((a, b) => a + b, 0);
+        toast.success(`Cleared ${totalDeleted} rows + ${data.deletedUsers} users (preserved ${data.preservedDemoUsers} @demo.com)`, { duration: 8000 });
+        setImportResults({});
+        fetchTableCounts();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to clear data";
+      toast.error(msg);
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleClearAllData = async () => {
+    setClearing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Not authenticated");
+        return;
+      }
       const { data, error } = await supabase.functions.invoke("clear-demo-data", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-
       if (error) throw error;
-
       if (data?.success) {
-        const totalDeleted = Object.values(data.deletedCounts as Record<string, number>)
-          .filter((v): v is number => v > 0)
-          .reduce((a, b) => a + b, 0);
+        const totalDeleted = Object.values(data.deletedCounts as Record<string, number>).filter((v): v is number => v > 0).reduce((a, b) => a + b, 0);
         toast.success(`Cleared ${totalDeleted} records across all tables`);
         setImportResults({});
         fetchTableCounts();
@@ -202,11 +268,7 @@ const DataTemplate = () => {
   };
 
   const downloadCSV = (template: TemplateSection) => {
-    const csvContent = [
-      template.headers.join(","),
-      template.example.map(cell => `"${cell.replace(/"/g, '""')}"`).join(",")
-    ].join("\n");
-    
+    const csvContent = [template.headers.join(","), template.example.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -216,104 +278,94 @@ const DataTemplate = () => {
   };
 
   const downloadAllTemplates = () => {
-    templates.forEach(template => {
+    [...templates, usersTemplate].forEach((template) => {
       setTimeout(() => downloadCSV(template), 100);
     });
   };
 
-  const parseCSV = (text: string): string[][] => {
-    const lines = text.split('\n').filter(line => line.trim());
-    return lines.map(line => {
+  // Parse CSV or XLSX file → rows of {header: value}
+  const parseFile = async (file: File): Promise<Record<string, string>[]> => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const buf = await file.arrayBuffer();
+    if (ext === "xlsx" || ext === "xls") {
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+      return json.map((row) => {
+        const out: Record<string, string> = {};
+        for (const [k, v] of Object.entries(row)) out[k.toLowerCase().trim()] = String(v ?? "").trim();
+        return out;
+      });
+    }
+    // CSV
+    const text = new TextDecoder().decode(buf);
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) return [];
+    const parseLine = (line: string): string[] => {
       const result: string[] = [];
-      let current = '';
+      let current = "";
       let inQuotes = false;
-      
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
           if (inQuotes && line[i + 1] === '"') {
             current += '"';
             i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (char === ',' && !inQuotes) {
+          } else inQuotes = !inQuotes;
+        } else if (char === "," && !inQuotes) {
           result.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
+          current = "";
+        } else current += char;
       }
       result.push(current.trim());
       return result;
+    };
+    const headers = parseLine(lines[0]).map((h) => h.toLowerCase().trim());
+    return lines.slice(1).map((line) => {
+      const cells = parseLine(line);
+      const out: Record<string, string> = {};
+      headers.forEach((h, i) => { if (cells[i] !== undefined) out[h] = cells[i]; });
+      return out;
     });
   };
 
   const handleFileUpload = async (template: TemplateSection, file: File) => {
     setImporting(template.tableName);
-    
     try {
-      const text = await file.text();
-      const rows = parseCSV(text);
-      
-      if (rows.length < 2) {
-        toast.error("CSV file must have at least a header row and one data row");
+      const dataRows = await parseFile(file);
+      if (dataRows.length === 0) {
+        toast.error("File must have at least one data row");
         setImporting(null);
         return;
       }
 
-      const headers = rows[0].map(h => h.toLowerCase().trim());
-      const dataRows = rows.slice(1);
-      
       let successCount = 0;
       let failedCount = 0;
-
-      for (const row of dataRows) {
+      for (const rowData of dataRows) {
         try {
-          const rowData: Record<string, string> = {};
-          headers.forEach((header, index) => {
-            if (row[index] !== undefined && row[index] !== '') {
-              rowData[header] = row[index];
-            }
-          });
-
-          // Process based on table type
           const processedData = await processRowData(template, rowData);
-          
           if (processedData) {
             const { error } = await supabase
-              .from(template.tableName as 'courses' | 'modules' | 'recipes' | 'assessments' | 'questions' | 'inventory' | 'batches' | 'jobs')
+              .from(template.tableName as "courses" | "modules" | "recipes" | "assessments" | "questions" | "inventory" | "batches" | "jobs")
               .insert(processedData as never);
-            
             if (error) {
-              console.error(`Error inserting row:`, error);
+              console.error("Insert error:", error);
               failedCount++;
-            } else {
-              successCount++;
-            }
-          } else {
-            failedCount++;
-          }
+            } else successCount++;
+          } else failedCount++;
         } catch (err) {
-          console.error('Error processing row:', err);
+          console.error("Row error:", err);
           failedCount++;
         }
       }
 
-      setImportResults(prev => ({
-        ...prev,
-        [template.tableName]: { success: successCount, failed: failedCount }
-      }));
-
-      if (successCount > 0) {
-        toast.success(`Imported ${successCount} ${template.title.toLowerCase()} successfully`);
-      }
-      if (failedCount > 0) {
-        toast.error(`Failed to import ${failedCount} rows`);
-      }
+      setImportResults((prev) => ({ ...prev, [template.tableName]: { success: successCount, failed: failedCount } }));
+      if (successCount > 0) toast.success(`Imported ${successCount} ${template.title.toLowerCase()}`);
+      if (failedCount > 0) toast.error(`Failed to import ${failedCount} rows`);
+      fetchTableCounts();
     } catch (err) {
-      console.error('Error reading file:', err);
-      toast.error("Failed to read CSV file");
+      console.error(err);
+      toast.error("Failed to read file");
     } finally {
       setImporting(null);
     }
@@ -321,7 +373,7 @@ const DataTemplate = () => {
 
   const processRowData = async (template: TemplateSection, rowData: Record<string, string>): Promise<Record<string, unknown> | null> => {
     switch (template.tableName) {
-      case 'courses':
+      case "courses":
         return {
           title: rowData.title,
           description: rowData.description,
@@ -329,53 +381,22 @@ const DataTemplate = () => {
           duration: rowData.duration,
           base_fee: Number(rowData.base_fee) || 0,
           materials_count: Number(rowData.materials_count) || 0,
-          image_url: rowData.image_url || null
+          image_url: rowData.image_url || null,
         };
-
-      case 'modules': {
-        const { data: course } = await supabase
-          .from('courses')
-          .select('id')
-          .eq('title', rowData.course_title)
-          .single();
-        
-        if (!course) {
-          console.error(`Course not found: ${rowData.course_title}`);
-          return null;
-        }
-        
-        return {
-          course_id: course.id,
-          title: rowData.title,
-          description: rowData.description || null,
-          order_index: Number(rowData.order_index) || 0
-        };
-      }
-
-      case 'recipes': {
-        const { data: course } = await supabase
-          .from('courses')
-          .select('id')
-          .eq('title', rowData.course_title)
-          .single();
-        
+      case "modules": {
+        const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;
-
-        let moduleId = null;
+        return { course_id: course.id, title: rowData.title, description: rowData.description || null, order_index: Number(rowData.order_index) || 0 };
+      }
+      case "recipes": {
+        const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
+        if (!course) return null;
+        let moduleId: string | null = null;
         if (rowData.module_title) {
-          const { data: module } = await supabase
-            .from('modules')
-            .select('id')
-            .eq('title', rowData.module_title)
-            .eq('course_id', course.id)
-            .single();
-          moduleId = module?.id;
+          const { data: module } = await supabase.from("modules").select("id").eq("title", rowData.module_title).eq("course_id", course.id).single();
+          moduleId = module?.id ?? null;
         }
-
-        const ingredients = rowData.ingredients 
-          ? String(rowData.ingredients).split(';').map(i => ({ name: i.trim(), quantity: '' }))
-          : [];
-
+        const ingredients = rowData.ingredients ? String(rowData.ingredients).split(";").map((i) => ({ name: i.trim(), quantity: "" })) : [];
         return {
           course_id: course.id,
           module_id: moduleId,
@@ -384,71 +405,35 @@ const DataTemplate = () => {
           difficulty: rowData.difficulty || null,
           prep_time: Number(rowData.prep_time) || null,
           cook_time: Number(rowData.cook_time) || null,
-          ingredients: ingredients,
-          instructions: rowData.instructions ? String(rowData.instructions).replace(/\|/g, '\n') : null,
-          video_url: rowData.video_url || null
+          ingredients,
+          instructions: rowData.instructions ? String(rowData.instructions).replace(/\|/g, "\n") : null,
+          video_url: rowData.video_url || null,
         };
       }
-
-      case 'assessments': {
-        const { data: course } = await supabase
-          .from('courses')
-          .select('id')
-          .eq('title', rowData.course_title)
-          .single();
-        
+      case "assessments": {
+        const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;
-
-        let moduleId = null;
+        let moduleId: string | null = null;
         if (rowData.module_title) {
-          const { data: module } = await supabase
-            .from('modules')
-            .select('id')
-            .eq('title', rowData.module_title)
-            .eq('course_id', course.id)
-            .single();
-          moduleId = module?.id;
+          const { data: module } = await supabase.from("modules").select("id").eq("title", rowData.module_title).eq("course_id", course.id).single();
+          moduleId = module?.id ?? null;
         }
-
         return {
           course_id: course.id,
           module_id: moduleId,
           title: rowData.title,
           description: rowData.description || null,
           duration_minutes: Number(rowData.duration_minutes) || 30,
-          passing_score: Number(rowData.passing_score) || 60
+          passing_score: Number(rowData.passing_score) || 60,
         };
       }
-
-      case 'questions': {
-        const { data: assessment } = await supabase
-          .from('assessments')
-          .select('id')
-          .eq('title', rowData.assessment_title)
-          .single();
-        
-        if (!assessment) {
-          console.error(`Assessment not found: ${rowData.assessment_title}`);
-          return null;
-        }
-
-        const options = [
-          rowData.option_1,
-          rowData.option_2,
-          rowData.option_3,
-          rowData.option_4
-        ].filter(Boolean);
-
-        return {
-          assessment_id: assessment.id,
-          question_text: rowData.question_text,
-          options: options,
-          correct_answer: rowData.correct_answer,
-          points: Number(rowData.points) || 1
-        };
+      case "questions": {
+        const { data: assessment } = await supabase.from("assessments").select("id").eq("title", rowData.assessment_title).single();
+        if (!assessment) return null;
+        const options = [rowData.option_1, rowData.option_2, rowData.option_3, rowData.option_4].filter(Boolean);
+        return { assessment_id: assessment.id, question_text: rowData.question_text, options, correct_answer: rowData.correct_answer, points: Number(rowData.points) || 1 };
       }
-
-      case 'inventory':
+      case "inventory":
         return {
           name: rowData.name,
           category: rowData.category,
@@ -456,18 +441,11 @@ const DataTemplate = () => {
           current_stock: Number(rowData.current_stock) || 0,
           required_stock: Number(rowData.required_stock) || 0,
           reorder_level: Number(rowData.reorder_level) || 10,
-          cost_per_unit: Number(rowData.cost_per_unit) || null
+          cost_per_unit: Number(rowData.cost_per_unit) || null,
         };
-
-      case 'batches': {
-        const { data: course } = await supabase
-          .from('courses')
-          .select('id')
-          .eq('title', rowData.course_title)
-          .single();
-        
+      case "batches": {
+        const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;
-
         return {
           course_id: course.id,
           batch_name: rowData.batch_name,
@@ -475,84 +453,163 @@ const DataTemplate = () => {
           days: rowData.days,
           time_slot: rowData.time_slot,
           total_seats: Number(rowData.total_seats) || 30,
-          available_seats: Number(rowData.total_seats) || 30
+          available_seats: Number(rowData.total_seats) || 30,
         };
       }
-
-      case 'jobs': {
-        const requirements = [
-          rowData.requirement_1,
-          rowData.requirement_2,
-          rowData.requirement_3,
-          rowData.requirement_4
-        ].filter(Boolean) as string[];
-
+      case "jobs": {
+        const requirements = [rowData.requirement_1, rowData.requirement_2, rowData.requirement_3, rowData.requirement_4].filter(Boolean) as string[];
         return {
           title: rowData.title,
           company: rowData.company,
           location: rowData.location,
-          type: rowData.type || 'Full-time',
+          type: rowData.type || "Full-time",
           salary_range: rowData.salary_range || null,
           description: rowData.description,
-          requirements: requirements.length > 0 ? requirements : null
+          requirements: requirements.length > 0 ? requirements : null,
         };
       }
-
       default:
         return null;
     }
   };
 
-  const triggerFileInput = (tableName: string) => {
-    fileInputRefs.current[tableName]?.click();
+  const triggerFileInput = (tableName: string) => fileInputRefs.current[tableName]?.click();
+
+  const handleUserUpload = async (file: File, dryRun: boolean) => {
+    setUserImporting(true);
+    setUserResults(null);
+    try {
+      const rows = await parseFile(file);
+      if (!rows.length) {
+        toast.error("File must have at least one user row");
+        return;
+      }
+      const users = rows.map((r) => ({
+        email: r.email,
+        first_name: r.first_name,
+        last_name: r.last_name,
+        phone: r.phone || "",
+        role: (r.role || "student").toLowerCase(),
+      }));
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke("import-real-users", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { users, dryRun, sendEmails: !dryRun, loginUrl: `${window.location.origin}/login` },
+      });
+      if (error) throw error;
+      if (data?.success === false) {
+        const errs = data.validationErrors || [];
+        toast.error(`Validation failed: ${errs.length} errors. Check console.`);
+        console.error("User import validation errors:", errs);
+        return;
+      }
+      if (dryRun) {
+        toast.success(`Dry run: ${data.total} users valid, ${data.validationErrors?.length || 0} validation issues`);
+        if (data.validationErrors?.length) console.warn("Validation issues:", data.validationErrors);
+      } else {
+        toast.success(`Created ${data.created}/${data.total} users (${data.failed} failed)`, { duration: 8000 });
+        setUserResults(data.results);
+        fetchTableCounts();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to import users";
+      toast.error(msg);
+    } finally {
+      setUserImporting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Header role="admin" userName="Admin" />
-      
+
       <div className="container px-4 md:px-6 py-6 md:py-8">
-        {/* Header */}
         <div className="mb-6 md:mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-2">Data Management Centre</h1>
-              <p className="text-sm md:text-base text-muted-foreground">
-                Download templates, fill with your data, and import directly into the database
-              </p>
+              <p className="text-sm md:text-base text-muted-foreground">Backup, clear sample data, and import your real CSV/XLSX data</p>
             </div>
-            <div className="flex gap-2">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="gap-2" disabled={clearing}>
-                    {clearing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    Clear All Data
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Clear All Data?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete ALL data from courses, modules, recipes, assessments, questions, inventory, batches, jobs, and all related records (attendance, bookings, enrollments, payments, etc.). 
-                      <br /><br />
-                      <strong>This action cannot be undone.</strong> Student accounts and staff accounts will NOT be affected.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClearDemoData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Yes, Clear Everything
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={handleBackup} disabled={exporting} className="gap-2">
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                Download Backup
+              </Button>
               <Button onClick={downloadAllTemplates} className="gap-2">
                 <Download className="h-4 w-4" />
-                Download All Templates
+                All Templates
               </Button>
             </div>
           </div>
         </div>
+
+        {/* Migration Toolkit */}
+        <Card className="mb-6 p-4 md:p-6 border-amber-500/50 bg-amber-500/5">
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-amber-600" />
+            Migration Toolkit (Super Admin)
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Use this section to migrate from sample/seed data to real production data. <strong>Always download a backup first.</strong>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => handleClearSampleData(true)} disabled={clearing} className="gap-2">
+              {clearing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Dry Run: Clear Sample
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="gap-2" disabled={clearing}>
+                  <Trash2 className="h-4 w-4" />
+                  Clear Sample Data (keeps @demo.com)
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear all non-demo data?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently deletes ALL reference data (courses, recipes, inventory, batches, jobs, leads, vendors) AND all auth users — except those with <code>@demo.com</code> emails. Demo accounts and their roles are preserved.
+                    <br /><br />
+                    Always download a backup first. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => handleClearSampleData(false)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Yes, Clear Now
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" className="gap-2 text-destructive" disabled={clearing}>
+                  <Trash2 className="h-4 w-4" />
+                  Nuke ALL data (incl. demo)
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear ALL data?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This deletes every table including demo seed data. Auth users are NOT touched. Use this only for full reset before re-seeding.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearAllData} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Yes, Nuke Everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </Card>
 
         {/* Verification Summary */}
         <Card className="mb-6 p-4 md:p-6">
@@ -572,9 +629,7 @@ const DataTemplate = () => {
               return (
                 <div key={t.tableName} className="flex items-center justify-between p-3 rounded-lg border bg-card">
                   <span className="text-sm font-medium">{t.title}</span>
-                  <Badge variant={count && count > 0 ? "default" : "secondary"}>
-                    {loadingCounts ? "..." : (count ?? "—")}
-                  </Badge>
+                  <Badge variant={count && count > 0 ? "default" : "secondary"}>{loadingCounts ? "..." : count ?? "—"}</Badge>
                 </div>
               );
             })}
@@ -582,20 +637,14 @@ const DataTemplate = () => {
         </Card>
 
         <Tabs defaultValue="import" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="import" className="gap-2">
-              <Upload className="h-4 w-4" />
-              Import Data
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
-              Templates
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 max-w-xl">
+            <TabsTrigger value="import" className="gap-2"><Upload className="h-4 w-4" />Import Data</TabsTrigger>
+            <TabsTrigger value="users" className="gap-2"><Users className="h-4 w-4" />Import Users</TabsTrigger>
+            <TabsTrigger value="templates" className="gap-2"><FileSpreadsheet className="h-4 w-4" />Templates</TabsTrigger>
           </TabsList>
 
           {/* Import Tab */}
           <TabsContent value="import" className="space-y-6">
-            {/* Instructions Card */}
             <Card className="p-4 md:p-6 bg-primary/5 border-primary/20">
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <Upload className="h-5 w-5 text-primary" />
@@ -603,13 +652,12 @@ const DataTemplate = () => {
               </h2>
               <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
                 <li>Download the template for the data type you want to import</li>
-                <li>Fill in your data following the template format exactly</li>
-                <li><strong>Important:</strong> Import in order: Courses → Modules → Recipes/Assessments → Questions</li>
-                <li>Upload your filled CSV file using the import buttons below</li>
+                <li>Fill in your data in CSV or XLSX format following the template exactly</li>
+                <li><strong>Order matters:</strong> Courses → Modules → Recipes/Assessments → Questions → Batches</li>
+                <li>Upload your filled file using the import buttons below — both CSV and XLSX are supported</li>
               </ol>
             </Card>
 
-            {/* Import Cards Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {templates.map((template) => (
                 <Card key={template.tableName} className="p-4">
@@ -618,69 +666,115 @@ const DataTemplate = () => {
                       <h3 className="font-semibold">{template.title}</h3>
                       <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {template.headers.length} cols
-                    </Badge>
+                    <Badge variant="outline" className="text-xs">{template.headers.length} cols</Badge>
                   </div>
-
                   {importResults[template.tableName] && (
                     <div className="mb-3 p-2 rounded bg-muted/50 text-xs">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-3 w-3 text-green-500" />
-                        <span>{importResults[template.tableName].success} imported</span>
-                      </div>
+                      <div className="flex items-center gap-2"><CheckCircle2 className="h-3 w-3 text-green-500" /><span>{importResults[template.tableName].success} imported</span></div>
                       {importResults[template.tableName].failed > 0 && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <AlertCircle className="h-3 w-3 text-destructive" />
-                          <span>{importResults[template.tableName].failed} failed</span>
-                        </div>
+                        <div className="flex items-center gap-2 mt-1"><AlertCircle className="h-3 w-3 text-destructive" /><span>{importResults[template.tableName].failed} failed</span></div>
                       )}
                     </div>
                   )}
-
                   <div className="flex gap-2">
                     <input
                       type="file"
-                      accept=".csv"
+                      accept=".csv,.xlsx,.xls"
                       className="hidden"
                       ref={(el) => { fileInputRefs.current[template.tableName] = el; }}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) handleFileUpload(template, file);
-                        e.target.value = '';
+                        e.target.value = "";
                       }}
                     />
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="flex-1 gap-2"
-                      onClick={() => triggerFileInput(template.tableName)}
-                      disabled={importing === template.tableName}
-                    >
-                      {importing === template.tableName ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="h-4 w-4" />
-                      )}
-                      Import CSV
+                    <Button variant="default" size="sm" className="flex-1 gap-2" onClick={() => triggerFileInput(template.tableName)} disabled={importing === template.tableName}>
+                      {importing === template.tableName ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      Import
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => downloadCSV(template)}
-                      className="gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => downloadCSV(template)} className="gap-2"><Download className="h-4 w-4" /></Button>
                   </div>
                 </Card>
               ))}
             </div>
           </TabsContent>
 
+          {/* Users Tab */}
+          <TabsContent value="users" className="space-y-6">
+            <Card className="p-4 md:p-6 bg-primary/5 border-primary/20">
+              <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Import Real Users
+              </h2>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                <li>Download the Users template (columns: <code>email, first_name, last_name, phone, role</code>)</li>
+                <li>Valid roles: <code>student</code>, <code>chef</code>, <code>admin</code>, <code>super_admin</code>, <code>inventory_manager</code>, <code>vendor</code></li>
+                <li>Run a <strong>dry run first</strong> to validate emails and roles</li>
+                <li>On real import: a 12-char temp password is auto-generated for each user and emailed via Resend</li>
+                <li>Users can change their password from their profile after first login</li>
+              </ol>
+            </Card>
+
+            <Card className="p-4 md:p-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="font-semibold">Upload Users File (CSV/XLSX)</h3>
+                  <p className="text-sm text-muted-foreground">Required columns: email, first_name, last_name, role. Phone optional.</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => downloadCSV(usersTemplate)} className="gap-2">
+                  <Download className="h-4 w-4" /> Download Template
+                </Button>
+              </div>
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+                ref={userFileRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const choice = window.confirm("OK = Dry Run (validate only). Cancel = Real Import (creates users + sends emails).");
+                  handleUserUpload(file, choice);
+                  e.target.value = "";
+                }}
+              />
+              <Button onClick={() => userFileRef.current?.click()} disabled={userImporting} className="gap-2">
+                {userImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Upload Users File
+              </Button>
+
+              {userResults && userResults.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-medium mb-3">Import Results ({userResults.filter(r => r.success).length}/{userResults.length} succeeded)</h4>
+                  <div className="max-h-96 overflow-auto border rounded">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th className="p-2 text-left">Email</th>
+                          <th className="p-2 text-left">Status</th>
+                          <th className="p-2 text-left">Email Sent</th>
+                          <th className="p-2 text-left">Message</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {userResults.map((r, i) => (
+                          <tr key={i} className="border-t">
+                            <td className="p-2 font-mono text-xs">{r.email}</td>
+                            <td className="p-2">{r.success ? <Badge variant="default">OK</Badge> : <Badge variant="destructive">Fail</Badge>}</td>
+                            <td className="p-2">{r.emailed === true ? "✓" : r.emailed === false ? "✗" : "—"}</td>
+                            <td className="p-2 text-xs text-muted-foreground">{r.message}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </TabsContent>
+
           {/* Templates Tab */}
           <TabsContent value="templates" className="space-y-6">
-            {/* Instructions Card */}
             <Card className="p-4 md:p-6 bg-primary/5 border-primary/20">
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <FileSpreadsheet className="h-5 w-5 text-primary" />
@@ -690,63 +784,39 @@ const DataTemplate = () => {
                 <li>Download each template CSV file or copy the headers</li>
                 <li>Open in Excel, Google Sheets, or any spreadsheet application</li>
                 <li>Fill in your data following the example row format</li>
-                <li><strong>Important:</strong> Create data in this order: Courses → Modules → Recipes/Assessments → Questions</li>
+                <li><strong>Important:</strong> Create data in this order: Courses → Modules → Recipes/Assessments → Questions → Batches</li>
               </ol>
             </Card>
 
-            {/* Template Sections */}
             <div className="space-y-6">
-              {templates.map((template, index) => (
+              {[...templates, usersTemplate].map((template, index) => (
                 <Card key={template.title} className="p-4 md:p-6">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-lg font-semibold">{template.title}</h3>
-                        <Badge variant="outline" className="text-xs">
-                          {template.headers.length} columns
-                        </Badge>
+                        <Badge variant="outline" className="text-xs">{template.headers.length} columns</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">{template.description}</p>
                     </div>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(template.headers.join(","), index)}
-                        className="gap-2"
-                      >
-                        {copiedIndex === index ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
+                      <Button variant="outline" size="sm" onClick={() => copyToClipboard(template.headers.join(","), index)} className="gap-2">
+                        {copiedIndex === index ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                         Copy Headers
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => downloadCSV(template)}
-                        className="gap-2"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download CSV
+                      <Button variant="outline" size="sm" onClick={() => downloadCSV(template)} className="gap-2">
+                        <Download className="h-4 w-4" /> Download CSV
                       </Button>
                     </div>
                   </div>
-
-                  {/* Headers */}
                   <div className="mb-4">
                     <div className="text-xs font-medium text-muted-foreground mb-2">COLUMN HEADERS</div>
                     <div className="flex flex-wrap gap-2">
                       {template.headers.map((header) => (
-                        <Badge key={header} variant="secondary" className="font-mono text-xs">
-                          {header}
-                        </Badge>
+                        <Badge key={header} variant="secondary" className="font-mono text-xs">{header}</Badge>
                       ))}
                     </div>
                   </div>
-
-                  {/* Example Row */}
                   <div className="mb-4">
                     <div className="text-xs font-medium text-muted-foreground mb-2">EXAMPLE ROW</div>
                     <div className="bg-muted/50 rounded-lg p-3 overflow-x-auto">
@@ -754,61 +824,23 @@ const DataTemplate = () => {
                         {template.example.map((value, i) => (
                           <div key={i} className="flex flex-col">
                             <span className="text-xs text-muted-foreground mb-1">{template.headers[i]}</span>
-                            <span className="text-sm font-mono bg-background px-2 py-1 rounded border truncate max-w-[200px]" title={value}>
-                              {value}
-                            </span>
+                            <span className="text-sm font-mono bg-background px-2 py-1 rounded border truncate max-w-[200px]" title={value}>{value}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   </div>
-
-                  {/* Notes */}
                   <div>
                     <div className="text-xs font-medium text-muted-foreground mb-2">FORMATTING NOTES</div>
                     <ul className="text-sm text-muted-foreground space-y-1">
                       {template.notes.map((note, i) => (
-                        <li key={i} className="flex items-start gap-2">
-                          <span className="text-primary">•</span>
-                          {note}
-                        </li>
+                        <li key={i} className="flex items-start gap-2"><span className="text-primary">•</span>{note}</li>
                       ))}
                     </ul>
                   </div>
                 </Card>
               ))}
             </div>
-
-            {/* Additional Assets Section */}
-            <Card className="p-4 md:p-6">
-              <h3 className="text-lg font-semibold mb-4">Additional Assets Needed</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg border bg-card">
-                  <h4 className="font-medium mb-2">Course Images</h4>
-                  <p className="text-sm text-muted-foreground">
-                    High-quality images for each course (recommended: 800x600px, JPG/PNG)
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg border bg-card">
-                  <h4 className="font-medium mb-2">Recipe Videos</h4>
-                  <p className="text-sm text-muted-foreground">
-                    YouTube links or video files for recipe demonstrations
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg border bg-card">
-                  <h4 className="font-medium mb-2">Academy Branding</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Logo (SVG/PNG), brand colors, tagline, About Us content
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg border bg-card">
-                  <h4 className="font-medium mb-2">Contact Information</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Address, phone numbers, email, social media links
-                  </p>
-                </div>
-              </div>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>

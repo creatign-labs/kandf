@@ -8,6 +8,8 @@ import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 
@@ -16,6 +18,8 @@ interface TemplateSection {
   tableName: string;
   description: string;
   headers: string[];
+  /** Subset of `headers` that must contain a non-empty value in every row */
+  requiredFields: string[];
   example: string[];
   notes: string[];
 }
@@ -26,6 +30,7 @@ const templates: TemplateSection[] = [
     tableName: "courses",
     description: "Main course information - create this first. Matches the 'Add New Course' form exactly.",
     headers: ["title", "course_code", "description", "level", "duration", "base_fee"],
+    requiredFields: ["title", "description", "level", "duration", "base_fee"],
     example: ["Foundation Baking", "FB-101", "Master the essentials of baking with hands-on training", "Beginner", "3 months", "25000"],
     notes: [
       "title: Required — unique course name",
@@ -41,6 +46,7 @@ const templates: TemplateSection[] = [
     tableName: "modules",
     description: "Course modules - create after courses",
     headers: ["course_title", "title", "description", "order_index"],
+    requiredFields: ["course_title", "title", "order_index"],
     example: ["Foundation Baking", "Introduction to Baking", "Learn the basics of baking equipment and ingredients", "1"],
     notes: ["course_title: Must match exactly with an existing course title", "order_index: Number starting from 1"],
   },
@@ -49,6 +55,7 @@ const templates: TemplateSection[] = [
     tableName: "recipes",
     description: "Recipe library — matches the 'Add New Recipe' form exactly.",
     headers: ["course_title", "title", "recipe_code", "description", "difficulty", "prep_time", "cook_time", "instructions", "video_url", "ingredients"],
+    requiredFields: ["course_title", "title"],
     example: [
       "Foundation Baking",
       "Classic Chocolate Chip Cookies",
@@ -76,6 +83,7 @@ const templates: TemplateSection[] = [
     tableName: "inventory",
     description: "Kitchen inventory items — matches the 'Add Inventory Item' form (cost_per_unit optional, used by procurement)",
     headers: ["name", "category", "unit", "current_stock", "required_stock", "reorder_level", "cost_per_unit"],
+    requiredFields: ["name", "category", "unit"],
     example: ["All-Purpose Flour", "Dry Ingredients", "kg", "50", "100", "20", "45"],
     notes: [
       "name, category, unit: Required",
@@ -90,6 +98,7 @@ const templates: TemplateSection[] = [
     tableName: "batches",
     description: "Course schedule batches — matches the 'Add New Batch' form exactly",
     headers: ["course_title", "batch_name", "start_date", "days", "time_slot", "total_seats"],
+    requiredFields: ["course_title", "batch_name", "days", "time_slot"],
     example: ["Foundation Baking", "January 2025 Morning", "2025-01-15", "Mon, Wed, Fri", "9:00 AM - 12:00 PM", "30"],
     notes: [
       "course_title: Must match an existing course title",
@@ -104,6 +113,7 @@ const templates: TemplateSection[] = [
     tableName: "jobs",
     description: "Job postings for students. Admin bulk import — sets company directly (vendor portal auto-fills it from vendor profile)",
     headers: ["title", "company", "location", "type", "salary_range", "description", "requirement_1", "requirement_2", "requirement_3", "requirement_4"],
+    requiredFields: ["title", "company", "location", "description"],
     example: ["Pastry Chef", "Grand Hotel", "Mumbai", "Full-time", "₹35,000 - ₹45,000/month", "Looking for a skilled pastry chef to join our team", "2+ years experience", "Baking certification", "Team player", "Creative mindset"],
     notes: [
       "type: Full-time, Part-time, or Internship",
@@ -118,6 +128,7 @@ const usersTemplate: TemplateSection = {
   tableName: "users",
   description: "Auth users — creates account + assigns role + emails temp password",
   headers: ["email", "first_name", "last_name", "phone", "role"],
+  requiredFields: ["email", "first_name", "last_name", "role"],
   example: ["jane@example.com", "Jane", "Doe", "+91 98765 43210", "student"],
   notes: [
     "role: student, chef, admin, super_admin, inventory_manager, or vendor",
@@ -136,6 +147,15 @@ const DataTemplate = () => {
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [userImporting, setUserImporting] = useState(false);
   const [userResults, setUserResults] = useState<Array<{ email: string; success: boolean; message: string; emailed?: boolean }> | null>(null);
+  const [preview, setPreview] = useState<{
+    template: TemplateSection;
+    rows: Record<string, string>[];
+    foundHeaders: string[];
+    missingRequired: string[];
+    missingOptional: string[];
+    extraHeaders: string[];
+    rowIssues: { rowNumber: number; missing: string[] }[];
+  } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const userFileRef = useRef<HTMLInputElement | null>(null);
 
@@ -333,16 +353,55 @@ const DataTemplate = () => {
     });
   };
 
-  const handleFileUpload = async (template: TemplateSection, file: File) => {
-    setImporting(template.tableName);
+  // Step 1: Parse the file and open the preview dialog (no DB writes yet)
+  const handleFileSelected = async (template: TemplateSection, file: File) => {
     try {
       const dataRows = await parseFile(file);
       if (dataRows.length === 0) {
         toast.error("File must have at least one data row");
-        setImporting(null);
         return;
       }
 
+      // Header analysis based on the first data row's keys (parseFile lowercases & trims them)
+      const foundHeaders = Object.keys(dataRows[0] ?? {});
+      const expected = template.headers.map((h) => h.toLowerCase());
+      const required = template.requiredFields.map((h) => h.toLowerCase());
+      const missingRequired = required.filter((h) => !foundHeaders.includes(h));
+      const missingOptional = expected.filter((h) => !required.includes(h) && !foundHeaders.includes(h));
+      const extraHeaders = foundHeaders.filter((h) => !expected.includes(h));
+
+      // Per-row required-field check (only for required fields that ARE present in the headers —
+      // missing required headers are already surfaced separately)
+      const presentRequired = required.filter((h) => foundHeaders.includes(h));
+      const rowIssues = dataRows
+        .map((row, idx) => {
+          const missing = presentRequired.filter((h) => !String(row[h] ?? "").trim());
+          return { rowNumber: idx + 2, missing }; // +2 = header row + 1-indexed
+        })
+        .filter((r) => r.missing.length > 0);
+
+      setPreview({
+        template,
+        rows: dataRows,
+        foundHeaders,
+        missingRequired,
+        missingOptional,
+        extraHeaders,
+        rowIssues,
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to read file");
+    }
+  };
+
+  // Step 2: User confirms in the preview dialog → actually run the import
+  const runImport = async () => {
+    if (!preview) return;
+    const { template, rows: dataRows } = preview;
+    setPreview(null);
+    setImporting(template.tableName);
+    try {
       let successCount = 0;
       let failedCount = 0;
       for (const rowData of dataRows) {
@@ -368,7 +427,6 @@ const DataTemplate = () => {
               await sideEffect((inserted as { id: string }).id);
             } catch (sideErr) {
               console.error("Side-effect error:", sideErr);
-              // Main row imported; side-effect failure is logged but doesn't fail the row
             }
           }
           successCount++;
@@ -384,7 +442,7 @@ const DataTemplate = () => {
       fetchTableCounts();
     } catch (err) {
       console.error(err);
-      toast.error("Failed to read file");
+      toast.error("Import failed");
     } finally {
       setImporting(null);
     }
@@ -730,13 +788,13 @@ const DataTemplate = () => {
                       ref={(el) => { fileInputRefs.current[template.tableName] = el; }}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleFileUpload(template, file);
+                        if (file) handleFileSelected(template, file);
                         e.target.value = "";
                       }}
                     />
                     <Button variant="default" size="sm" className="flex-1 gap-2" onClick={() => triggerFileInput(template.tableName)} disabled={importing === template.tableName}>
                       {importing === template.tableName ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      Import
+                      Preview & Import
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => downloadCSV(template)} className="gap-2"><Download className="h-4 w-4" /></Button>
                   </div>
@@ -890,6 +948,181 @@ const DataTemplate = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Pre-import preview dialog */}
+      <Dialog open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              Preview: {preview?.template.title} Import
+            </DialogTitle>
+            <DialogDescription>
+              Review the file structure and data below. No data is imported until you confirm.
+            </DialogDescription>
+          </DialogHeader>
+
+          {preview && (
+            <ScrollArea className="flex-1 -mx-6 px-6">
+              <div className="space-y-4">
+                {/* Summary stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  <Card className="p-3">
+                    <div className="text-xs text-muted-foreground">Rows detected</div>
+                    <div className="text-2xl font-semibold">{preview.rows.length}</div>
+                  </Card>
+                  <Card className="p-3">
+                    <div className="text-xs text-muted-foreground">Headers found</div>
+                    <div className="text-2xl font-semibold">{preview.foundHeaders.length}</div>
+                  </Card>
+                  <Card className="p-3">
+                    <div className="text-xs text-muted-foreground">Rows with issues</div>
+                    <div className={`text-2xl font-semibold ${preview.rowIssues.length > 0 ? "text-destructive" : "text-green-600"}`}>
+                      {preview.rowIssues.length}
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Header validation */}
+                <Card className="p-4 space-y-3">
+                  <h3 className="font-semibold text-sm">Header validation</h3>
+
+                  {preview.missingRequired.length > 0 && (
+                    <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                      <div className="flex items-center gap-2 text-destructive font-medium text-sm mb-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Missing required columns ({preview.missingRequired.length})
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {preview.missingRequired.map((h) => (
+                          <Badge key={h} variant="destructive" className="text-xs">{h}</Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">These columns must be present for the import to succeed.</p>
+                    </div>
+                  )}
+
+                  {preview.missingOptional.length > 0 && (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-medium text-sm mb-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Missing optional columns ({preview.missingOptional.length})
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {preview.missingOptional.map((h) => (
+                          <Badge key={h} variant="outline" className="text-xs">{h}</Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">These will be left empty / set to defaults.</p>
+                    </div>
+                  )}
+
+                  {preview.extraHeaders.length > 0 && (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-medium text-sm mb-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Unrecognized columns ({preview.extraHeaders.length})
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {preview.extraHeaders.map((h) => (
+                          <Badge key={h} variant="outline" className="text-xs">{h}</Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">These columns will be ignored during import.</p>
+                    </div>
+                  )}
+
+                  {preview.missingRequired.length === 0 && preview.missingOptional.length === 0 && preview.extraHeaders.length === 0 && (
+                    <div className="flex items-center gap-2 text-green-600 text-sm">
+                      <CheckCircle2 className="h-4 w-4" />
+                      All headers match the template exactly.
+                    </div>
+                  )}
+                </Card>
+
+                {/* Per-row issues */}
+                {preview.rowIssues.length > 0 && (
+                  <Card className="p-4">
+                    <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      Rows missing required values ({preview.rowIssues.length})
+                    </h3>
+                    <div className="text-xs text-muted-foreground mb-2">These rows will fail to import:</div>
+                    <div className="max-h-40 overflow-y-auto space-y-1 text-xs">
+                      {preview.rowIssues.slice(0, 20).map((r) => (
+                        <div key={r.rowNumber} className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">Row {r.rowNumber}</Badge>
+                          <span className="text-muted-foreground">missing:</span>
+                          {r.missing.map((f) => (
+                            <Badge key={f} variant="destructive" className="text-xs">{f}</Badge>
+                          ))}
+                        </div>
+                      ))}
+                      {preview.rowIssues.length > 20 && (
+                        <div className="text-muted-foreground italic">…and {preview.rowIssues.length - 20} more</div>
+                      )}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Data preview — first 5 rows */}
+                <Card className="p-4">
+                  <h3 className="font-semibold text-sm mb-2">Data preview (first 5 rows)</h3>
+                  <div className="overflow-x-auto">
+                    <table className="text-xs w-full">
+                      <thead>
+                        <tr className="border-b">
+                          {preview.foundHeaders.map((h) => {
+                            const isRequired = preview.template.requiredFields.map((f) => f.toLowerCase()).includes(h);
+                            const isExpected = preview.template.headers.map((f) => f.toLowerCase()).includes(h);
+                            return (
+                              <th key={h} className="text-left p-2 font-medium whitespace-nowrap">
+                                <div className="flex items-center gap-1">
+                                  {h}
+                                  {isRequired && <span className="text-destructive">*</span>}
+                                  {!isExpected && <Badge variant="outline" className="text-[10px] h-4 px-1">extra</Badge>}
+                                </div>
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {preview.rows.slice(0, 5).map((row, idx) => (
+                          <tr key={idx} className="border-b">
+                            {preview.foundHeaders.map((h) => (
+                              <td key={h} className="p-2 align-top max-w-[200px] truncate text-muted-foreground">
+                                {row[h] || <span className="italic opacity-50">—</span>}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {preview.rows.length > 5 && (
+                    <div className="text-xs text-muted-foreground mt-2 italic">…and {preview.rows.length - 5} more rows</div>
+                  )}
+                </Card>
+              </div>
+            </ScrollArea>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
+            <Button
+              onClick={runImport}
+              disabled={!preview || preview.missingRequired.length > 0}
+              className="gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              {preview && preview.missingRequired.length > 0
+                ? "Fix required columns to import"
+                : `Confirm & Import ${preview?.rows.length ?? 0} rows`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

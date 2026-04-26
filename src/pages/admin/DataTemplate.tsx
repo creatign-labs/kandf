@@ -53,6 +53,7 @@ const templates: TemplateSection[] = [
     tableName: "recipes",
     description: "Recipe library — matches the 'Add New Recipe' form exactly.",
     headers: ["course_title", "title", "recipe_code", "description", "difficulty", "prep_time", "cook_time", "instructions", "video_url", "ingredients"],
+    requiredFields: ["course_title", "title"],
     example: [
       "Foundation Baking",
       "Classic Chocolate Chip Cookies",

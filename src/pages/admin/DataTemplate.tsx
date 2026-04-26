@@ -347,16 +347,31 @@ const DataTemplate = () => {
       let failedCount = 0;
       for (const rowData of dataRows) {
         try {
-          const processedData = await processRowData(template, rowData);
-          if (processedData) {
-            const { error } = await supabase
-              .from(template.tableName as "courses" | "modules" | "recipes" | "assessments" | "questions" | "inventory" | "batches" | "jobs")
-              .insert(processedData as never);
-            if (error) {
-              console.error("Insert error:", error);
-              failedCount++;
-            } else successCount++;
-          } else failedCount++;
+          const processed = await processRowData(template, rowData);
+          if (!processed) {
+            failedCount++;
+            continue;
+          }
+          const { mainRow, sideEffect } = processed;
+          const { data: inserted, error } = await supabase
+            .from(template.tableName as "courses" | "modules" | "recipes" | "inventory" | "batches" | "jobs")
+            .insert(mainRow as never)
+            .select()
+            .single();
+          if (error) {
+            console.error("Insert error:", error);
+            failedCount++;
+            continue;
+          }
+          if (sideEffect && inserted) {
+            try {
+              await sideEffect((inserted as { id: string }).id);
+            } catch (sideErr) {
+              console.error("Side-effect error:", sideErr);
+              // Main row imported; side-effect failure is logged but doesn't fail the row
+            }
+          }
+          successCount++;
         } catch (err) {
           console.error("Row error:", err);
           failedCount++;
@@ -375,101 +390,128 @@ const DataTemplate = () => {
     }
   };
 
-  const processRowData = async (template: TemplateSection, rowData: Record<string, string>): Promise<Record<string, unknown> | null> => {
+  type ProcessedRow = {
+    mainRow: Record<string, unknown>;
+    sideEffect?: (insertedId: string) => Promise<void>;
+  };
+
+  const processRowData = async (template: TemplateSection, rowData: Record<string, string>): Promise<ProcessedRow | null> => {
     switch (template.tableName) {
       case "courses":
         return {
-          title: rowData.title,
-          description: rowData.description,
-          level: rowData.level,
-          duration: rowData.duration,
-          base_fee: Number(rowData.base_fee) || 0,
-          materials_count: Number(rowData.materials_count) || 0,
-          image_url: rowData.image_url || null,
+          mainRow: {
+            title: rowData.title,
+            course_code: rowData.course_code || null,
+            description: rowData.description,
+            level: rowData.level,
+            duration: rowData.duration,
+            base_fee: Number(rowData.base_fee) || 0,
+          },
         };
       case "modules": {
         const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;
-        return { course_id: course.id, title: rowData.title, description: rowData.description || null, order_index: Number(rowData.order_index) || 0 };
+        return {
+          mainRow: {
+            course_id: course.id,
+            title: rowData.title,
+            description: rowData.description || null,
+            order_index: Number(rowData.order_index) || 0,
+          },
+        };
       }
       case "recipes": {
         const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;
-        let moduleId: string | null = null;
-        if (rowData.module_title) {
-          const { data: module } = await supabase.from("modules").select("id").eq("title", rowData.module_title).eq("course_id", course.id).single();
-          moduleId = module?.id ?? null;
+
+        // Parse ingredients in 'inventory_name:quantity' format and resolve to inventory ids
+        const ingredientPairs = rowData.ingredients
+          ? String(rowData.ingredients)
+              .split(";")
+              .map((entry) => entry.trim())
+              .filter(Boolean)
+              .map((entry) => {
+                const [name, qty] = entry.split(":").map((s) => s?.trim() ?? "");
+                return { name, quantity: Number(qty) || 0 };
+              })
+              .filter((p) => p.name)
+          : [];
+
+        let resolvedIngredients: { inventory_id: string; quantity_per_student: number }[] = [];
+        if (ingredientPairs.length > 0) {
+          const names = ingredientPairs.map((p) => p.name);
+          const { data: invItems } = await supabase.from("inventory").select("id, name").in("name", names);
+          const byName = new Map((invItems || []).map((i) => [i.name, i.id]));
+          resolvedIngredients = ingredientPairs
+            .filter((p) => byName.has(p.name))
+            .map((p) => ({ inventory_id: byName.get(p.name)!, quantity_per_student: p.quantity }));
         }
-        const ingredients = rowData.ingredients ? String(rowData.ingredients).split(";").map((i) => ({ name: i.trim(), quantity: "" })) : [];
+
         return {
-          course_id: course.id,
-          module_id: moduleId,
-          title: rowData.title,
-          description: rowData.description || null,
-          difficulty: rowData.difficulty || null,
-          prep_time: Number(rowData.prep_time) || null,
-          cook_time: Number(rowData.cook_time) || null,
-          ingredients,
-          instructions: rowData.instructions ? String(rowData.instructions).replace(/\|/g, "\n") : null,
-          video_url: rowData.video_url || null,
+          mainRow: {
+            course_id: course.id,
+            title: rowData.title,
+            recipe_code: rowData.recipe_code || null,
+            description: rowData.description || null,
+            difficulty: rowData.difficulty || null,
+            prep_time: Number(rowData.prep_time) || null,
+            cook_time: Number(rowData.cook_time) || null,
+            instructions: rowData.instructions ? String(rowData.instructions).replace(/\|/g, "\n") : null,
+            video_url: rowData.video_url || null,
+          },
+          sideEffect: resolvedIngredients.length > 0
+            ? async (recipeId: string) => {
+                const rows = resolvedIngredients.map((r) => ({
+                  recipe_id: recipeId,
+                  inventory_id: r.inventory_id,
+                  quantity_per_student: r.quantity_per_student,
+                }));
+                const { error } = await supabase.from("recipe_ingredients").insert(rows);
+                if (error) throw error;
+              }
+            : undefined,
         };
-      }
-      case "assessments": {
-        const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
-        if (!course) return null;
-        let moduleId: string | null = null;
-        if (rowData.module_title) {
-          const { data: module } = await supabase.from("modules").select("id").eq("title", rowData.module_title).eq("course_id", course.id).single();
-          moduleId = module?.id ?? null;
-        }
-        return {
-          course_id: course.id,
-          module_id: moduleId,
-          title: rowData.title,
-          description: rowData.description || null,
-          duration_minutes: Number(rowData.duration_minutes) || 30,
-          passing_score: Number(rowData.passing_score) || 60,
-        };
-      }
-      case "questions": {
-        const { data: assessment } = await supabase.from("assessments").select("id").eq("title", rowData.assessment_title).single();
-        if (!assessment) return null;
-        const options = [rowData.option_1, rowData.option_2, rowData.option_3, rowData.option_4].filter(Boolean);
-        return { assessment_id: assessment.id, question_text: rowData.question_text, options, correct_answer: rowData.correct_answer, points: Number(rowData.points) || 1 };
       }
       case "inventory":
         return {
-          name: rowData.name,
-          category: rowData.category,
-          unit: rowData.unit,
-          current_stock: Number(rowData.current_stock) || 0,
-          required_stock: Number(rowData.required_stock) || 0,
-          reorder_level: Number(rowData.reorder_level) || 10,
-          cost_per_unit: Number(rowData.cost_per_unit) || null,
+          mainRow: {
+            name: rowData.name,
+            category: rowData.category,
+            unit: rowData.unit,
+            current_stock: Number(rowData.current_stock) || 0,
+            required_stock: Number(rowData.required_stock) || 0,
+            reorder_level: Number(rowData.reorder_level) || 10,
+            cost_per_unit: rowData.cost_per_unit ? Number(rowData.cost_per_unit) : null,
+          },
         };
       case "batches": {
         const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;
+        const totalSeats = Number(rowData.total_seats) || 30;
         return {
-          course_id: course.id,
-          batch_name: rowData.batch_name,
-          start_date: rowData.start_date || null,
-          days: rowData.days,
-          time_slot: rowData.time_slot,
-          total_seats: Number(rowData.total_seats) || 30,
-          available_seats: Number(rowData.total_seats) || 30,
+          mainRow: {
+            course_id: course.id,
+            batch_name: rowData.batch_name,
+            start_date: rowData.start_date || null,
+            days: rowData.days,
+            time_slot: rowData.time_slot,
+            total_seats: totalSeats,
+            available_seats: totalSeats,
+          },
         };
       }
       case "jobs": {
         const requirements = [rowData.requirement_1, rowData.requirement_2, rowData.requirement_3, rowData.requirement_4].filter(Boolean) as string[];
         return {
-          title: rowData.title,
-          company: rowData.company,
-          location: rowData.location,
-          type: rowData.type || "Full-time",
-          salary_range: rowData.salary_range || null,
-          description: rowData.description,
-          requirements: requirements.length > 0 ? requirements : null,
+          mainRow: {
+            title: rowData.title,
+            company: rowData.company,
+            location: rowData.location,
+            type: rowData.type || "Full-time",
+            salary_range: rowData.salary_range || null,
+            description: rowData.description,
+            requirements: requirements.length > 0 ? requirements : null,
+          },
         };
       }
       default:

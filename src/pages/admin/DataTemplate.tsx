@@ -786,7 +786,7 @@ const DataTemplate = () => {
                       ref={(el) => { fileInputRefs.current[template.tableName] = el; }}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleFileUpload(template, file);
+                        if (file) handleFileSelected(template, file);
                         e.target.value = "";
                       }}
                     />

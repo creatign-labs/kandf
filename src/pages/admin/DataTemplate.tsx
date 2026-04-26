@@ -126,6 +126,7 @@ const usersTemplate: TemplateSection = {
   tableName: "users",
   description: "Auth users — creates account + assigns role + emails temp password",
   headers: ["email", "first_name", "last_name", "phone", "role"],
+  requiredFields: ["email", "first_name", "last_name", "role"],
   example: ["jane@example.com", "Jane", "Doe", "+91 98765 43210", "student"],
   notes: [
     "role: student, chef, admin, super_admin, inventory_manager, or vendor",

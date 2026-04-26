@@ -44,6 +44,7 @@ const templates: TemplateSection[] = [
     tableName: "modules",
     description: "Course modules - create after courses",
     headers: ["course_title", "title", "description", "order_index"],
+    requiredFields: ["course_title", "title", "order_index"],
     example: ["Foundation Baking", "Introduction to Baking", "Learn the basics of baking equipment and ingredients", "1"],
     notes: ["course_title: Must match exactly with an existing course title", "order_index: Number starting from 1"],
   },

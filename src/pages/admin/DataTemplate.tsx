@@ -16,6 +16,8 @@ interface TemplateSection {
   tableName: string;
   description: string;
   headers: string[];
+  /** Subset of `headers` that must contain a non-empty value in every row */
+  requiredFields: string[];
   example: string[];
   notes: string[];
 }

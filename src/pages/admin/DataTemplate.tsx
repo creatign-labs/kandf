@@ -948,6 +948,181 @@ const DataTemplate = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Pre-import preview dialog */}
+      <Dialog open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              Preview: {preview?.template.title} Import
+            </DialogTitle>
+            <DialogDescription>
+              Review the file structure and data below. No data is imported until you confirm.
+            </DialogDescription>
+          </DialogHeader>
+
+          {preview && (
+            <ScrollArea className="flex-1 -mx-6 px-6">
+              <div className="space-y-4">
+                {/* Summary stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  <Card className="p-3">
+                    <div className="text-xs text-muted-foreground">Rows detected</div>
+                    <div className="text-2xl font-semibold">{preview.rows.length}</div>
+                  </Card>
+                  <Card className="p-3">
+                    <div className="text-xs text-muted-foreground">Headers found</div>
+                    <div className="text-2xl font-semibold">{preview.foundHeaders.length}</div>
+                  </Card>
+                  <Card className="p-3">
+                    <div className="text-xs text-muted-foreground">Rows with issues</div>
+                    <div className={`text-2xl font-semibold ${preview.rowIssues.length > 0 ? "text-destructive" : "text-green-600"}`}>
+                      {preview.rowIssues.length}
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Header validation */}
+                <Card className="p-4 space-y-3">
+                  <h3 className="font-semibold text-sm">Header validation</h3>
+
+                  {preview.missingRequired.length > 0 && (
+                    <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                      <div className="flex items-center gap-2 text-destructive font-medium text-sm mb-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Missing required columns ({preview.missingRequired.length})
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {preview.missingRequired.map((h) => (
+                          <Badge key={h} variant="destructive" className="text-xs">{h}</Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">These columns must be present for the import to succeed.</p>
+                    </div>
+                  )}
+
+                  {preview.missingOptional.length > 0 && (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-medium text-sm mb-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Missing optional columns ({preview.missingOptional.length})
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {preview.missingOptional.map((h) => (
+                          <Badge key={h} variant="outline" className="text-xs">{h}</Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">These will be left empty / set to defaults.</p>
+                    </div>
+                  )}
+
+                  {preview.extraHeaders.length > 0 && (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-medium text-sm mb-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Unrecognized columns ({preview.extraHeaders.length})
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {preview.extraHeaders.map((h) => (
+                          <Badge key={h} variant="outline" className="text-xs">{h}</Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">These columns will be ignored during import.</p>
+                    </div>
+                  )}
+
+                  {preview.missingRequired.length === 0 && preview.missingOptional.length === 0 && preview.extraHeaders.length === 0 && (
+                    <div className="flex items-center gap-2 text-green-600 text-sm">
+                      <CheckCircle2 className="h-4 w-4" />
+                      All headers match the template exactly.
+                    </div>
+                  )}
+                </Card>
+
+                {/* Per-row issues */}
+                {preview.rowIssues.length > 0 && (
+                  <Card className="p-4">
+                    <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      Rows missing required values ({preview.rowIssues.length})
+                    </h3>
+                    <div className="text-xs text-muted-foreground mb-2">These rows will fail to import:</div>
+                    <div className="max-h-40 overflow-y-auto space-y-1 text-xs">
+                      {preview.rowIssues.slice(0, 20).map((r) => (
+                        <div key={r.rowNumber} className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">Row {r.rowNumber}</Badge>
+                          <span className="text-muted-foreground">missing:</span>
+                          {r.missing.map((f) => (
+                            <Badge key={f} variant="destructive" className="text-xs">{f}</Badge>
+                          ))}
+                        </div>
+                      ))}
+                      {preview.rowIssues.length > 20 && (
+                        <div className="text-muted-foreground italic">…and {preview.rowIssues.length - 20} more</div>
+                      )}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Data preview — first 5 rows */}
+                <Card className="p-4">
+                  <h3 className="font-semibold text-sm mb-2">Data preview (first 5 rows)</h3>
+                  <div className="overflow-x-auto">
+                    <table className="text-xs w-full">
+                      <thead>
+                        <tr className="border-b">
+                          {preview.foundHeaders.map((h) => {
+                            const isRequired = preview.template.requiredFields.map((f) => f.toLowerCase()).includes(h);
+                            const isExpected = preview.template.headers.map((f) => f.toLowerCase()).includes(h);
+                            return (
+                              <th key={h} className="text-left p-2 font-medium whitespace-nowrap">
+                                <div className="flex items-center gap-1">
+                                  {h}
+                                  {isRequired && <span className="text-destructive">*</span>}
+                                  {!isExpected && <Badge variant="outline" className="text-[10px] h-4 px-1">extra</Badge>}
+                                </div>
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {preview.rows.slice(0, 5).map((row, idx) => (
+                          <tr key={idx} className="border-b">
+                            {preview.foundHeaders.map((h) => (
+                              <td key={h} className="p-2 align-top max-w-[200px] truncate text-muted-foreground">
+                                {row[h] || <span className="italic opacity-50">—</span>}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {preview.rows.length > 5 && (
+                    <div className="text-xs text-muted-foreground mt-2 italic">…and {preview.rows.length - 5} more rows</div>
+                  )}
+                </Card>
+              </div>
+            </ScrollArea>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
+            <Button
+              onClick={runImport}
+              disabled={!preview || preview.missingRequired.length > 0}
+              className="gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              {preview && preview.missingRequired.length > 0
+                ? "Fix required columns to import"
+                : `Confirm & Import ${preview?.rows.length ?? 0} rows`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

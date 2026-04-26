@@ -142,7 +142,7 @@ const DataTemplate = () => {
   const fetchTableCounts = async () => {
     setLoadingCounts(true);
     try {
-      const tables = ["courses", "modules", "recipes", "assessments", "questions", "inventory", "batches", "jobs"] as const;
+      const tables = ["courses", "modules", "recipes", "inventory", "batches", "jobs"] as const;
       const counts: Record<string, number> = {};
       await Promise.all(
         tables.map(async (table) => {

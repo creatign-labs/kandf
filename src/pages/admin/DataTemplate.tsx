@@ -28,6 +28,7 @@ const templates: TemplateSection[] = [
     tableName: "courses",
     description: "Main course information - create this first. Matches the 'Add New Course' form exactly.",
     headers: ["title", "course_code", "description", "level", "duration", "base_fee"],
+    requiredFields: ["title", "description", "level", "duration", "base_fee"],
     example: ["Foundation Baking", "FB-101", "Master the essentials of baking with hands-on training", "Beginner", "3 months", "25000"],
     notes: [
       "title: Required — unique course name",

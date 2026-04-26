@@ -792,7 +792,7 @@ const DataTemplate = () => {
                     />
                     <Button variant="default" size="sm" className="flex-1 gap-2" onClick={() => triggerFileInput(template.tableName)} disabled={importing === template.tableName}>
                       {importing === template.tableName ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      Import
+                      Preview & Import
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => downloadCSV(template)} className="gap-2"><Download className="h-4 w-4" /></Button>
                   </div>

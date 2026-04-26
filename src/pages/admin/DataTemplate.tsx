@@ -96,6 +96,7 @@ const templates: TemplateSection[] = [
     tableName: "batches",
     description: "Course schedule batches — matches the 'Add New Batch' form exactly",
     headers: ["course_title", "batch_name", "start_date", "days", "time_slot", "total_seats"],
+    requiredFields: ["course_title", "batch_name", "days", "time_slot"],
     example: ["Foundation Baking", "January 2025 Morning", "2025-01-15", "Mon, Wed, Fri", "9:00 AM - 12:00 PM", "30"],
     notes: [
       "course_title: Must match an existing course title",

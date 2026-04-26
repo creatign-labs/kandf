@@ -145,6 +145,15 @@ const DataTemplate = () => {
   const [loadingCounts, setLoadingCounts] = useState(false);
   const [userImporting, setUserImporting] = useState(false);
   const [userResults, setUserResults] = useState<Array<{ email: string; success: boolean; message: string; emailed?: boolean }> | null>(null);
+  const [preview, setPreview] = useState<{
+    template: TemplateSection;
+    rows: Record<string, string>[];
+    foundHeaders: string[];
+    missingRequired: string[];
+    missingOptional: string[];
+    extraHeaders: string[];
+    rowIssues: { rowNumber: number; missing: string[] }[];
+  } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const userFileRef = useRef<HTMLInputElement | null>(null);
 

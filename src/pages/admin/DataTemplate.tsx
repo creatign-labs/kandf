@@ -351,16 +351,55 @@ const DataTemplate = () => {
     });
   };
 
-  const handleFileUpload = async (template: TemplateSection, file: File) => {
-    setImporting(template.tableName);
+  // Step 1: Parse the file and open the preview dialog (no DB writes yet)
+  const handleFileSelected = async (template: TemplateSection, file: File) => {
     try {
       const dataRows = await parseFile(file);
       if (dataRows.length === 0) {
         toast.error("File must have at least one data row");
-        setImporting(null);
         return;
       }
 
+      // Header analysis based on the first data row's keys (parseFile lowercases & trims them)
+      const foundHeaders = Object.keys(dataRows[0] ?? {});
+      const expected = template.headers.map((h) => h.toLowerCase());
+      const required = template.requiredFields.map((h) => h.toLowerCase());
+      const missingRequired = required.filter((h) => !foundHeaders.includes(h));
+      const missingOptional = expected.filter((h) => !required.includes(h) && !foundHeaders.includes(h));
+      const extraHeaders = foundHeaders.filter((h) => !expected.includes(h));
+
+      // Per-row required-field check (only for required fields that ARE present in the headers —
+      // missing required headers are already surfaced separately)
+      const presentRequired = required.filter((h) => foundHeaders.includes(h));
+      const rowIssues = dataRows
+        .map((row, idx) => {
+          const missing = presentRequired.filter((h) => !String(row[h] ?? "").trim());
+          return { rowNumber: idx + 2, missing }; // +2 = header row + 1-indexed
+        })
+        .filter((r) => r.missing.length > 0);
+
+      setPreview({
+        template,
+        rows: dataRows,
+        foundHeaders,
+        missingRequired,
+        missingOptional,
+        extraHeaders,
+        rowIssues,
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to read file");
+    }
+  };
+
+  // Step 2: User confirms in the preview dialog → actually run the import
+  const runImport = async () => {
+    if (!preview) return;
+    const { template, rows: dataRows } = preview;
+    setPreview(null);
+    setImporting(template.tableName);
+    try {
       let successCount = 0;
       let failedCount = 0;
       for (const rowData of dataRows) {
@@ -386,7 +425,6 @@ const DataTemplate = () => {
               await sideEffect((inserted as { id: string }).id);
             } catch (sideErr) {
               console.error("Side-effect error:", sideErr);
-              // Main row imported; side-effect failure is logged but doesn't fail the row
             }
           }
           successCount++;
@@ -402,7 +440,7 @@ const DataTemplate = () => {
       fetchTableCounts();
     } catch (err) {
       console.error(err);
-      toast.error("Failed to read file");
+      toast.error("Import failed");
     } finally {
       setImporting(null);
     }

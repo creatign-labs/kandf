@@ -111,6 +111,7 @@ const templates: TemplateSection[] = [
     tableName: "jobs",
     description: "Job postings for students. Admin bulk import — sets company directly (vendor portal auto-fills it from vendor profile)",
     headers: ["title", "company", "location", "type", "salary_range", "description", "requirement_1", "requirement_2", "requirement_3", "requirement_4"],
+    requiredFields: ["title", "company", "location", "description"],
     example: ["Pastry Chef", "Grand Hotel", "Mumbai", "Full-time", "₹35,000 - ₹45,000/month", "Looking for a skilled pastry chef to join our team", "2+ years experience", "Baking certification", "Team player", "Creative mindset"],
     notes: [
       "type: Full-time, Part-time, or Internship",

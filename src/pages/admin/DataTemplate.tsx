@@ -81,6 +81,7 @@ const templates: TemplateSection[] = [
     tableName: "inventory",
     description: "Kitchen inventory items — matches the 'Add Inventory Item' form (cost_per_unit optional, used by procurement)",
     headers: ["name", "category", "unit", "current_stock", "required_stock", "reorder_level", "cost_per_unit"],
+    requiredFields: ["name", "category", "unit"],
     example: ["All-Purpose Flour", "Dry Ingredients", "kg", "50", "100", "20", "45"],
     notes: [
       "name, category, unit: Required",

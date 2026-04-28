@@ -493,7 +493,7 @@ const Courses = () => {
             <h1 className="text-4xl font-bold text-foreground mb-2">Course Management</h1>
             <p className="text-muted-foreground">Create and manage course curriculum, modules, and pricing</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button className="gap-2" onClick={resetForm}>
                 <Plus className="h-4 w-4" />

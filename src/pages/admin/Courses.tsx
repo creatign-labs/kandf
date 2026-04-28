@@ -151,6 +151,13 @@ const Courses = () => {
 
   const updateCourseMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      // Snapshot existing recipe links so we can roll back on failure
+      const { data: existingRecipes } = await supabase
+        .from("recipes")
+        .select("id")
+        .eq("course_id", id);
+      const previousRecipeIds = (existingRecipes || []).map((r) => r.id);
+
       const { error } = await supabase
         .from("courses")
         .update({
@@ -164,22 +171,29 @@ const Courses = () => {
         .eq("id", id);
       if (error) throw error;
 
-      // First, unlink all recipes from this course
+      // Unlink current recipes
       const { error: unlinkError } = await supabase
         .from("recipes")
         .update({ course_id: null })
         .eq("course_id", id);
-      
       if (unlinkError) throw unlinkError;
 
-      // Then link the selected recipes
+      // Link selected recipes; on failure, restore previous links
       if (selectedRecipeIds.length > 0) {
         const { error: linkError } = await supabase
           .from("recipes")
           .update({ course_id: id })
           .in("id", selectedRecipeIds);
-        
-        if (linkError) throw linkError;
+
+        if (linkError) {
+          if (previousRecipeIds.length > 0) {
+            await supabase
+              .from("recipes")
+              .update({ course_id: id })
+              .in("id", previousRecipeIds);
+          }
+          throw linkError;
+        }
       }
     },
     onSuccess: () => {
@@ -236,12 +250,37 @@ const Courses = () => {
     setRecipeSearchQuery("");
   };
 
+  const validateForm = (): string | null => {
+    const title = formData.title.trim();
+    const description = formData.description.trim();
+    const duration = formData.duration.trim();
+    const fee = parseFloat(formData.base_fee);
+
+    if (!title) return "Course title is required";
+    if (!description) return "Course description is required";
+    if (!duration) return "Course duration is required";
+    if (!formData.base_fee || Number.isNaN(fee) || fee <= 0) return "Course fee must be a positive number";
+    return null;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const error = validateForm();
+    if (error) {
+      toast({ title: "Please fix the form", description: error, variant: "destructive" });
+      return;
+    }
+    const cleaned = {
+      ...formData,
+      title: formData.title.trim(),
+      course_code: formData.course_code.trim().toUpperCase(),
+      description: formData.description.trim(),
+      duration: formData.duration.trim(),
+    };
     if (editingCourse) {
-      updateCourseMutation.mutate({ id: editingCourse.id, data: formData });
+      updateCourseMutation.mutate({ id: editingCourse.id, data: cleaned });
     } else {
-      createCourseMutation.mutate(formData);
+      createCourseMutation.mutate(cleaned);
     }
   };
 
@@ -454,7 +493,7 @@ const Courses = () => {
             <h1 className="text-4xl font-bold text-foreground mb-2">Course Management</h1>
             <p className="text-muted-foreground">Create and manage course curriculum, modules, and pricing</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button className="gap-2" onClick={resetForm}>
                 <Plus className="h-4 w-4" />
@@ -497,7 +536,7 @@ const Courses = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Dialog open={editingCourse?.id === course.id} onOpenChange={(open) => !open && setEditingCourse(null)}>
+                  <Dialog open={editingCourse?.id === course.id} onOpenChange={(open) => { if (!open) { setEditingCourse(null); resetForm(); } }}>
                     <DialogTrigger asChild>
                       <Button variant="outline" className="gap-2" onClick={() => handleEdit(course)}>
                         <Edit className="h-4 w-4" />

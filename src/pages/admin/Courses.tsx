@@ -151,6 +151,13 @@ const Courses = () => {
 
   const updateCourseMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      // Snapshot existing recipe links so we can roll back on failure
+      const { data: existingRecipes } = await supabase
+        .from("recipes")
+        .select("id")
+        .eq("course_id", id);
+      const previousRecipeIds = (existingRecipes || []).map((r) => r.id);
+
       const { error } = await supabase
         .from("courses")
         .update({
@@ -164,22 +171,29 @@ const Courses = () => {
         .eq("id", id);
       if (error) throw error;
 
-      // First, unlink all recipes from this course
+      // Unlink current recipes
       const { error: unlinkError } = await supabase
         .from("recipes")
         .update({ course_id: null })
         .eq("course_id", id);
-      
       if (unlinkError) throw unlinkError;
 
-      // Then link the selected recipes
+      // Link selected recipes; on failure, restore previous links
       if (selectedRecipeIds.length > 0) {
         const { error: linkError } = await supabase
           .from("recipes")
           .update({ course_id: id })
           .in("id", selectedRecipeIds);
-        
-        if (linkError) throw linkError;
+
+        if (linkError) {
+          if (previousRecipeIds.length > 0) {
+            await supabase
+              .from("recipes")
+              .update({ course_id: id })
+              .in("id", previousRecipeIds);
+          }
+          throw linkError;
+        }
       }
     },
     onSuccess: () => {

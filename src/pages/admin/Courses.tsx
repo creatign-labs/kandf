@@ -536,7 +536,7 @@ const Courses = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Dialog open={editingCourse?.id === course.id} onOpenChange={(open) => !open && setEditingCourse(null)}>
+                  <Dialog open={editingCourse?.id === course.id} onOpenChange={(open) => { if (!open) { setEditingCourse(null); resetForm(); } }}>
                     <DialogTrigger asChild>
                       <Button variant="outline" className="gap-2" onClick={() => handleEdit(course)}>
                         <Edit className="h-4 w-4" />

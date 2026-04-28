@@ -236,12 +236,37 @@ const Courses = () => {
     setRecipeSearchQuery("");
   };
 
+  const validateForm = (): string | null => {
+    const title = formData.title.trim();
+    const description = formData.description.trim();
+    const duration = formData.duration.trim();
+    const fee = parseFloat(formData.base_fee);
+
+    if (!title) return "Course title is required";
+    if (!description) return "Course description is required";
+    if (!duration) return "Course duration is required";
+    if (!formData.base_fee || Number.isNaN(fee) || fee <= 0) return "Course fee must be a positive number";
+    return null;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const error = validateForm();
+    if (error) {
+      toast({ title: "Please fix the form", description: error, variant: "destructive" });
+      return;
+    }
+    const cleaned = {
+      ...formData,
+      title: formData.title.trim(),
+      course_code: formData.course_code.trim().toUpperCase(),
+      description: formData.description.trim(),
+      duration: formData.duration.trim(),
+    };
     if (editingCourse) {
-      updateCourseMutation.mutate({ id: editingCourse.id, data: formData });
+      updateCourseMutation.mutate({ id: editingCourse.id, data: cleaned });
     } else {
-      createCourseMutation.mutate(formData);
+      createCourseMutation.mutate(cleaned);
     }
   };
 

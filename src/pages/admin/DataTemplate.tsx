@@ -575,6 +575,8 @@ const DataTemplate = () => {
         const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;
         const totalSeats = Number(rowData.total_seats) || 30;
+        const rawBooking = String(rowData.booking_enabled ?? "").trim().toLowerCase();
+        const bookingEnabled = rawBooking === "" ? true : !["false", "0", "no", "off"].includes(rawBooking);
         return {
           mainRow: {
             course_id: course.id,
@@ -584,11 +586,20 @@ const DataTemplate = () => {
             time_slot: rowData.time_slot,
             total_seats: totalSeats,
             available_seats: totalSeats,
+            booking_enabled: bookingEnabled,
           },
         };
       }
       case "jobs": {
-        const requirements = [rowData.requirement_1, rowData.requirement_2, rowData.requirement_3, rowData.requirement_4].filter(Boolean) as string[];
+        // New schema: single semicolon-separated `requirements` column
+        // Back-compat: also accept legacy `requirement_1..requirement_4` columns
+        const fromList = rowData.requirements
+          ? String(rowData.requirements).split(";").map((s) => s.trim()).filter(Boolean)
+          : [];
+        const fromLegacy = [rowData.requirement_1, rowData.requirement_2, rowData.requirement_3, rowData.requirement_4]
+          .map((v) => (v ?? "").trim())
+          .filter(Boolean);
+        const requirements = fromList.length > 0 ? fromList : fromLegacy;
         return {
           mainRow: {
             title: rowData.title,

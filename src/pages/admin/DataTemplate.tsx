@@ -1049,9 +1049,19 @@ const DataTemplate = () => {
                         Missing optional columns ({preview.missingOptional.length})
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {preview.missingOptional.map((h) => (
-                          <Badge key={h} variant="outline" className="text-xs">{h}</Badge>
-                        ))}
+                        {preview.missingOptional.map((h) => {
+                          const dialogOnlyOptional: Record<string, string> = {
+                            cost_per_unit: "not collected by the Add dialog — used by Purchase Orders only",
+                            recipe_titles: "optional — only needed if you want to attach existing recipes",
+                            booking_enabled: "defaults to true (open for booking)",
+                          };
+                          const note = dialogOnlyOptional[h];
+                          return (
+                            <Badge key={h} variant="outline" className="text-xs" title={note ?? undefined}>
+                              {h}{note ? ` — ${note}` : ""}
+                            </Badge>
+                          );
+                        })}
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">These will be left empty / set to defaults.</p>
                     </div>

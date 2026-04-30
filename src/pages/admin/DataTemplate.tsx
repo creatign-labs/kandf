@@ -158,7 +158,7 @@ const DataTemplate = () => {
     missingRequired: string[];
     missingOptional: string[];
     extraHeaders: string[];
-    rowIssues: { rowNumber: number; missing: string[] }[];
+    rowIssues: { rowNumber: number; missing: string[]; invalid: { field: string; reason: string }[] }[];
   } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const userFileRef = useRef<HTMLInputElement | null>(null);

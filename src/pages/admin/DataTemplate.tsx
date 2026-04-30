@@ -357,6 +357,120 @@ const DataTemplate = () => {
     });
   };
 
+  // Per-row format validation. Only checks fields that are present and non-empty —
+  // missing-required is handled separately. Returns a list of {field, reason} issues.
+  const validateRowFields = (
+    template: TemplateSection,
+    row: Record<string, string>,
+  ): { field: string; reason: string }[] => {
+    const issues: { field: string; reason: string }[] = [];
+    const v = (k: string) => String(row[k] ?? "").trim();
+    const isNum = (s: string) => s !== "" && !Number.isNaN(Number(s));
+    const isInt = (s: string) => isNum(s) && Number.isInteger(Number(s));
+    const BOOL_OK = new Set(["true", "false", "1", "0", "yes", "no", "on", "off", "y", "n"]);
+
+    switch (template.tableName) {
+      case "courses": {
+        const fee = v("base_fee");
+        if (fee && (!isNum(fee) || Number(fee) <= 0))
+          issues.push({ field: "base_fee", reason: "must be a positive number (no currency symbol)" });
+        const dur = v("duration").toLowerCase();
+        if (dur && !/^([1-9]|1[0-2])\s+months?$/.test(dur))
+          issues.push({ field: "duration", reason: "must be '1 month' through '12 months'" });
+        const lvl = v("level");
+        if (lvl && !["beginner", "intermediate", "advanced"].includes(lvl.toLowerCase()))
+          issues.push({ field: "level", reason: "must be Beginner, Intermediate, or Advanced" });
+        const recipes = v("recipe_titles");
+        if (recipes && recipes.split(";").some((s) => s.trim() === ""))
+          issues.push({ field: "recipe_titles", reason: "contains empty entries between ';' — remove trailing/duplicate semicolons" });
+        break;
+      }
+      case "modules": {
+        const oi = v("order_index");
+        if (oi && (!isInt(oi) || Number(oi) < 1))
+          issues.push({ field: "order_index", reason: "must be a positive integer (1, 2, 3...)" });
+        break;
+      }
+      case "recipes": {
+        const diff = v("difficulty");
+        if (diff && !["easy", "medium", "hard"].includes(diff.toLowerCase()))
+          issues.push({ field: "difficulty", reason: "must be Easy, Medium, or Hard" });
+        for (const f of ["prep_time", "cook_time"]) {
+          const x = v(f);
+          if (x && (!isNum(x) || Number(x) < 0))
+            issues.push({ field: f, reason: "must be a non-negative number (minutes)" });
+        }
+        const url = v("video_url");
+        if (url && !/^https?:\/\//i.test(url))
+          issues.push({ field: "video_url", reason: "must start with http:// or https://" });
+        const ing = v("ingredients");
+        if (ing) {
+          const entries = ing.split(";").map((s) => s.trim()).filter(Boolean);
+          if (entries.length === 0)
+            issues.push({ field: "ingredients", reason: "is set but has no entries — remove the column or add 'name:qty' pairs" });
+          for (const e of entries) {
+            const parts = e.split(":");
+            if (parts.length !== 2 || !parts[0].trim() || !isNum((parts[1] ?? "").trim()))
+              issues.push({ field: "ingredients", reason: `'${e}' is not in 'inventory_name:quantity' format` });
+          }
+        }
+        break;
+      }
+      case "inventory": {
+        for (const f of ["current_stock", "required_stock", "reorder_level", "cost_per_unit"]) {
+          const x = v(f);
+          if (x && (!isNum(x) || Number(x) < 0))
+            issues.push({ field: f, reason: "must be a non-negative number" });
+        }
+        break;
+      }
+      case "batches": {
+        const seats = v("total_seats");
+        if (seats && (!isInt(seats) || Number(seats) < 1))
+          issues.push({ field: "total_seats", reason: "must be a positive integer" });
+        const sd = v("start_date");
+        if (sd && !/^\d{4}-\d{2}-\d{2}$/.test(sd))
+          issues.push({ field: "start_date", reason: "must be in YYYY-MM-DD format" });
+        const ts = v("time_slot");
+        if (ts && !/^\d{1,2}:\d{2}\s*(AM|PM)\s*-\s*\d{1,2}:\d{2}\s*(AM|PM)$/i.test(ts))
+          issues.push({ field: "time_slot", reason: "must be 'HH:MM AM - HH:MM PM' (e.g. '9:00 AM - 12:00 PM')" });
+        const days = v("days");
+        if (days) {
+          const valid = new Set(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);
+          const parts = days.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+          if (parts.length === 0)
+            issues.push({ field: "days", reason: "is empty after splitting on ','" });
+          for (const p of parts) {
+            if (!valid.has(p))
+              issues.push({ field: "days", reason: `'${p}' is not a valid weekday — use Mon, Tue, Wed, Thu, Fri, Sat, Sun` });
+          }
+        }
+        const be = v("booking_enabled");
+        if (be && !BOOL_OK.has(be.toLowerCase()))
+          issues.push({ field: "booking_enabled", reason: `'${be}' is not a boolean — use true/false (or 1/0, yes/no)` });
+        break;
+      }
+      case "jobs": {
+        const type = v("type");
+        if (type && !["full-time", "part-time", "contract", "internship"].includes(type.toLowerCase()))
+          issues.push({ field: "type", reason: "must be Full-time, Part-time, Contract, or Internship" });
+        const desc = v("description");
+        if (desc && desc.length < 50)
+          issues.push({ field: "description", reason: `must be at least 50 characters (currently ${desc.length})` });
+        const reqs = v("requirements");
+        if (reqs) {
+          const parts = reqs.split(";");
+          if (parts.some((p) => p.trim() === ""))
+            issues.push({ field: "requirements", reason: "contains empty entries between ';' — remove trailing/duplicate semicolons" });
+          if (parts.every((p) => p.trim() === ""))
+            issues.push({ field: "requirements", reason: "is set but has no usable entries" });
+        }
+        break;
+      }
+    }
+    return issues;
+  };
+
   // Step 1: Parse the file and open the preview dialog (no DB writes yet)
   const handleFileSelected = async (template: TemplateSection, file: File) => {
     try {

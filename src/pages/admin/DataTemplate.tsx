@@ -158,7 +158,7 @@ const DataTemplate = () => {
     missingRequired: string[];
     missingOptional: string[];
     extraHeaders: string[];
-    rowIssues: { rowNumber: number; missing: string[] }[];
+    rowIssues: { rowNumber: number; missing: string[]; invalid: { field: string; reason: string }[] }[];
   } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const userFileRef = useRef<HTMLInputElement | null>(null);
@@ -357,6 +357,120 @@ const DataTemplate = () => {
     });
   };
 
+  // Per-row format validation. Only checks fields that are present and non-empty —
+  // missing-required is handled separately. Returns a list of {field, reason} issues.
+  const validateRowFields = (
+    template: TemplateSection,
+    row: Record<string, string>,
+  ): { field: string; reason: string }[] => {
+    const issues: { field: string; reason: string }[] = [];
+    const v = (k: string) => String(row[k] ?? "").trim();
+    const isNum = (s: string) => s !== "" && !Number.isNaN(Number(s));
+    const isInt = (s: string) => isNum(s) && Number.isInteger(Number(s));
+    const BOOL_OK = new Set(["true", "false", "1", "0", "yes", "no", "on", "off", "y", "n"]);
+
+    switch (template.tableName) {
+      case "courses": {
+        const fee = v("base_fee");
+        if (fee && (!isNum(fee) || Number(fee) <= 0))
+          issues.push({ field: "base_fee", reason: "must be a positive number (no currency symbol)" });
+        const dur = v("duration").toLowerCase();
+        if (dur && !/^([1-9]|1[0-2])\s+months?$/.test(dur))
+          issues.push({ field: "duration", reason: "must be '1 month' through '12 months'" });
+        const lvl = v("level");
+        if (lvl && !["beginner", "intermediate", "advanced"].includes(lvl.toLowerCase()))
+          issues.push({ field: "level", reason: "must be Beginner, Intermediate, or Advanced" });
+        const recipes = v("recipe_titles");
+        if (recipes && recipes.split(";").some((s) => s.trim() === ""))
+          issues.push({ field: "recipe_titles", reason: "contains empty entries between ';' — remove trailing/duplicate semicolons" });
+        break;
+      }
+      case "modules": {
+        const oi = v("order_index");
+        if (oi && (!isInt(oi) || Number(oi) < 1))
+          issues.push({ field: "order_index", reason: "must be a positive integer (1, 2, 3...)" });
+        break;
+      }
+      case "recipes": {
+        const diff = v("difficulty");
+        if (diff && !["easy", "medium", "hard"].includes(diff.toLowerCase()))
+          issues.push({ field: "difficulty", reason: "must be Easy, Medium, or Hard" });
+        for (const f of ["prep_time", "cook_time"]) {
+          const x = v(f);
+          if (x && (!isNum(x) || Number(x) < 0))
+            issues.push({ field: f, reason: "must be a non-negative number (minutes)" });
+        }
+        const url = v("video_url");
+        if (url && !/^https?:\/\//i.test(url))
+          issues.push({ field: "video_url", reason: "must start with http:// or https://" });
+        const ing = v("ingredients");
+        if (ing) {
+          const entries = ing.split(";").map((s) => s.trim()).filter(Boolean);
+          if (entries.length === 0)
+            issues.push({ field: "ingredients", reason: "is set but has no entries — remove the column or add 'name:qty' pairs" });
+          for (const e of entries) {
+            const parts = e.split(":");
+            if (parts.length !== 2 || !parts[0].trim() || !isNum((parts[1] ?? "").trim()))
+              issues.push({ field: "ingredients", reason: `'${e}' is not in 'inventory_name:quantity' format` });
+          }
+        }
+        break;
+      }
+      case "inventory": {
+        for (const f of ["current_stock", "required_stock", "reorder_level", "cost_per_unit"]) {
+          const x = v(f);
+          if (x && (!isNum(x) || Number(x) < 0))
+            issues.push({ field: f, reason: "must be a non-negative number" });
+        }
+        break;
+      }
+      case "batches": {
+        const seats = v("total_seats");
+        if (seats && (!isInt(seats) || Number(seats) < 1))
+          issues.push({ field: "total_seats", reason: "must be a positive integer" });
+        const sd = v("start_date");
+        if (sd && !/^\d{4}-\d{2}-\d{2}$/.test(sd))
+          issues.push({ field: "start_date", reason: "must be in YYYY-MM-DD format" });
+        const ts = v("time_slot");
+        if (ts && !/^\d{1,2}:\d{2}\s*(AM|PM)\s*-\s*\d{1,2}:\d{2}\s*(AM|PM)$/i.test(ts))
+          issues.push({ field: "time_slot", reason: "must be 'HH:MM AM - HH:MM PM' (e.g. '9:00 AM - 12:00 PM')" });
+        const days = v("days");
+        if (days) {
+          const valid = new Set(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]);
+          const parts = days.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+          if (parts.length === 0)
+            issues.push({ field: "days", reason: "is empty after splitting on ','" });
+          for (const p of parts) {
+            if (!valid.has(p))
+              issues.push({ field: "days", reason: `'${p}' is not a valid weekday — use Mon, Tue, Wed, Thu, Fri, Sat, Sun` });
+          }
+        }
+        const be = v("booking_enabled");
+        if (be && !BOOL_OK.has(be.toLowerCase()))
+          issues.push({ field: "booking_enabled", reason: `'${be}' is not a boolean — use true/false (or 1/0, yes/no)` });
+        break;
+      }
+      case "jobs": {
+        const type = v("type");
+        if (type && !["full-time", "part-time", "contract", "internship"].includes(type.toLowerCase()))
+          issues.push({ field: "type", reason: "must be Full-time, Part-time, Contract, or Internship" });
+        const desc = v("description");
+        if (desc && desc.length < 50)
+          issues.push({ field: "description", reason: `must be at least 50 characters (currently ${desc.length})` });
+        const reqs = v("requirements");
+        if (reqs) {
+          const parts = reqs.split(";");
+          if (parts.some((p) => p.trim() === ""))
+            issues.push({ field: "requirements", reason: "contains empty entries between ';' — remove trailing/duplicate semicolons" });
+          if (parts.every((p) => p.trim() === ""))
+            issues.push({ field: "requirements", reason: "is set but has no usable entries" });
+        }
+        break;
+      }
+    }
+    return issues;
+  };
+
   // Step 1: Parse the file and open the preview dialog (no DB writes yet)
   const handleFileSelected = async (template: TemplateSection, file: File) => {
     try {
@@ -375,14 +489,15 @@ const DataTemplate = () => {
       const extraHeaders = foundHeaders.filter((h) => !expected.includes(h));
 
       // Per-row required-field check (only for required fields that ARE present in the headers —
-      // missing required headers are already surfaced separately)
+      // missing required headers are already surfaced separately) + per-field format validation
       const presentRequired = required.filter((h) => foundHeaders.includes(h));
       const rowIssues = dataRows
         .map((row, idx) => {
           const missing = presentRequired.filter((h) => !String(row[h] ?? "").trim());
-          return { rowNumber: idx + 2, missing }; // +2 = header row + 1-indexed
+          const invalid = validateRowFields(template, row);
+          return { rowNumber: idx + 2, missing, invalid }; // +2 = header row + 1-indexed
         })
-        .filter((r) => r.missing.length > 0);
+        .filter((r) => r.missing.length > 0 || r.invalid.length > 0);
 
       setPreview({
         template,
@@ -1090,30 +1205,53 @@ const DataTemplate = () => {
                   )}
                 </Card>
 
-                {/* Per-row issues */}
-                {preview.rowIssues.length > 0 && (
-                  <Card className="p-4">
-                    <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      Rows missing required values ({preview.rowIssues.length})
-                    </h3>
-                    <div className="text-xs text-muted-foreground mb-2">These rows will fail to import:</div>
-                    <div className="max-h-40 overflow-y-auto space-y-1 text-xs">
-                      {preview.rowIssues.slice(0, 20).map((r) => (
-                        <div key={r.rowNumber} className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">Row {r.rowNumber}</Badge>
-                          <span className="text-muted-foreground">missing:</span>
-                          {r.missing.map((f) => (
-                            <Badge key={f} variant="destructive" className="text-xs">{f}</Badge>
-                          ))}
-                        </div>
-                      ))}
-                      {preview.rowIssues.length > 20 && (
-                        <div className="text-muted-foreground italic">…and {preview.rowIssues.length - 20} more</div>
-                      )}
-                    </div>
-                  </Card>
-                )}
+                {/* Per-row issues — missing required values and/or invalid field formats */}
+                {preview.rowIssues.length > 0 && (() => {
+                  const rowsMissing = preview.rowIssues.filter((r) => r.missing.length > 0).length;
+                  const rowsInvalid = preview.rowIssues.filter((r) => r.invalid.length > 0).length;
+                  return (
+                    <Card className="p-4 border-destructive/40">
+                      <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        Row problems ({preview.rowIssues.length}
+                        {rowsMissing > 0 && ` · ${rowsMissing} missing required`}
+                        {rowsInvalid > 0 && ` · ${rowsInvalid} invalid format`})
+                      </h3>
+                      <div className="text-xs text-muted-foreground mb-2">
+                        Fix these in your file and re-upload. Import is blocked until all rows are valid.
+                      </div>
+                      <div className="max-h-60 overflow-y-auto space-y-2 text-xs">
+                        {preview.rowIssues.slice(0, 30).map((r) => (
+                          <div key={r.rowNumber} className="border-l-2 border-destructive/40 pl-2 py-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="text-xs">Row {r.rowNumber}</Badge>
+                              {r.missing.length > 0 && (
+                                <>
+                                  <span className="text-muted-foreground">missing:</span>
+                                  {r.missing.map((f) => (
+                                    <Badge key={`m-${f}`} variant="destructive" className="text-xs">{f}</Badge>
+                                  ))}
+                                </>
+                              )}
+                            </div>
+                            {r.invalid.length > 0 && (
+                              <ul className="mt-1 ml-1 space-y-0.5">
+                                {r.invalid.map((iss, i) => (
+                                  <li key={i} className="text-destructive/90">
+                                    <span className="font-medium">{iss.field}</span>: <span className="text-muted-foreground">{iss.reason}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
+                        {preview.rowIssues.length > 30 && (
+                          <div className="text-muted-foreground italic">…and {preview.rowIssues.length - 30} more</div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })()}
 
                 {/* Data preview — first 5 rows */}
                 <Card className="p-4">
@@ -1162,12 +1300,14 @@ const DataTemplate = () => {
             <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
             <Button
               onClick={runImport}
-              disabled={!preview || preview.missingRequired.length > 0}
+              disabled={!preview || preview.missingRequired.length > 0 || preview.rowIssues.length > 0}
               className="gap-2"
             >
               <Upload className="h-4 w-4" />
               {preview && preview.missingRequired.length > 0
                 ? "Fix required columns to import"
+                : preview && preview.rowIssues.length > 0
+                ? `Fix ${preview.rowIssues.length} row${preview.rowIssues.length === 1 ? "" : "s"} to import`
                 : `Confirm & Import ${preview?.rows.length ?? 0} rows`}
             </Button>
           </DialogFooter>

@@ -375,14 +375,15 @@ const DataTemplate = () => {
       const extraHeaders = foundHeaders.filter((h) => !expected.includes(h));
 
       // Per-row required-field check (only for required fields that ARE present in the headers —
-      // missing required headers are already surfaced separately)
+      // missing required headers are already surfaced separately) + per-field format validation
       const presentRequired = required.filter((h) => foundHeaders.includes(h));
       const rowIssues = dataRows
         .map((row, idx) => {
           const missing = presentRequired.filter((h) => !String(row[h] ?? "").trim());
-          return { rowNumber: idx + 2, missing }; // +2 = header row + 1-indexed
+          const invalid = validateRowFields(template, row);
+          return { rowNumber: idx + 2, missing, invalid }; // +2 = header row + 1-indexed
         })
-        .filter((r) => r.missing.length > 0);
+        .filter((r) => r.missing.length > 0 || r.invalid.length > 0);
 
       setPreview({
         template,

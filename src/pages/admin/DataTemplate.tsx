@@ -114,14 +114,15 @@ const templates: TemplateSection[] = [
   {
     title: "Jobs",
     tableName: "jobs",
-    description: "Job postings for students. Admin bulk import — sets company directly (vendor portal auto-fills it from vendor profile)",
-    headers: ["title", "company", "location", "type", "salary_range", "description", "requirement_1", "requirement_2", "requirement_3", "requirement_4"],
+    description: "Job postings for students. Admin bulk import sets company directly (vendor portal auto-fills it from vendor profile).",
+    headers: ["title", "company", "location", "type", "salary_range", "description", "requirements"],
     requiredFields: ["title", "company", "location", "description"],
-    example: ["Pastry Chef", "Grand Hotel", "Mumbai", "Full-time", "₹35,000 - ₹45,000/month", "Looking for a skilled pastry chef to join our team", "2+ years experience", "Baking certification", "Team player", "Creative mindset"],
+    example: ["Pastry Chef", "Grand Hotel", "Mumbai", "Full-time", "₹35,000 - ₹45,000/month", "Looking for a skilled pastry chef to join our team. The role covers daily production, menu R&D, and mentoring junior staff.", "2+ years experience; Baking certification; Team player; Creative mindset"],
     notes: [
-      "type: Full-time, Part-time, or Internship",
+      "type: Full-time, Part-time, Contract, or Internship (matches the vendor dialog)",
       "company: Required for admin imports (vendor portal fills this automatically)",
-      "requirement_1-4: Optional. Leave blank columns empty.",
+      "description: Should be at least 50 characters (matches the vendor dialog's validation)",
+      "requirements: Optional — semicolon-separated list, e.g. '2+ years; Team player; Baking cert'. Old files using requirement_1..requirement_4 columns are still accepted.",
     ],
   },
 ];

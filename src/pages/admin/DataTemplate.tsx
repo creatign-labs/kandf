@@ -28,16 +28,17 @@ const templates: TemplateSection[] = [
   {
     title: "Courses",
     tableName: "courses",
-    description: "Main course information - create this first. Matches the 'Add New Course' form exactly.",
-    headers: ["title", "course_code", "description", "level", "duration", "base_fee"],
-    requiredFields: ["title", "description", "level", "duration", "base_fee"],
-    example: ["Foundation Baking", "FB-101", "Master the essentials of baking with hands-on training", "Beginner", "3 months", "25000"],
+    description: "Main course information — matches the 'Add New Course' dialog exactly.",
+    headers: ["title", "course_code", "description", "duration", "base_fee", "level", "recipe_titles"],
+    requiredFields: ["title", "description", "duration", "base_fee"],
+    example: ["Foundation Baking", "FB-101", "Master the essentials of baking with hands-on training", "3 months", "25000", "Beginner", "Classic Chocolate Chip Cookies; Sourdough Bread"],
     notes: [
       "title: Required — unique course name",
-      "course_code: Optional — short code like 'FB-101'",
-      "level: Beginner, Intermediate, or Advanced",
-      "duration: e.g., '3 months', '6 weeks'",
-      "base_fee: Number only (no currency symbol)",
+      "course_code: Optional — short code like 'FB-101' (auto-uppercased)",
+      "duration: Must match the dialog's dropdown — '1 month' through '12 months'",
+      "base_fee: Required, positive number only (no currency symbol)",
+      "level: Optional — Beginner, Intermediate, or Advanced (defaults to Beginner)",
+      "recipe_titles: Optional — semicolon-separated existing recipe titles to attach to this course. Unmatched titles are skipped.",
       "Note: Course image is auto-resolved from the title; materials count is auto-calculated.",
     ],
   },
@@ -69,11 +70,11 @@ const templates: TemplateSection[] = [
       "All-Purpose Flour:0.2;Butter:0.1;Sugar:0.15;Chocolate Chips:0.1",
     ],
     notes: [
-      "course_title: Must match an existing course title",
+      "course_title: Must match an existing course title exactly (case-sensitive)",
       "recipe_code: Optional — short code like 'REC-001'",
-      "difficulty: Easy, Medium, or Hard",
-      "prep_time/cook_time: Minutes (number only)",
-      "instructions: Separate steps with pipes (|)",
+      "difficulty: Easy, Medium, or Hard (defaults to Easy if blank)",
+      "prep_time/cook_time: Minutes (number only, optional)",
+      "instructions: Separate steps with pipes (|) — converted to newlines on import",
       "video_url: Optional — YouTube or other video URL",
       "ingredients: Format 'inventory_name:quantity_per_student' separated by semicolons (;). Inventory items must already exist; unmatched names are skipped.",
     ],
@@ -86,39 +87,42 @@ const templates: TemplateSection[] = [
     requiredFields: ["name", "category", "unit"],
     example: ["All-Purpose Flour", "Dry Ingredients", "kg", "50", "100", "20", "45"],
     notes: [
-      "name, category, unit: Required",
+      "name, category, unit: Required (match the 'Add Inventory Item' dialog)",
       "category: e.g., Dry Ingredients, Dairy, Chocolate, Equipment",
       "unit: e.g., kg, g, L, ml, pcs",
+      "current_stock / required_stock: Numbers (default 0)",
       "reorder_level: Defaults to 10 if blank (matches form default)",
-      "cost_per_unit: Optional — used by purchase orders. Number without currency symbol.",
+      "cost_per_unit: Optional — NOT collected by the Add Inventory dialog. Used by Purchase Orders only. Number without currency symbol.",
     ],
   },
   {
     title: "Batches",
     tableName: "batches",
-    description: "Course schedule batches — matches the 'Add New Batch' form exactly",
-    headers: ["course_title", "batch_name", "start_date", "days", "time_slot", "total_seats"],
+    description: "Course schedule batches — matches the 'Add New Batch' dialog exactly",
+    headers: ["course_title", "batch_name", "start_date", "days", "time_slot", "total_seats", "booking_enabled"],
     requiredFields: ["course_title", "batch_name", "days", "time_slot"],
-    example: ["Foundation Baking", "January 2025 Morning", "2025-01-15", "Mon, Wed, Fri", "9:00 AM - 12:00 PM", "30"],
+    example: ["Foundation Baking", "January 2025 Morning", "2025-01-15", "Mon, Wed, Fri", "9:00 AM - 12:00 PM", "30", "true"],
     notes: [
-      "course_title: Must match an existing course title",
-      "start_date: Format YYYY-MM-DD",
-      "days: Comma-separated, e.g., 'Mon, Wed, Fri'",
-      "time_slot: e.g., '9:00 AM - 12:00 PM'",
-      "total_seats: Defaults to 30 (matches form default). Available seats = total seats on creation.",
+      "course_title: Must match an existing course title exactly",
+      "start_date: Format YYYY-MM-DD (optional)",
+      "days: Comma-separated short weekday names — Mon, Tue, Wed, Thu, Fri, Sat, Sun",
+      "time_slot: Format 'HH:MM AM - HH:MM PM' (e.g., '9:00 AM - 12:00 PM')",
+      "total_seats: Defaults to 30. available_seats is set equal to total_seats on creation.",
+      "booking_enabled: Optional — true/false (defaults to true). Controls whether students can book slots in this batch.",
     ],
   },
   {
     title: "Jobs",
     tableName: "jobs",
-    description: "Job postings for students. Admin bulk import — sets company directly (vendor portal auto-fills it from vendor profile)",
-    headers: ["title", "company", "location", "type", "salary_range", "description", "requirement_1", "requirement_2", "requirement_3", "requirement_4"],
+    description: "Job postings for students. Admin bulk import sets company directly (vendor portal auto-fills it from vendor profile).",
+    headers: ["title", "company", "location", "type", "salary_range", "description", "requirements"],
     requiredFields: ["title", "company", "location", "description"],
-    example: ["Pastry Chef", "Grand Hotel", "Mumbai", "Full-time", "₹35,000 - ₹45,000/month", "Looking for a skilled pastry chef to join our team", "2+ years experience", "Baking certification", "Team player", "Creative mindset"],
+    example: ["Pastry Chef", "Grand Hotel", "Mumbai", "Full-time", "₹35,000 - ₹45,000/month", "Looking for a skilled pastry chef to join our team. The role covers daily production, menu R&D, and mentoring junior staff.", "2+ years experience; Baking certification; Team player; Creative mindset"],
     notes: [
-      "type: Full-time, Part-time, or Internship",
+      "type: Full-time, Part-time, Contract, or Internship (matches the vendor dialog)",
       "company: Required for admin imports (vendor portal fills this automatically)",
-      "requirement_1-4: Optional. Leave blank columns empty.",
+      "description: Should be at least 50 characters (matches the vendor dialog's validation)",
+      "requirements: Optional — semicolon-separated list, e.g. '2+ years; Team player; Baking cert'. Old files using requirement_1..requirement_4 columns are still accepted.",
     ],
   },
 ];
@@ -455,17 +459,42 @@ const DataTemplate = () => {
 
   const processRowData = async (template: TemplateSection, rowData: Record<string, string>): Promise<ProcessedRow | null> => {
     switch (template.tableName) {
-      case "courses":
+      case "courses": {
+        // Optional: attach existing recipes to the new course (mirrors the dialog's recipe picker)
+        const recipeTitles = rowData.recipe_titles
+          ? String(rowData.recipe_titles)
+              .split(";")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [];
+        let resolvedRecipeIds: string[] = [];
+        if (recipeTitles.length > 0) {
+          const { data: matched } = await supabase
+            .from("recipes")
+            .select("id, title")
+            .in("title", recipeTitles);
+          resolvedRecipeIds = (matched || []).map((r) => r.id);
+        }
         return {
           mainRow: {
             title: rowData.title,
-            course_code: rowData.course_code || null,
+            course_code: rowData.course_code ? rowData.course_code.toUpperCase() : null,
             description: rowData.description,
-            level: rowData.level,
+            level: rowData.level || "Beginner",
             duration: rowData.duration,
             base_fee: Number(rowData.base_fee) || 0,
           },
+          sideEffect: resolvedRecipeIds.length > 0
+            ? async (courseId: string) => {
+                const { error } = await supabase
+                  .from("recipes")
+                  .update({ course_id: courseId })
+                  .in("id", resolvedRecipeIds);
+                if (error) throw error;
+              }
+            : undefined,
         };
+      }
       case "modules": {
         const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;
@@ -546,6 +575,8 @@ const DataTemplate = () => {
         const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;
         const totalSeats = Number(rowData.total_seats) || 30;
+        const rawBooking = String(rowData.booking_enabled ?? "").trim().toLowerCase();
+        const bookingEnabled = rawBooking === "" ? true : !["false", "0", "no", "off"].includes(rawBooking);
         return {
           mainRow: {
             course_id: course.id,
@@ -555,11 +586,20 @@ const DataTemplate = () => {
             time_slot: rowData.time_slot,
             total_seats: totalSeats,
             available_seats: totalSeats,
+            booking_enabled: bookingEnabled,
           },
         };
       }
       case "jobs": {
-        const requirements = [rowData.requirement_1, rowData.requirement_2, rowData.requirement_3, rowData.requirement_4].filter(Boolean) as string[];
+        // New schema: single semicolon-separated `requirements` column
+        // Back-compat: also accept legacy `requirement_1..requirement_4` columns
+        const fromList = rowData.requirements
+          ? String(rowData.requirements).split(";").map((s) => s.trim()).filter(Boolean)
+          : [];
+        const fromLegacy = [rowData.requirement_1, rowData.requirement_2, rowData.requirement_3, rowData.requirement_4]
+          .map((v) => (v ?? "").trim())
+          .filter(Boolean);
+        const requirements = fromList.length > 0 ? fromList : fromLegacy;
         return {
           mainRow: {
             title: rowData.title,
@@ -1009,9 +1049,19 @@ const DataTemplate = () => {
                         Missing optional columns ({preview.missingOptional.length})
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {preview.missingOptional.map((h) => (
-                          <Badge key={h} variant="outline" className="text-xs">{h}</Badge>
-                        ))}
+                        {preview.missingOptional.map((h) => {
+                          const dialogOnlyOptional: Record<string, string> = {
+                            cost_per_unit: "not collected by the Add dialog — used by Purchase Orders only",
+                            recipe_titles: "optional — only needed if you want to attach existing recipes",
+                            booking_enabled: "defaults to true (open for booking)",
+                          };
+                          const note = dialogOnlyOptional[h];
+                          return (
+                            <Badge key={h} variant="outline" className="text-xs" title={note ?? undefined}>
+                              {h}{note ? ` — ${note}` : ""}
+                            </Badge>
+                          );
+                        })}
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">These will be left empty / set to defaults.</p>
                     </div>

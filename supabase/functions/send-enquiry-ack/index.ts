@@ -3,16 +3,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
+const FROM_ADDRESS = Deno.env.get("RESEND_FROM_EMAIL") || "Knead & Frost <noreply@kneadandfrost.in>";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY_1") || Deno.env.get("RESEND_API_KEY");
+
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY is not configured");
+      return new Response(JSON.stringify({ error: "Email gateway not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!RESEND_API_KEY) {
-      console.error("RESEND_API_KEY is not configured");
-      return new Response(JSON.stringify({ error: "Email service not configured" }), {
+      console.error("RESEND_API_KEY_1 is not configured");
+      return new Response(JSON.stringify({ error: "Resend connection not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -60,31 +72,34 @@ Deno.serve(async (req) => {
       </div>
       <div class="footer">
         <p>This is an automated message from Knead & Frost. Please do not reply.</p>
-        <p>For urgent queries, contact support@kneadandfrost.com</p>
+        <p>For urgent queries, contact support@kneadandfrost.in</p>
       </div>
     </div>
   </div>
 </body>
 </html>`;
 
-    const resendResponse = await fetch("https://api.resend.com/emails", {
+    const resendResponse = await fetch(`${GATEWAY_URL}/emails`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "X-Connection-Api-Key": RESEND_API_KEY,
       },
       body: JSON.stringify({
-        from: "Knead & Frost <onboarding@resend.dev>",
+        from: FROM_ADDRESS,
         to: [to],
         subject: "Thank you for your enquiry – Knead & Frost",
         html,
       }),
     });
 
-    const resendData = await resendResponse.json();
+    const resendText = await resendResponse.text();
+    let resendData: Record<string, unknown> = {};
+    try { resendData = resendText ? JSON.parse(resendText) : {}; } catch { resendData = { raw: resendText }; }
 
     if (!resendResponse.ok) {
-      console.error("Resend API error:", resendData);
+      console.error("Resend gateway error:", resendResponse.status, resendData);
       return new Response(JSON.stringify({ error: "Failed to send email", details: resendData }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

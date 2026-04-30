@@ -1300,12 +1300,14 @@ const DataTemplate = () => {
             <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
             <Button
               onClick={runImport}
-              disabled={!preview || preview.missingRequired.length > 0}
+              disabled={!preview || preview.missingRequired.length > 0 || preview.rowIssues.length > 0}
               className="gap-2"
             >
               <Upload className="h-4 w-4" />
               {preview && preview.missingRequired.length > 0
                 ? "Fix required columns to import"
+                : preview && preview.rowIssues.length > 0
+                ? `Fix ${preview.rowIssues.length} row${preview.rowIssues.length === 1 ? "" : "s"} to import`
                 : `Confirm & Import ${preview?.rows.length ?? 0} rows`}
             </Button>
           </DialogFooter>

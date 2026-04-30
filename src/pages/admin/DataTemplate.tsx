@@ -459,17 +459,42 @@ const DataTemplate = () => {
 
   const processRowData = async (template: TemplateSection, rowData: Record<string, string>): Promise<ProcessedRow | null> => {
     switch (template.tableName) {
-      case "courses":
+      case "courses": {
+        // Optional: attach existing recipes to the new course (mirrors the dialog's recipe picker)
+        const recipeTitles = rowData.recipe_titles
+          ? String(rowData.recipe_titles)
+              .split(";")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [];
+        let resolvedRecipeIds: string[] = [];
+        if (recipeTitles.length > 0) {
+          const { data: matched } = await supabase
+            .from("recipes")
+            .select("id, title")
+            .in("title", recipeTitles);
+          resolvedRecipeIds = (matched || []).map((r) => r.id);
+        }
         return {
           mainRow: {
             title: rowData.title,
-            course_code: rowData.course_code || null,
+            course_code: rowData.course_code ? rowData.course_code.toUpperCase() : null,
             description: rowData.description,
-            level: rowData.level,
+            level: rowData.level || "Beginner",
             duration: rowData.duration,
             base_fee: Number(rowData.base_fee) || 0,
           },
+          sideEffect: resolvedRecipeIds.length > 0
+            ? async (courseId: string) => {
+                const { error } = await supabase
+                  .from("recipes")
+                  .update({ course_id: courseId })
+                  .in("id", resolvedRecipeIds);
+                if (error) throw error;
+              }
+            : undefined,
         };
+      }
       case "modules": {
         const { data: course } = await supabase.from("courses").select("id").eq("title", rowData.course_title).single();
         if (!course) return null;

@@ -87,11 +87,12 @@ const templates: TemplateSection[] = [
     requiredFields: ["name", "category", "unit"],
     example: ["All-Purpose Flour", "Dry Ingredients", "kg", "50", "100", "20", "45"],
     notes: [
-      "name, category, unit: Required",
+      "name, category, unit: Required (match the 'Add Inventory Item' dialog)",
       "category: e.g., Dry Ingredients, Dairy, Chocolate, Equipment",
       "unit: e.g., kg, g, L, ml, pcs",
+      "current_stock / required_stock: Numbers (default 0)",
       "reorder_level: Defaults to 10 if blank (matches form default)",
-      "cost_per_unit: Optional — used by purchase orders. Number without currency symbol.",
+      "cost_per_unit: Optional — NOT collected by the Add Inventory dialog. Used by Purchase Orders only. Number without currency symbol.",
     ],
   },
   {

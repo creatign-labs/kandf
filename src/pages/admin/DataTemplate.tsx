@@ -1205,30 +1205,53 @@ const DataTemplate = () => {
                   )}
                 </Card>
 
-                {/* Per-row issues */}
-                {preview.rowIssues.length > 0 && (
-                  <Card className="p-4">
-                    <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      Rows missing required values ({preview.rowIssues.length})
-                    </h3>
-                    <div className="text-xs text-muted-foreground mb-2">These rows will fail to import:</div>
-                    <div className="max-h-40 overflow-y-auto space-y-1 text-xs">
-                      {preview.rowIssues.slice(0, 20).map((r) => (
-                        <div key={r.rowNumber} className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">Row {r.rowNumber}</Badge>
-                          <span className="text-muted-foreground">missing:</span>
-                          {r.missing.map((f) => (
-                            <Badge key={f} variant="destructive" className="text-xs">{f}</Badge>
-                          ))}
-                        </div>
-                      ))}
-                      {preview.rowIssues.length > 20 && (
-                        <div className="text-muted-foreground italic">…and {preview.rowIssues.length - 20} more</div>
-                      )}
-                    </div>
-                  </Card>
-                )}
+                {/* Per-row issues — missing required values and/or invalid field formats */}
+                {preview.rowIssues.length > 0 && (() => {
+                  const rowsMissing = preview.rowIssues.filter((r) => r.missing.length > 0).length;
+                  const rowsInvalid = preview.rowIssues.filter((r) => r.invalid.length > 0).length;
+                  return (
+                    <Card className="p-4 border-destructive/40">
+                      <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        Row problems ({preview.rowIssues.length}
+                        {rowsMissing > 0 && ` · ${rowsMissing} missing required`}
+                        {rowsInvalid > 0 && ` · ${rowsInvalid} invalid format`})
+                      </h3>
+                      <div className="text-xs text-muted-foreground mb-2">
+                        Fix these in your file and re-upload. Import is blocked until all rows are valid.
+                      </div>
+                      <div className="max-h-60 overflow-y-auto space-y-2 text-xs">
+                        {preview.rowIssues.slice(0, 30).map((r) => (
+                          <div key={r.rowNumber} className="border-l-2 border-destructive/40 pl-2 py-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="text-xs">Row {r.rowNumber}</Badge>
+                              {r.missing.length > 0 && (
+                                <>
+                                  <span className="text-muted-foreground">missing:</span>
+                                  {r.missing.map((f) => (
+                                    <Badge key={`m-${f}`} variant="destructive" className="text-xs">{f}</Badge>
+                                  ))}
+                                </>
+                              )}
+                            </div>
+                            {r.invalid.length > 0 && (
+                              <ul className="mt-1 ml-1 space-y-0.5">
+                                {r.invalid.map((iss, i) => (
+                                  <li key={i} className="text-destructive/90">
+                                    <span className="font-medium">{iss.field}</span>: <span className="text-muted-foreground">{iss.reason}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
+                        {preview.rowIssues.length > 30 && (
+                          <div className="text-muted-foreground italic">…and {preview.rowIssues.length - 30} more</div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })()}
 
                 {/* Data preview — first 5 rows */}
                 <Card className="p-4">

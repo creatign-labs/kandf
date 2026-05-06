@@ -56,9 +56,9 @@ const Enquiry = () => {
 
       if (error) throw error;
 
-      // Send acknowledgment email (fire-and-forget, don't block form success)
-      supabase.functions.invoke("send-enquiry-ack", {
-        body: { to: data.email, name: data.name },
+      // Send branded acknowledgment email (fire-and-forget)
+      supabase.functions.invoke("send-branded-email", {
+        body: { template: "enquiry_ack", to: data.email, data: { name: data.name } },
       }).catch((err) => console.error("Failed to send ack email:", err));
     },
     onSuccess: () => {

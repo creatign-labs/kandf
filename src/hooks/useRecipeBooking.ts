@@ -2,6 +2,35 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+// Determine if a given weekday name (e.g. "Monday") falls within a batch's
+// days-of-week string. Supports comma lists ("Monday, Wednesday, Friday"),
+// arrays ({Monday,Wednesday}), short forms ("Mon, Wed"), and ranges
+// ("Monday to Friday", "Monday-Saturday").
+const WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function isDayInBatchDays(dayName: string, daysStr: string | null | undefined): boolean {
+  if (!daysStr) return true;
+  const cleaned = daysStr.replace(/[{}]/g, '').trim();
+  const lower = cleaned.toLowerCase();
+  const day = dayName.toLowerCase();
+  const dayShort = day.slice(0, 3);
+
+  // Range syntax: "Monday to Friday" or "Monday-Friday"
+  const rangeMatch = lower.match(/^([a-z]+)\s*(?:to|-|–|—)\s*([a-z]+)$/);
+  if (rangeMatch) {
+    const startIdx = WEEKDAYS.findIndex(w => w.toLowerCase().startsWith(rangeMatch[1].slice(0, 3)));
+    const endIdx = WEEKDAYS.findIndex(w => w.toLowerCase().startsWith(rangeMatch[2].slice(0, 3)));
+    const dayIdx = WEEKDAYS.findIndex(w => w.toLowerCase() === day);
+    if (startIdx === -1 || endIdx === -1 || dayIdx === -1) return false;
+    if (startIdx <= endIdx) return dayIdx >= startIdx && dayIdx <= endIdx;
+    return dayIdx >= startIdx || dayIdx <= endIdx;
+  }
+
+  // List syntax
+  const parts = lower.split(/[,;/]+/).map(s => s.trim()).filter(Boolean);
+  return parts.some(p => p === day || p.startsWith(dayShort) || day.startsWith(p));
+}
+
 interface BookingEligibility {
   is_eligible: boolean;
   reason: string;

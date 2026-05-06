@@ -67,7 +67,8 @@ export type TemplateName =
   | "certificate_release"
   | "slot_reminder_24h"
   | "slot_reminder_2h"
-  | "slot_cancellation_cutoff";
+  | "slot_cancellation_cutoff"
+  | "slot_booking_confirmation";
 
 export interface RenderResult { subject: string; html: string; }
 

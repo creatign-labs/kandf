@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.slot-reminders]
 verify_jwt = false
+
+[functions.no-show-consumer]
+verify_jwt = false

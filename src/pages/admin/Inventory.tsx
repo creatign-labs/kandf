@@ -52,6 +52,48 @@ const Inventory = () => {
     },
   });
 
+  // Aggregate ingredient demand from confirmed bookings over the next 7 days
+  const { data: upcomingDemand } = useQuery({
+    queryKey: ["upcoming-ingredient-demand-7d"],
+    queryFn: async () => {
+      const today = new Date();
+      const end = new Date(today);
+      end.setDate(end.getDate() + 7);
+      const fromStr = today.toISOString().slice(0, 10);
+      const toStr = end.toISOString().slice(0, 10);
+
+      const { data: bks } = await supabase
+        .from("bookings")
+        .select("recipe_id, student_id, booking_date")
+        .gte("booking_date", fromStr)
+        .lte("booking_date", toStr)
+        .eq("status", "confirmed")
+        .not("recipe_id", "is", null);
+
+      const recipeIds = [...new Set((bks || []).map((b) => b.recipe_id as string))];
+      if (recipeIds.length === 0) return {} as Record<string, number>;
+
+      const { data: ris } = await supabase
+        .from("recipe_ingredients")
+        .select("recipe_id, inventory_id, quantity_per_student")
+        .in("recipe_id", recipeIds);
+
+      const recipeCount: Record<string, number> = {};
+      (bks || []).forEach((b) => {
+        const k = b.recipe_id as string;
+        recipeCount[k] = (recipeCount[k] || 0) + 1;
+      });
+
+      const demand: Record<string, number> = {};
+      (ris || []).forEach((ri) => {
+        const count = recipeCount[ri.recipe_id] || 0;
+        const need = Number(ri.quantity_per_student) * count;
+        demand[ri.inventory_id] = (demand[ri.inventory_id] || 0) + need;
+      });
+      return demand;
+    },
+  });
+
   const addItemMutation = useMutation({
     mutationFn: async (item: typeof newItem) => {
       const { error } = await supabase.from("inventory").insert(item);
@@ -281,6 +323,7 @@ const Inventory = () => {
                     <TableHead>Category</TableHead>
                     <TableHead>Closing Stock</TableHead>
                     <TableHead>Required Stock</TableHead>
+                    <TableHead>Upcoming Demand (7d)</TableHead>
                     <TableHead>Stock Status</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -292,8 +335,10 @@ const Inventory = () => {
                       ? (item.current_stock / item.required_stock) * 100 
                       : 100;
                     const status = getStatus(item.current_stock, item.required_stock, item.reorder_level);
+                    const demand = upcomingDemand?.[item.id] || 0;
+                    const demandShort = demand > item.current_stock;
                     return (
-                      <TableRow key={item.id}>
+                      <TableRow key={item.id} className={demandShort ? "bg-destructive/5" : ""}>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.category}</TableCell>
                         <TableCell>
@@ -301,6 +346,23 @@ const Inventory = () => {
                         </TableCell>
                         <TableCell>
                           <span className="font-semibold">{item.required_stock}</span> {item.unit}
+                        </TableCell>
+                        <TableCell>
+                          {demand > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-semibold ${demandShort ? "text-destructive" : ""}`}>
+                                {demand.toFixed(2)} {item.unit}
+                              </span>
+                              {demandShort && (
+                                <Badge variant="destructive" className="gap-1">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  Short {(demand - item.current_stock).toFixed(2)}
+                                </Badge>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 min-w-[200px]">

@@ -71,3 +71,9 @@ verify_jwt = false
 
 [functions.import-real-users]
 verify_jwt = false
+
+[functions.send-branded-email]
+verify_jwt = false
+
+[functions.slot-reminders]
+verify_jwt = false

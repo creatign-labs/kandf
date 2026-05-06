@@ -324,6 +324,27 @@ export type Database = {
           },
         ]
       }
+      booking_reminders_sent: {
+        Row: {
+          booking_id: string
+          id: string
+          reminder_type: string
+          sent_at: string
+        }
+        Insert: {
+          booking_id: string
+          id?: string
+          reminder_type: string
+          sent_at?: string
+        }
+        Update: {
+          booking_id?: string
+          id?: string
+          reminder_type?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           assigned_chef_id: string | null
@@ -604,6 +625,48 @@ export type Database = {
           requirement_date?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      email_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          provider_message_id: string | null
+          recipient: string
+          sent_at: string | null
+          status: string
+          subject: string | null
+          template: string
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          provider_message_id?: string | null
+          recipient: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template: string
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          provider_message_id?: string | null
+          recipient?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template?: string
+          triggered_by?: string | null
         }
         Relationships: []
       }

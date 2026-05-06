@@ -207,6 +207,28 @@ export function renderTemplate(template: TemplateName, data: Record<string, any>
             <p>Please arrive 10 minutes early. Looking forward to seeing you!</p>`,
         }),
       };
+    case "slot_booking_confirmation":
+      return {
+        subject: `✅ Slot booked – ${data.booking_date} at ${data.time_slot}`,
+        html: shell({
+          preheader: "Your baking slot is confirmed.",
+          title: `Booking confirmed, ${name}!`,
+          bodyHtml: `
+            <p>Great news — your slot has been successfully booked. Here are the details:</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:${BRAND.cream};border:1px solid ${BRAND.border};border-radius:10px;margin:18px 0">
+              <tr><td style="padding:18px 22px;font-size:15px">
+                <div><strong>Date:</strong> ${data.booking_date}</div>
+                <div style="margin-top:6px"><strong>Time Slot:</strong> ${data.time_slot}</div>
+                ${data.course_title ? `<div style="margin-top:6px"><strong>Course:</strong> ${data.course_title}</div>` : ""}
+                ${data.recipe_title ? `<div style="margin-top:6px"><strong>Recipe:</strong> ${data.recipe_title}</div>` : ""}
+              </td></tr>
+            </table>
+            <p style="background:#fff5e1;border-left:4px solid ${BRAND.primary};padding:12px 16px;border-radius:6px"><strong>Need to cancel?</strong> Cancellations must be made before <strong>11:59 PM the previous day</strong>. Same-day cancellations are not allowed.</p>
+            <p>We'll send you a reminder 24 hours and 2 hours before your session. See you soon!</p>`,
+          ctaUrl: `${BRAND.site}/login`,
+          ctaLabel: "View My Bookings",
+        }),
+      };
     default:
       throw new Error(`Unknown template: ${template}`);
   }

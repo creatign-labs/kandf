@@ -88,6 +88,7 @@ import BatchCalendar from "./pages/admin/BatchCalendar";
 import LeadPaymentSetup from "./pages/admin/LeadPaymentSetup";
 import RequiredDailyIngredients from "./pages/admin/RequiredDailyIngredients";
 import AttendanceManagement from "./pages/admin/AttendanceManagement";
+import EmailLogs from "./pages/admin/EmailLogs";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 

@@ -2,6 +2,35 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+// Determine if a given weekday name (e.g. "Monday") falls within a batch's
+// days-of-week string. Supports comma lists ("Monday, Wednesday, Friday"),
+// arrays ({Monday,Wednesday}), short forms ("Mon, Wed"), and ranges
+// ("Monday to Friday", "Monday-Saturday").
+const WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function isDayInBatchDays(dayName: string, daysStr: string | null | undefined): boolean {
+  if (!daysStr) return true;
+  const cleaned = daysStr.replace(/[{}]/g, '').trim();
+  const lower = cleaned.toLowerCase();
+  const day = dayName.toLowerCase();
+  const dayShort = day.slice(0, 3);
+
+  // Range syntax: "Monday to Friday" or "Monday-Friday"
+  const rangeMatch = lower.match(/^([a-z]+)\s*(?:to|-|–|—)\s*([a-z]+)$/);
+  if (rangeMatch) {
+    const startIdx = WEEKDAYS.findIndex(w => w.toLowerCase().startsWith(rangeMatch[1].slice(0, 3)));
+    const endIdx = WEEKDAYS.findIndex(w => w.toLowerCase().startsWith(rangeMatch[2].slice(0, 3)));
+    const dayIdx = WEEKDAYS.findIndex(w => w.toLowerCase() === day);
+    if (startIdx === -1 || endIdx === -1 || dayIdx === -1) return false;
+    if (startIdx <= endIdx) return dayIdx >= startIdx && dayIdx <= endIdx;
+    return dayIdx >= startIdx || dayIdx <= endIdx;
+  }
+
+  // List syntax
+  const parts = lower.split(/[,;/]+/).map(s => s.trim()).filter(Boolean);
+  return parts.some(p => p === day || p.startsWith(dayShort) || day.startsWith(p));
+}
+
 interface BookingEligibility {
   is_eligible: boolean;
   reason: string;
@@ -59,15 +88,22 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
         if (error) throw error;
 
         // Transform batch data into AvailableSlot format
-        // Generate slots for the next 30 days
+        // Generate slots for the next 30 days, respecting start_date and days-of-week
         const slots: AvailableSlot[] = [];
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         for (let i = 1; i <= 30; i++) {
           const date = new Date(today);
           date.setDate(date.getDate() + i);
           const dateStr = date.toISOString().split('T')[0];
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
           
           for (const batch of (data || [])) {
+            // Enforce batch start_date
+            if (batch.start_date && dateStr < batch.start_date) continue;
+            // Enforce batch days-of-week
+            if (!isDayInBatchDays(dayName, batch.days)) continue;
+
             slots.push({
               batch_date: dateStr,
               time_slot: batch.time_slot,

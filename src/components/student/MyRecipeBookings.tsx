@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 export function MyRecipeBookings() {
   const { data: bookings, isLoading } = useMyRecipeBookings();
   const cancelMutation = useCancelRecipeBooking();
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   // Fetch booking statuses from bookings table for accurate status display
   const { data: bookingStatuses } = useQuery({
@@ -233,10 +235,15 @@ export function MyRecipeBookings() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => cancelMutation.mutate(booking.booking_id!)}
-                        disabled={cancelMutation.isPending}
+                        onClick={() => {
+                          setCancellingId(booking.booking_id!);
+                          cancelMutation.mutate(booking.booking_id!, {
+                            onSettled: () => setCancellingId(null),
+                          });
+                        }}
+                        disabled={cancellingId === booking.booking_id}
                       >
-                        {cancelMutation.isPending ? (
+                        {cancellingId === booking.booking_id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>

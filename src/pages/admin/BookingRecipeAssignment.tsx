@@ -28,6 +28,66 @@ import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+// Renders a recipe dropdown that hides recipes the student has already completed
+// (i.e., attended a session where that recipe was assigned).
+function RecipeSelect({
+  studentId,
+  value,
+  recipes,
+  onChange,
+}: {
+  studentId: string;
+  value: string | null;
+  recipes: { id: string; title: string }[];
+  onChange: (value: string | null) => void;
+}) {
+  const { data: completedRecipeIds = [] } = useQuery({
+    queryKey: ["student-completed-recipes", studentId],
+    queryFn: async () => {
+      // Recipes from past bookings where attendance is "present"
+      const { data: att } = await supabase
+        .from("attendance")
+        .select("class_date")
+        .eq("student_id", studentId)
+        .eq("status", "present");
+      const dates = (att || []).map((a) => a.class_date);
+      if (dates.length === 0) return [] as string[];
+      const { data: bks } = await supabase
+        .from("bookings")
+        .select("recipe_id, booking_date")
+        .eq("student_id", studentId)
+        .in("booking_date", dates)
+        .not("recipe_id", "is", null);
+      return [...new Set((bks || []).map((b) => b.recipe_id as string))];
+    },
+    enabled: !!studentId,
+  });
+
+  const visibleRecipes = recipes.filter((r) => {
+    if (r.id === value) return true; // keep current selection visible
+    return !completedRecipeIds.includes(r.id);
+  });
+
+  return (
+    <Select
+      value={value || "none"}
+      onValueChange={(v) => onChange(v === "none" ? null : v)}
+    >
+      <SelectTrigger className="w-[180px]">
+        <SelectValue placeholder="Select recipe" />
+      </SelectTrigger>
+      <SelectContent className="bg-background border shadow-lg z-50">
+        <SelectItem value="none">No Recipe</SelectItem>
+        {visibleRecipes.map((recipe) => (
+          <SelectItem key={recipe.id} value={recipe.id}>
+            {recipe.title}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 const BookingRecipeAssignment = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isNotifying, setIsNotifying] = useState(false);
@@ -442,27 +502,17 @@ const BookingRecipeAssignment = () => {
                         {booking.courses?.title}
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={booking.recipe_id || "none"}
-                          onValueChange={(value) => 
+                        <RecipeSelect
+                          studentId={booking.student_id}
+                          value={booking.recipe_id}
+                          recipes={recipes || []}
+                          onChange={(value) =>
                             assignRecipeMutation.mutate({
                               bookingId: booking.id,
-                              recipeId: value === "none" ? null : value
+                              recipeId: value,
                             })
                           }
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select recipe" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border shadow-lg z-50">
-                            <SelectItem value="none">No Recipe</SelectItem>
-                            {recipes?.map((recipe) => (
-                              <SelectItem key={recipe.id} value={recipe.id}>
-                                {recipe.title}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </TableCell>
                       <TableCell>
                         <Select

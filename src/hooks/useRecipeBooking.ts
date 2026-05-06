@@ -59,15 +59,22 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
         if (error) throw error;
 
         // Transform batch data into AvailableSlot format
-        // Generate slots for the next 30 days
+        // Generate slots for the next 30 days, respecting start_date and days-of-week
         const slots: AvailableSlot[] = [];
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         for (let i = 1; i <= 30; i++) {
           const date = new Date(today);
           date.setDate(date.getDate() + i);
           const dateStr = date.toISOString().split('T')[0];
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
           
           for (const batch of (data || [])) {
+            // Enforce batch start_date
+            if (batch.start_date && dateStr < batch.start_date) continue;
+            // Enforce batch days-of-week
+            if (!isDayInBatchDays(dayName, batch.days)) continue;
+
             slots.push({
               batch_date: dateStr,
               time_slot: batch.time_slot,

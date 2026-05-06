@@ -496,7 +496,8 @@ const RequiredDailyIngredients = () => {
                               <p className="text-sm text-muted-foreground">No ingredients linked to this recipe</p>
                             )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </AccordionContent>
                   </AccordionItem>

@@ -166,11 +166,45 @@ export function useBookRecipeSlot() {
       
       return result;
     },
-    onSuccess: () => {
+    onSuccess: async (result, variables) => {
       toast({
         title: "Slot booked successfully!",
-        description: "You have been added to the recipe batch.",
+        description: "You have been added to the recipe batch. A confirmation email is on its way.",
       });
+
+      // Send branded confirmation email (non-blocking)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', user.id)
+            .single();
+          const [{ data: course }, { data: recipe }] = await Promise.all([
+            supabase.from('courses').select('title').eq('id', variables.courseId).single(),
+            variables.recipeId
+              ? supabase.from('recipes').select('title').eq('id', variables.recipeId).single()
+              : Promise.resolve({ data: null } as any),
+          ]);
+          await supabase.functions.invoke('send-branded-email', {
+            body: {
+              template: 'slot_booking_confirmation',
+              to: user.email,
+              data: {
+                name: profile?.first_name || 'there',
+                booking_date: variables.batchDate,
+                time_slot: variables.timeSlot,
+                course_title: course?.title || null,
+                recipe_title: recipe?.title || null,
+              },
+            },
+          });
+        }
+      } catch (e) {
+        console.error('Failed to send booking confirmation email:', e);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['booking-eligibility'] });
       queryClient.invalidateQueries({ queryKey: ['available-recipe-slots'] });
       queryClient.invalidateQueries({ queryKey: ['my-recipe-bookings'] });

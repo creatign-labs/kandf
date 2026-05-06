@@ -446,10 +446,20 @@ const RequiredDailyIngredients = () => {
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="space-y-4 pt-2">
-                        {chef.recipes.map((recipe) => (
-                          <div key={recipe.recipe_id} className="border rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-semibold">{recipe.recipe_title}</h4>
+                        {chef.recipes.map((recipe) => {
+                          const shortIngredients = recipe.ingredients.filter((i) => !i.sufficient);
+                          return (
+                          <div key={recipe.recipe_id} className={`border rounded-lg p-4 ${shortIngredients.length > 0 ? "border-destructive/50 bg-destructive/5" : ""}`}>
+                            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                              <h4 className="font-semibold flex items-center gap-2">
+                                {recipe.recipe_title}
+                                {shortIngredients.length > 0 && (
+                                  <Badge variant="destructive" className="gap-1">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    {shortIngredients.length} short
+                                  </Badge>
+                                )}
+                              </h4>
                               <Badge variant="secondary" className="gap-1">
                                 <Users className="h-3 w-3" />
                                 {recipe.student_count} student(s)

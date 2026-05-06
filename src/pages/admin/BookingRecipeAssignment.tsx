@@ -442,27 +442,17 @@ const BookingRecipeAssignment = () => {
                         {booking.courses?.title}
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={booking.recipe_id || "none"}
-                          onValueChange={(value) => 
+                        <RecipeSelect
+                          studentId={booking.student_id}
+                          value={booking.recipe_id}
+                          recipes={recipes || []}
+                          onChange={(value) =>
                             assignRecipeMutation.mutate({
                               bookingId: booking.id,
-                              recipeId: value === "none" ? null : value
+                              recipeId: value,
                             })
                           }
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select recipe" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border shadow-lg z-50">
-                            <SelectItem value="none">No Recipe</SelectItem>
-                            {recipes?.map((recipe) => (
-                              <SelectItem key={recipe.id} value={recipe.id}>
-                                {recipe.title}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </TableCell>
                       <TableCell>
                         <Select

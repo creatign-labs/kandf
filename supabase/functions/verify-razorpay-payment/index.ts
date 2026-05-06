@@ -166,6 +166,33 @@ serve(async (req) => {
       console.error('Batch update error:', batchError);
     }
 
+    // Send branded payment success + enrollment confirmation emails (fire-and-forget)
+    try {
+      const { data: profile } = await supabase.from('profiles').select('first_name, last_name, email').eq('id', user.id).single();
+      const { data: course } = await supabase.from('courses').select('title').eq('id', courseId).single();
+      const recipientName = profile ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') : 'there';
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      if (profile?.email) {
+        await fetch(`${supabaseUrl}/functions/v1/send-branded-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceRoleKey}` },
+          body: JSON.stringify({
+            template: 'payment_success', to: profile.email,
+            data: { name: recipientName, amount: totalAmount, invoice_number: invoiceNumber, payment_id: razorpay_payment_id, course_title: course?.title },
+          }),
+        });
+        await fetch(`${supabaseUrl}/functions/v1/send-branded-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceRoleKey}` },
+          body: JSON.stringify({
+            template: 'enrollment_confirmation', to: profile.email,
+            data: { name: recipientName, course_title: course?.title, student_code: enrollment.student_code },
+          }),
+        });
+      }
+    } catch (e) { console.error('Branded email send failed:', e); }
+
     return new Response(
       JSON.stringify({ 
         success: true, 

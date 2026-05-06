@@ -13,11 +13,17 @@ import {
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { CalendarIcon, ChefHat, Loader2, Package, Users } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CalendarIcon, ChefHat, Loader2, Package, Users, Pencil } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 interface IngredientRequirement {
   inventory_id: string;
@@ -42,47 +48,161 @@ interface ChefGroup {
   }[];
 }
 
+function UpdateStockDialog({
+  inventoryId,
+  ingredientName,
+  unit,
+  currentStock,
+  onUpdated,
+}: {
+  inventoryId: string;
+  ingredientName: string;
+  unit: string;
+  currentStock: number;
+  onUpdated: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [delta, setDelta] = useState<string>("");
+  const [movement, setMovement] = useState<"in" | "out" | "set">("in");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const num = parseFloat(delta);
+    if (isNaN(num) || num < 0) {
+      toast({ title: "Invalid quantity", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      let newStock = currentStock;
+      let movementType = movement;
+      let ledgerQty = num;
+      if (movement === "in") newStock = currentStock + num;
+      else if (movement === "out") newStock = Math.max(0, currentStock - num);
+      else {
+        // "set" — convert to in/out delta for ledger
+        const diff = num - currentStock;
+        newStock = num;
+        movementType = diff >= 0 ? "in" : "out";
+        ledgerQty = Math.abs(diff);
+      }
+
+      const { error: invErr } = await supabase
+        .from("inventory")
+        .update({ current_stock: newStock })
+        .eq("id", inventoryId);
+      if (invErr) throw invErr;
+
+      if (ledgerQty > 0) {
+        await supabase.from("inventory_ledger").insert({
+          inventory_id: inventoryId,
+          movement_type: movementType,
+          quantity: ledgerQty,
+          performed_by: user.id,
+          notes: notes || `Stock ${movement} via Required Ingredients`,
+        });
+      }
+
+      toast({ title: "Stock updated" });
+      setOpen(false);
+      setDelta("");
+      setNotes("");
+      onUpdated();
+    } catch (e: any) {
+      toast({ title: "Update failed", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-1">
+          <Pencil className="h-3 w-3" /> Update
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Update Stock — {ingredientName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="text-sm text-muted-foreground">
+            Current stock: <span className="font-semibold text-foreground">{currentStock} {unit}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {(["in", "out", "set"] as const).map((m) => (
+              <Button
+                key={m}
+                variant={movement === m ? "default" : "outline"}
+                size="sm"
+                onClick={() => setMovement(m)}
+                type="button"
+              >
+                {m === "in" ? "Add" : m === "out" ? "Remove" : "Set to"}
+              </Button>
+            ))}
+          </div>
+          <div>
+            <Label htmlFor="qty">Quantity ({unit})</Label>
+            <Input id="qty" type="number" min="0" step="any" value={delta} onChange={(e) => setDelta(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="notes">Notes (optional)</Label>
+            <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const RequiredDailyIngredients = () => {
-  const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
-  const formattedDate = format(selectedDate, "yyyy-MM-dd");
+  const [fromDate, setFromDate] = useState<Date>(addDays(new Date(), 1));
+  const [toDate, setToDate] = useState<Date>(addDays(new Date(), 1));
+  const fromStr = format(fromDate, "yyyy-MM-dd");
+  const toStr = format(toDate, "yyyy-MM-dd");
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["required-daily-ingredients", formattedDate],
+    queryKey: ["required-daily-ingredients", fromStr, toStr],
     queryFn: async () => {
-      // 1. Get all bookings for the date
       const { data: bookings, error: bErr } = await supabase
         .from("bookings")
-        .select("id, recipe_id, assigned_chef_id, student_id, time_slot")
-        .eq("booking_date", formattedDate)
+        .select("id, recipe_id, assigned_chef_id, student_id, time_slot, booking_date")
+        .gte("booking_date", fromStr)
+        .lte("booking_date", toStr)
         .eq("status", "confirmed");
       if (bErr) throw bErr;
 
       if (!bookings || bookings.length === 0) return { chefGroups: [], cumulative: [] };
 
-      // 2. Get unique recipe IDs
       const recipeIds = [...new Set(bookings.filter(b => b.recipe_id).map(b => b.recipe_id!))];
       if (recipeIds.length === 0) return { chefGroups: [], cumulative: [] };
 
-      // 3. Get recipe details
       const { data: recipes } = await supabase
-        .from("recipes")
-        .select("id, title")
-        .in("id", recipeIds);
+        .from("recipes").select("id, title").in("id", recipeIds);
 
-      // 4. Get recipe ingredients with inventory details
       const { data: recipeIngredients } = await supabase
         .from("recipe_ingredients")
         .select("recipe_id, inventory_id, quantity_per_student, inventory(id, name, unit, current_stock)")
         .in("recipe_id", recipeIds);
 
-      // 5. Get chef profiles
       const chefIds = [...new Set(bookings.filter(b => b.assigned_chef_id).map(b => b.assigned_chef_id!))];
       let chefProfiles: Record<string, string> = {};
       if (chefIds.length > 0) {
         const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name")
-          .in("id", chefIds);
+          .from("profiles").select("id, first_name, last_name").in("id", chefIds);
         (profiles || []).forEach(p => {
           chefProfiles[p.id] = `${p.first_name} ${p.last_name}`;
         });
@@ -90,7 +210,6 @@ const RequiredDailyIngredients = () => {
 
       const recipeMap = new Map((recipes || []).map(r => [r.id, r.title]));
 
-      // Group bookings by chef -> recipe -> student count
       const chefRecipeMap: Record<string, Record<string, string[]>> = {};
       bookings.forEach(b => {
         if (!b.recipe_id) return;
@@ -100,7 +219,6 @@ const RequiredDailyIngredients = () => {
         chefRecipeMap[chefKey][b.recipe_id].push(b.student_id);
       });
 
-      // Build chef groups
       const chefGroups: ChefGroup[] = Object.entries(chefRecipeMap).map(([chefId, recipesObj]) => ({
         chef_id: chefId === "unassigned" ? null : chefId,
         chef_name: chefId === "unassigned" ? "Unassigned" : (chefProfiles[chefId] || "Unknown Chef"),
@@ -122,16 +240,10 @@ const RequiredDailyIngredients = () => {
                 recipe_title: recipeMap.get(recipeId) || "Unknown",
               };
             });
-          return {
-            recipe_id: recipeId,
-            recipe_title: recipeMap.get(recipeId) || "Unknown",
-            student_count: studentCount,
-            ingredients,
-          };
+          return { recipe_id: recipeId, recipe_title: recipeMap.get(recipeId) || "Unknown", student_count: studentCount, ingredients };
         }),
       }));
 
-      // Build cumulative list
       const cumulativeMap: Record<string, IngredientRequirement> = {};
       chefGroups.forEach(cg => {
         cg.recipes.forEach(r => {
@@ -154,9 +266,14 @@ const RequiredDailyIngredients = () => {
     },
   });
 
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["required-daily-ingredients"] });
+  };
+
   const chefGroups = data?.chefGroups || [];
   const cumulative = data?.cumulative || [];
   const insufficientCount = cumulative.filter(c => !c.sufficient).length;
+  const sameDay = fromStr === toStr;
 
   return (
     <div className="min-h-screen bg-background">
@@ -165,30 +282,55 @@ const RequiredDailyIngredients = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Required Daily Ingredients</h1>
           <p className="text-muted-foreground">
-            View ingredient requirements for a specific date, grouped by chef
+            View ingredient requirements for a date or a date range, grouped by chef
           </p>
         </div>
 
-        {/* Date Picker */}
         <Card className="p-4 mb-6">
-          <div className="flex items-center gap-4">
-            <span className="font-medium">Select Date:</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal")}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(selectedDate, "PPP")}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(d) => d && setSelectedDate(d)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+          <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+            <span className="font-medium">Date Range:</span>
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[200px] justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    From: {format(fromDate, "PPP")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={fromDate}
+                    onSelect={(d) => {
+                      if (!d) return;
+                      setFromDate(d);
+                      if (toDate < d) setToDate(d);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[200px] justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    To: {format(toDate, "PPP")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={toDate}
+                    onSelect={(d) => d && setToDate(d)}
+                    disabled={(d) => d < fromDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            {!sameDay && (
+              <Badge variant="secondary">{Math.round((toDate.getTime() - fromDate.getTime()) / 86400000) + 1} days</Badge>
+            )}
           </div>
         </Card>
 
@@ -201,12 +343,11 @@ const RequiredDailyIngredients = () => {
             <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No bookings found</h3>
             <p className="text-muted-foreground">
-              There are no confirmed bookings with assigned recipes for {format(selectedDate, "PPP")}
+              There are no confirmed bookings with assigned recipes in this range.
             </p>
           </Card>
         ) : (
           <>
-            {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <Card className="p-4">
                 <div className="flex items-center justify-between">
@@ -239,7 +380,6 @@ const RequiredDailyIngredients = () => {
               </Card>
             </div>
 
-            {/* Cumulative Requirements */}
             <Card className="p-6 mb-6">
               <h2 className="text-xl font-bold mb-4">Cumulative Ingredient Requirements</h2>
               <div className="rounded-md border">
@@ -251,6 +391,7 @@ const RequiredDailyIngredients = () => {
                       <TableHead>Current Stock</TableHead>
                       <TableHead>Shortfall</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -273,6 +414,15 @@ const RequiredDailyIngredients = () => {
                             {item.sufficient ? "Sufficient" : "Insufficient"}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <UpdateStockDialog
+                            inventoryId={item.inventory_id}
+                            ingredientName={item.ingredient_name}
+                            unit={item.unit}
+                            currentStock={item.current_stock}
+                            onUpdated={refresh}
+                          />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -280,7 +430,6 @@ const RequiredDailyIngredients = () => {
               </div>
             </Card>
 
-            {/* Chef-wise Breakdown */}
             <Card className="p-6">
               <h2 className="text-xl font-bold mb-4">Chef-wise Breakdown</h2>
               <Accordion type="multiple" className="w-full">

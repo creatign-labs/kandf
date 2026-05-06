@@ -114,7 +114,19 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
             });
           }
         }
-        return slots;
+        // Dedupe by date + time_slot, summing available spots and capacity
+        const merged = new Map<string, AvailableSlot>();
+        for (const s of slots) {
+          const key = `${s.batch_date}|${s.time_slot}`;
+          const existing = merged.get(key);
+          if (existing) {
+            existing.capacity += s.capacity;
+            existing.available_spots += s.available_spots;
+          } else {
+            merged.set(key, { ...s });
+          }
+        }
+        return Array.from(merged.values());
       }
 
       const { data, error } = await supabase

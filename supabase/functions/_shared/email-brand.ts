@@ -83,10 +83,7 @@ export function renderTemplate(template: TemplateName, data: Record<string, any>
           title: `Hi ${name}, thanks for reaching out!`,
           bodyHtml: `
             <p>Thank you for showing interest in <strong>Knead & Frost Academy</strong>.</p>
-            <p>Our team will contact you shortly to guide you through our courses, schedules and the perfect program for your baking journey.</p>
-            <p>In the meantime, feel free to explore what we offer.</p>`,
-          ctaUrl: `${BRAND.site}/courses`,
-          ctaLabel: "Browse Our Courses",
+            <p>Our team will contact you shortly to guide you through our courses, schedules and the perfect program for your baking journey.</p>`,
         }),
       };
     case "enrollment_confirmation":

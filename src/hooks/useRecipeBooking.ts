@@ -87,21 +87,21 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
 
         if (error) throw error;
 
-        // Transform batch data into AvailableSlot format
-        // Generate slots for the next 30 days, respecting start_date and days-of-week
+        // Build the next 30 days of candidate slots
         const slots: AvailableSlot[] = [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const dateStrs: string[] = [];
         for (let i = 1; i <= 30; i++) {
           const date = new Date(today);
           date.setDate(date.getDate() + i);
           const dateStr = date.toISOString().split('T')[0];
+          dateStrs.push(dateStr);
           const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-          
+
           for (const batch of (data || [])) {
-            // Enforce batch start_date
             if (batch.start_date && dateStr < batch.start_date) continue;
-            // Enforce batch days-of-week
+            if (batch.end_date && dateStr > batch.end_date) continue;
             if (!isDayInBatchDays(dayName, batch.days)) continue;
 
             slots.push({
@@ -110,18 +110,45 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
               recipe_batch_id: null,
               capacity: batch.total_seats,
               current_count: 0,
-              available_spots: batch.available_seats,
+              available_spots: batch.total_seats,
             });
           }
         }
-        // Dedupe by date + time_slot, summing available spots and capacity
+
+        // Fetch confirmed bookings for this course in the date window so we can
+        // compute real available_spots per (date, time_slot). Cancelled bookings
+        // are excluded, so they automatically free up seats.
+        if (dateStrs.length > 0) {
+          const { data: confirmed, error: bErr } = await supabase
+            .from('bookings')
+            .select('booking_date, time_slot')
+            .eq('course_id', courseId)
+            .eq('status', 'confirmed')
+            .in('booking_date', dateStrs);
+          if (bErr) throw bErr;
+
+          const counts = new Map<string, number>();
+          for (const b of confirmed || []) {
+            const k = `${b.booking_date}|${b.time_slot}`;
+            counts.set(k, (counts.get(k) || 0) + 1);
+          }
+          for (const s of slots) {
+            const key = `${s.batch_date}|${s.time_slot}`;
+            const used = counts.get(key) || 0;
+            s.current_count = used;
+            s.available_spots = Math.max(0, s.capacity - used);
+          }
+        }
+
+        // Dedupe by date + time_slot, summing capacity, used, and available
         const merged = new Map<string, AvailableSlot>();
         for (const s of slots) {
           const key = `${s.batch_date}|${s.time_slot}`;
           const existing = merged.get(key);
           if (existing) {
             existing.capacity += s.capacity;
-            existing.available_spots += s.available_spots;
+            existing.current_count += s.current_count;
+            existing.available_spots = Math.max(0, existing.capacity - existing.current_count);
           } else {
             merged.set(key, { ...s });
           }

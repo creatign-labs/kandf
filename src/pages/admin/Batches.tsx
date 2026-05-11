@@ -111,13 +111,17 @@ const Batches = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("courses")
-        .select("id, title")
+        .select("id, title, duration")
         .order("title");
 
       if (error) throw error;
       return data;
     },
   });
+
+  // Auto-derive end_date = start_date + selected course's duration
+  const selectedCourse = courses?.find((c) => c.id === formData.course_id);
+  const derivedEndDate = computeEndDate(formData.start_date, selectedCourse?.duration);
 
   // Create/Update mutation
   const saveMutation = useMutation({

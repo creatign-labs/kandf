@@ -15,7 +15,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Search, ChefHat, Clock, Loader2, Package, Plus, Trash2, Youtube } from "lucide-react";
+import { Search, ChefHat, Clock, Loader2, Package, Plus, Trash2, Youtube, IndianRupee } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPlayer } from "@/components/VideoPlayer";
@@ -33,6 +33,7 @@ const AdminRecipes = () => {
     title: "",
     recipe_code: "",
     video_url: "",
+    cost: "",
   });
   const [selectedIngredients, setSelectedIngredients] = useState<
     { inventory_id: string; quantity_per_student: number; unit: string }[]
@@ -87,6 +88,7 @@ const AdminRecipes = () => {
           title: formData.title,
           recipe_code: formData.recipe_code || null,
           video_url: formData.video_url || null,
+          cost: formData.cost === "" ? null : Number(formData.cost),
         } as any)
         .select()
         .single();
@@ -120,7 +122,7 @@ const AdminRecipes = () => {
 
   const resetForm = () => {
     setFormData({
-      title: "", recipe_code: "", video_url: "",
+      title: "", recipe_code: "", video_url: "", cost: "",
     });
     setSelectedIngredients([]);
   };
@@ -207,6 +209,24 @@ const AdminRecipes = () => {
                         onChange={(e) => setFormData({ ...formData, recipe_code: e.target.value })}
                         placeholder="e.g., RCP-001"
                         maxLength={20}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <IndianRupee className="h-4 w-4" />
+                      Cost (₹)
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="pl-7"
+                        value={formData.cost}
+                        onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                        placeholder="0.00"
                       />
                     </div>
                   </div>

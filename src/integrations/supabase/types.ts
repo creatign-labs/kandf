@@ -2104,6 +2104,7 @@ export type Database = {
       recipes: {
         Row: {
           cook_time: number | null
+          cost: number | null
           course_id: string | null
           created_at: string
           description: string | null
@@ -2121,6 +2122,7 @@ export type Database = {
         }
         Insert: {
           cook_time?: number | null
+          cost?: number | null
           course_id?: string | null
           created_at?: string
           description?: string | null
@@ -2138,6 +2140,7 @@ export type Database = {
         }
         Update: {
           cook_time?: number | null
+          cost?: number | null
           course_id?: string | null
           created_at?: string
           description?: string | null

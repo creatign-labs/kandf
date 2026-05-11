@@ -186,8 +186,6 @@ const Courses = () => {
       level: "Beginner",
       base_fee: "",
     });
-    setSelectedRecipeIds([]);
-    setRecipeSearchQuery("");
   };
 
   const handleEdit = (course: any) => {
@@ -200,10 +198,6 @@ const Courses = () => {
       level: course.level,
       base_fee: course.base_fee.toString(),
     });
-    // Pre-select recipes that are linked to this course
-    const linkedRecipeIds = course.recipes?.map((r: any) => r.id) || [];
-    setSelectedRecipeIds(linkedRecipeIds);
-    setRecipeSearchQuery("");
   };
 
   const validateForm = (): string | null => {
@@ -256,19 +250,6 @@ const Courses = () => {
     );
   }
 
-  // Filter recipes for selection - exclude recipes already linked to other courses
-  const availableRecipes = allRecipes?.filter((recipe) => {
-    const matchesSearch = recipe.title.toLowerCase().includes(recipeSearchQuery.toLowerCase());
-    return matchesSearch;
-  }) || [];
-
-  const toggleRecipe = (recipeId: string) => {
-    setSelectedRecipeIds((prev) =>
-      prev.includes(recipeId)
-        ? prev.filter((id) => id !== recipeId)
-        : [...prev, recipeId]
-    );
-  };
 
   const courseFormJSX = (
     <form onSubmit={handleSubmit} className="space-y-4">

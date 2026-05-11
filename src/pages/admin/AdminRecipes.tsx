@@ -141,6 +141,24 @@ const AdminRecipes = () => {
     setSelectedIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const validateCost = (raw: string): string | null => {
+    if (raw === "" || raw == null) return null; // optional
+    if (!/^\d+(\.\d{1,2})?$/.test(raw)) {
+      return "Enter a valid amount with up to 2 decimal places (e.g., 250 or 99.50)";
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return "Enter a valid number";
+    if (n < 0) return "Cost cannot be negative";
+    if (n > 1_000_000) return "Cost must be ₹10,00,000 or less";
+    return null;
+  };
+  const costError = validateCost(formData.cost);
+
+  const formatINR = (val: number | null | undefined) => {
+    if (val == null) return null;
+    return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(Number(val));
+  };
+
   const filteredRecipes = recipes?.filter((recipe) => {
     const matchesSearch =
       recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

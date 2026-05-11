@@ -21,12 +21,21 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Bell, Send } from "lucide-react";
+import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Bell, Send, Square, CheckSquare } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
+// Renders a checkbox-style indicator for SelectItem options
+function ItemCheck({ checked }: { checked: boolean }) {
+  return checked ? (
+    <CheckSquare className="h-4 w-4 text-primary flex-shrink-0" />
+  ) : (
+    <Square className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+  );
+}
 
 // Renders a recipe dropdown that hides recipes the student has already completed
 // (i.e., attended a session where that recipe was assigned).
@@ -77,10 +86,18 @@ function RecipeSelect({
         <SelectValue placeholder="Select recipe" />
       </SelectTrigger>
       <SelectContent className="bg-background border shadow-lg z-50">
-        <SelectItem value="none">No Recipe</SelectItem>
+        <SelectItem value="none">
+          <div className="flex items-center gap-2">
+            <ItemCheck checked={!value} />
+            <span>No Recipe</span>
+          </div>
+        </SelectItem>
         {visibleRecipes.map((recipe) => (
           <SelectItem key={recipe.id} value={recipe.id}>
-            {recipe.title}
+            <div className="flex items-center gap-2">
+              <ItemCheck checked={value === recipe.id} />
+              <span>{recipe.title}</span>
+            </div>
           </SelectItem>
         ))}
       </SelectContent>
@@ -529,10 +546,18 @@ const BookingRecipeAssignment = () => {
                             <SelectValue placeholder="Select chef" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border shadow-lg z-50">
-                            <SelectItem value="none">No Chef</SelectItem>
+                            <SelectItem value="none">
+                              <div className="flex items-center gap-2">
+                                <ItemCheck checked={!booking.assigned_chef_id} />
+                                <span>No Chef</span>
+                              </div>
+                            </SelectItem>
                             {chefsWithSpecializations?.map((chef) => (
                               <SelectItem key={chef.id} value={chef.id}>
-                                {chef.first_name} {chef.last_name}
+                                <div className="flex items-center gap-2">
+                                  <ItemCheck checked={booking.assigned_chef_id === chef.id} />
+                                  <span>{chef.first_name} {chef.last_name}</span>
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -554,7 +579,10 @@ const BookingRecipeAssignment = () => {
                           <SelectContent>
                             {Array.from({ length: 25 }, (_, i) => (
                               <SelectItem key={i + 1} value={String(i + 1)}>
-                                {i + 1}
+                                <div className="flex items-center gap-2">
+                                  <ItemCheck checked={(booking as any).table_number === String(i + 1)} />
+                                  <span>{i + 1}</span>
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>

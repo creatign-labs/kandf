@@ -281,7 +281,8 @@ export type Database = {
           booking_enabled: boolean | null
           course_id: string
           created_at: string
-          days: string
+          days: string | null
+          end_date: string | null
           id: string
           start_date: string | null
           time_slot: string
@@ -294,7 +295,8 @@ export type Database = {
           booking_enabled?: boolean | null
           course_id: string
           created_at?: string
-          days: string
+          days?: string | null
+          end_date?: string | null
           id?: string
           start_date?: string | null
           time_slot: string
@@ -307,7 +309,8 @@ export type Database = {
           booking_enabled?: boolean | null
           course_id?: string
           created_at?: string
-          days?: string
+          days?: string | null
+          end_date?: string | null
           id?: string
           start_date?: string | null
           time_slot?: string
@@ -2098,7 +2101,7 @@ export type Database = {
       recipes: {
         Row: {
           cook_time: number | null
-          course_id: string
+          course_id: string | null
           created_at: string
           description: string | null
           difficulty: string | null
@@ -2115,7 +2118,7 @@ export type Database = {
         }
         Insert: {
           cook_time?: number | null
-          course_id: string
+          course_id?: string | null
           created_at?: string
           description?: string | null
           difficulty?: string | null
@@ -2132,7 +2135,7 @@ export type Database = {
         }
         Update: {
           cook_time?: number | null
-          course_id?: string
+          course_id?: string | null
           created_at?: string
           description?: string | null
           difficulty?: string | null

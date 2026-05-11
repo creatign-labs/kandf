@@ -292,7 +292,10 @@ const MyCourse = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {isCompleted && (
-                            <Badge variant="outline" className="text-green-600 border-green-600">Done</Badge>
+                            <Badge className="bg-green-600 hover:bg-green-600 text-white gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Completed
+                            </Badge>
                           )}
                         </div>
                       </div>

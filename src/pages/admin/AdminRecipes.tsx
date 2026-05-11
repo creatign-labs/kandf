@@ -229,6 +229,7 @@ const AdminRecipes = () => {
                         placeholder="0.00"
                       />
                     </div>
+                  </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Youtube className="h-4 w-4 text-red-500" />

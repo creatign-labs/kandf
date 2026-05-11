@@ -484,7 +484,7 @@ const Batches = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="start_date">Start Date</Label>
+                      <Label htmlFor="start_date">Start Date (First Payment Date)</Label>
                       <Input
                         id="start_date"
                         type="date"
@@ -493,6 +493,9 @@ const Batches = () => {
                           setFormData(prev => ({ ...prev, start_date: e.target.value }))
                         }
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Set this to the date of the student's first payment
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="end_date">End Date</Label>

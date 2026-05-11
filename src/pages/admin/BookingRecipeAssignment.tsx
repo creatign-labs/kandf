@@ -543,74 +543,45 @@ const BookingRecipeAssignment = () => {
                         {booking.courses?.title}
                       </TableCell>
                       <TableCell>
-                        <RecipeSelect
+                        <BookingRecipeMultiSelect
                           studentId={booking.student_id}
-                          value={booking.recipe_id}
                           recipes={recipes || []}
-                          onChange={(value) =>
-                            assignRecipeMutation.mutate({
-                              bookingId: booking.id,
-                              recipeId: value,
-                            })
+                          values={(booking as any).recipe_ids || []}
+                          disabled={booking.status === 'cancelled'}
+                          onChange={(ids) =>
+                            assignRecipesMutation.mutate({ bookingId: booking.id, recipeIds: ids })
                           }
                         />
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={booking.assigned_chef_id || "none"}
-                          onValueChange={(value) => 
-                            assignChefMutation.mutate({
-                              bookingId: booking.id,
-                              chefId: value === "none" ? null : value
-                            })
+                        <MultiSelectCheckbox
+                          options={(chefsWithSpecializations || []).map((c: any) => ({
+                            id: c.id,
+                            label: `${c.first_name} ${c.last_name}`,
+                          }))}
+                          values={(booking as any).assigned_chef_ids || []}
+                          onChange={(ids) =>
+                            assignChefsMutation.mutate({ bookingId: booking.id, chefIds: ids })
                           }
+                          placeholder="Select chefs"
+                          width="w-[200px]"
                           disabled={booking.status === 'cancelled'}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select chef" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border shadow-lg z-50">
-                            <SelectItem value="none">
-                              <div className="flex items-center gap-2">
-                                <ItemCheck checked={!booking.assigned_chef_id} />
-                                <span>No Chef</span>
-                              </div>
-                            </SelectItem>
-                            {chefsWithSpecializations?.map((chef) => (
-                              <SelectItem key={chef.id} value={chef.id}>
-                                <div className="flex items-center gap-2">
-                                  <ItemCheck checked={booking.assigned_chef_id === chef.id} />
-                                  <span>{chef.first_name} {chef.last_name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={(booking as any).table_number || ""}
-                          onValueChange={async (val) => {
-                            const bookingId = booking.id;
-                            await supabase.from('bookings').update({ table_number: val || null }).eq('id', bookingId);
-                            queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
-                          }}
+                        <MultiSelectCheckbox
+                          options={Array.from({ length: 25 }, (_, i) => ({
+                            id: String(i + 1),
+                            label: `Table ${i + 1}`,
+                          }))}
+                          values={(booking as any).table_numbers || []}
+                          onChange={(ids) =>
+                            assignTablesMutation.mutate({ bookingId: booking.id, tableNumbers: ids })
+                          }
+                          placeholder="Tables"
+                          width="w-[140px]"
                           disabled={booking.status === 'cancelled'}
-                        >
-                          <SelectTrigger className="w-20 h-8 text-sm">
-                            <SelectValue placeholder="#" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 25 }, (_, i) => (
-                              <SelectItem key={i + 1} value={String(i + 1)}>
-                                <div className="flex items-center gap-2">
-                                  <ItemCheck checked={(booking as any).table_number === String(i + 1)} />
-                                  <span>{i + 1}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

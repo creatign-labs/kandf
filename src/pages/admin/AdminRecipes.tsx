@@ -35,7 +35,7 @@ const AdminRecipes = () => {
     video_url: "",
   });
   const [selectedIngredients, setSelectedIngredients] = useState<
-    { inventory_id: string; quantity_per_student: number }[]
+    { inventory_id: string; quantity_per_student: number; unit: string }[]
   >([]);
 
   const { data: recipes, isLoading } = useQuery({
@@ -99,6 +99,7 @@ const AdminRecipes = () => {
             recipe_id: newRecipe.id,
             inventory_id: ing.inventory_id,
             quantity_per_student: ing.quantity_per_student,
+            unit: ing.unit || null,
           }))
         );
         if (ingError) throw ingError;
@@ -125,7 +126,7 @@ const AdminRecipes = () => {
   };
 
   const addIngredient = () => {
-    setSelectedIngredients([...selectedIngredients, { inventory_id: "", quantity_per_student: 0 }]);
+    setSelectedIngredients([...selectedIngredients, { inventory_id: "", quantity_per_student: 0, unit: "g" }]);
   };
 
   const updateIngredient = (index: number, field: string, value: any) => {
@@ -255,10 +256,23 @@ const AdminRecipes = () => {
                             <Input
                               type="number"
                               placeholder="Qty/student"
-                              className="w-32"
+                              className="w-24"
                               value={ing.quantity_per_student || ""}
                               onChange={(e) => updateIngredient(idx, "quantity_per_student", Number(e.target.value))}
                             />
+                            <Select
+                              value={ing.unit}
+                              onValueChange={(v) => updateIngredient(idx, "unit", v)}
+                            >
+                              <SelectTrigger className="w-24">
+                                <SelectValue placeholder="Unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ml">ml</SelectItem>
+                                <SelectItem value="g">g</SelectItem>
+                                <SelectItem value="pieces">pieces</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <Button
                               type="button"
                               variant="ghost"

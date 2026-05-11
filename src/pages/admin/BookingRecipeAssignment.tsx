@@ -86,10 +86,18 @@ function RecipeSelect({
         <SelectValue placeholder="Select recipe" />
       </SelectTrigger>
       <SelectContent className="bg-background border shadow-lg z-50">
-        <SelectItem value="none">No Recipe</SelectItem>
+        <SelectItem value="none">
+          <div className="flex items-center gap-2">
+            <ItemCheck checked={!value} />
+            <span>No Recipe</span>
+          </div>
+        </SelectItem>
         {visibleRecipes.map((recipe) => (
           <SelectItem key={recipe.id} value={recipe.id}>
-            {recipe.title}
+            <div className="flex items-center gap-2">
+              <ItemCheck checked={value === recipe.id} />
+              <span>{recipe.title}</span>
+            </div>
           </SelectItem>
         ))}
       </SelectContent>
@@ -538,10 +546,18 @@ const BookingRecipeAssignment = () => {
                             <SelectValue placeholder="Select chef" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border shadow-lg z-50">
-                            <SelectItem value="none">No Chef</SelectItem>
+                            <SelectItem value="none">
+                              <div className="flex items-center gap-2">
+                                <ItemCheck checked={!booking.assigned_chef_id} />
+                                <span>No Chef</span>
+                              </div>
+                            </SelectItem>
                             {chefsWithSpecializations?.map((chef) => (
                               <SelectItem key={chef.id} value={chef.id}>
-                                {chef.first_name} {chef.last_name}
+                                <div className="flex items-center gap-2">
+                                  <ItemCheck checked={booking.assigned_chef_id === chef.id} />
+                                  <span>{chef.first_name} {chef.last_name}</span>
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -563,7 +579,10 @@ const BookingRecipeAssignment = () => {
                           <SelectContent>
                             {Array.from({ length: 25 }, (_, i) => (
                               <SelectItem key={i + 1} value={String(i + 1)}>
-                                {i + 1}
+                                <div className="flex items-center gap-2">
+                                  <ItemCheck checked={(booking as any).table_number === String(i + 1)} />
+                                  <span>{i + 1}</span>
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>

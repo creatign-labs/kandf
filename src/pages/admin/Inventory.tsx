@@ -21,6 +21,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Search, AlertTriangle, Plus, Package, Loader2, Utensils } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,8 +38,7 @@ const Inventory = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newItem, setNewItem] = useState({
     name: "",
-    category: "",
-    unit: "",
+    unit: "g",
     current_stock: 0,
     required_stock: 0,
     reorder_level: 10,
@@ -101,8 +107,7 @@ const Inventory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      setIsAddDialogOpen(false);
-      setNewItem({ name: "", category: "", unit: "", current_stock: 0, required_stock: 0, reorder_level: 10 });
+      setNewItem({ name: "", unit: "g", current_stock: 0, required_stock: 0, reorder_level: 10 });
       toast({ title: "Item added successfully" });
     },
   });

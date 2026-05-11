@@ -335,7 +335,7 @@ const AdminRecipes = () => {
                   <Button
                     className="w-full"
                     onClick={() => createRecipeMutation.mutate()}
-                    disabled={!formData.title || createRecipeMutation.isPending}
+                    disabled={!formData.title || !!costError || createRecipeMutation.isPending}
                   >
                     {createRecipeMutation.isPending ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>

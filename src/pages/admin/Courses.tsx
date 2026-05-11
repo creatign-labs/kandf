@@ -123,16 +123,6 @@ const Courses = () => {
       
       if (error) throw error;
 
-      // Update selected recipes to link to this course
-      if (selectedRecipeIds.length > 0 && newCourse) {
-        const { error: recipeError } = await supabase
-          .from("recipes")
-          .update({ course_id: newCourse.id })
-          .in("id", selectedRecipeIds);
-        
-        if (recipeError) throw recipeError;
-      }
-
       return newCourse;
     },
     onSuccess: () => {

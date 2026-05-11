@@ -398,33 +398,31 @@ const Courses = () => {
         <ScrollArea className="h-48 rounded-md border p-2">
           {availableRecipes.length > 0 ? (
             <div className="space-y-2">
-              {availableRecipes.map((recipe) => (
-                <div
-                  key={recipe.id}
-                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleRecipe(recipe.id);
-                  }}
-                >
-                  <Checkbox
+              {availableRecipes.map((recipe) => {
+                const isChecked = selectedRecipeIds.includes(recipe.id);
+                return (
+                  <button
+                    key={recipe.id}
                     type="button"
-                    checked={selectedRecipeIds.includes(recipe.id)}
-                    onCheckedChange={() => toggleRecipe(recipe.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.preventDefault()}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{recipe.title}</p>
-                    {recipe.difficulty && (
-                      <Badge variant="outline" className="text-xs">
-                        {recipe.difficulty}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
+                    onClick={() => toggleRecipe(recipe.id)}
+                    className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 text-left"
+                  >
+                    <Checkbox
+                      checked={isChecked}
+                      tabIndex={-1}
+                      className="pointer-events-none"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{recipe.title}</p>
+                      {recipe.difficulty && (
+                        <Badge variant="outline" className="text-xs">
+                          {recipe.difficulty}
+                        </Badge>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">

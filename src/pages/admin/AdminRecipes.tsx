@@ -420,12 +420,20 @@ const AdminRecipes = () => {
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Cook: {recipe.cook_time}m</span>
                   )}
                 </div>
-                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2 flex-wrap">
                   <Badge variant="outline">{recipe.courses?.title}</Badge>
-                  <Badge variant="secondary" className="gap-1">
-                    <Package className="h-3 w-3" />
-                    {ingredientCounts?.[recipe.id] || 0} linked
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {(recipe as any).cost != null && (
+                      <Badge variant="outline" className="gap-1">
+                        <IndianRupee className="h-3 w-3" />
+                        {formatINR((recipe as any).cost)}
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="gap-1">
+                      <Package className="h-3 w-3" />
+                      {ingredientCounts?.[recipe.id] || 0} linked
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </Card>

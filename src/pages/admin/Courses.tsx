@@ -252,12 +252,10 @@ const Courses = () => {
 
   const validateForm = (): string | null => {
     const title = formData.title.trim();
-    const description = formData.description.trim();
     const duration = formData.duration.trim();
     const fee = parseFloat(formData.base_fee);
 
     if (!title) return "Course title is required";
-    if (!description) return "Course description is required";
     if (!duration) return "Course duration is required";
     if (!formData.base_fee || Number.isNaN(fee) || fee <= 0) return "Course fee must be a positive number";
     return null;
@@ -339,16 +337,6 @@ const Courses = () => {
             maxLength={20}
           />
         </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="course-description">Description</Label>
-        <Textarea
-          id="course-description"
-          value={formData.description}
-          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="Course description..."
-          required
-        />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">

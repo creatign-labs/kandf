@@ -470,6 +470,12 @@ const AdminRecipes = () => {
                 )}
                 {selectedRecipe?.prep_time && <Badge variant="outline">Prep: {selectedRecipe.prep_time} min</Badge>}
                 {selectedRecipe?.cook_time && <Badge variant="outline">Cook: {selectedRecipe.cook_time} min</Badge>}
+                {(selectedRecipe as any)?.cost != null && (
+                  <Badge variant="outline" className="gap-1">
+                    <IndianRupee className="h-3 w-3" />
+                    Cost: ₹{formatINR((selectedRecipe as any).cost)}
+                  </Badge>
+                )}
               </div>
               {selectedRecipe?.description && (
                 <div>

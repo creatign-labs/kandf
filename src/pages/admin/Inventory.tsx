@@ -107,6 +107,7 @@ const Inventory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      setIsAddDialogOpen(false);
       setNewItem({ name: "", unit: "g", current_stock: 0, required_stock: 0, reorder_level: 10 });
       toast({ title: "Item added successfully" });
     },
@@ -153,8 +154,7 @@ const Inventory = () => {
   };
 
   const filteredInventory = inventory?.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchQuery.toLowerCase())
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const criticalItems = filteredInventory?.filter(item => 
@@ -266,21 +266,17 @@ const Inventory = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="category">Category</Label>
-                      <Input 
-                        id="category" 
-                        value={newItem.category}
-                        onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-                      />
-                    </div>
-                    <div>
                       <Label htmlFor="unit">Unit</Label>
-                      <Input 
-                        id="unit" 
-                        placeholder="kg, liters, pieces"
-                        value={newItem.unit}
-                        onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                      />
+                      <Select value={newItem.unit} onValueChange={(v) => setNewItem({ ...newItem, unit: v })}>
+                        <SelectTrigger id="unit">
+                          <SelectValue placeholder="Select unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ml">ml</SelectItem>
+                          <SelectItem value="g">g</SelectItem>
+                          <SelectItem value="pieces">pieces</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -305,7 +301,7 @@ const Inventory = () => {
                     <Button 
                       className="w-full" 
                       onClick={() => addItemMutation.mutate(newItem)}
-                      disabled={!newItem.name || !newItem.category || !newItem.unit}
+                      disabled={!newItem.name || !newItem.unit}
                     >
                       Add Item
                     </Button>

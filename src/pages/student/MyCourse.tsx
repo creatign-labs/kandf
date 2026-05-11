@@ -1,43 +1,53 @@
+import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { Clock, CheckCircle, Loader2, CalendarCheck, Info } from "lucide-react";
+import { Clock, CheckCircle, Loader2, CalendarCheck, Info, BookOpen } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addMonths, parseISO } from "date-fns";
 
 const MyCourse = () => {
+  const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string | null>(null);
 
-  // Fetch user's enrollment with course
-  const { data: enrollment, isLoading: enrollmentLoading } = useQuery({
-    queryKey: ['my-enrollment'],
+  // Fetch ALL of the user's enrollments so they can switch between courses
+  const { data: enrollments, isLoading: enrollmentLoading } = useQuery({
+    queryKey: ['my-enrollments-all'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      
+
       const { data, error } = await supabase
         .from('enrollments')
         .select('*, courses(*), batches(start_date)')
         .eq('student_id', user.id)
         .in('status', ['active', 'completed'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
+        .order('created_at', { ascending: false });
+
       if (error) throw error;
-      return data;
+      return data || [];
     }
   });
 
-  // Fetch recipes for the course with progress
+  // Default selection = newest enrollment
+  useEffect(() => {
+    if (!selectedEnrollmentId && enrollments && enrollments.length > 0) {
+      setSelectedEnrollmentId(enrollments[0].id);
+    }
+  }, [enrollments, selectedEnrollmentId]);
+
+  const enrollment = enrollments?.find(e => e.id === selectedEnrollmentId) || null;
+
+  // Fetch recipes for the SELECTED course with progress + bookings
   const { data: recipesData, isLoading: recipesLoading } = useQuery({
     queryKey: ['course-recipes', enrollment?.course_id],
     queryFn: async () => {
       if (!enrollment?.course_id) return { recipes: [], progress: [], bookings: [] };
-      
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -46,14 +56,20 @@ const MyCourse = () => {
         .select('*')
         .eq('course_id', enrollment.course_id)
         .order('created_at');
-      
+
       if (recipesError) throw recipesError;
 
-      const { data: progress, error: progressError } = await supabase
-        .from('student_recipe_progress')
-        .select('*')
-        .eq('student_id', user.id);
-      
+      const recipeIds = (recipes || []).map(r => r.id);
+
+      // Scope progress to only recipes in THIS course
+      const { data: progress, error: progressError } = recipeIds.length > 0
+        ? await supabase
+            .from('student_recipe_progress')
+            .select('*')
+            .eq('student_id', user.id)
+            .in('recipe_id', recipeIds)
+        : { data: [], error: null } as any;
+
       if (progressError) throw progressError;
 
       const { data: bookings, error: bookingsError } = await supabase
@@ -81,28 +97,24 @@ const MyCourse = () => {
     }
   });
 
-  const isLoading = enrollmentLoading || recipesLoading;
+  const isLoading = enrollmentLoading || (!!enrollment && recipesLoading);
 
   // Calculate progress
   const completedCount = recipesData?.progress?.filter(p => p.status === 'completed').length || 0;
   const totalCount = recipesData?.recipes?.length || 0;
   const overallProgress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  const isActive = profile?.enrollment_status === 'active';
-
   // Compute enrollment dates
   const enrollmentDate = enrollment?.enrollment_date ? format(parseISO(enrollment.enrollment_date), 'MMM d, yyyy') : 'N/A';
   const courseStartDate = enrollment?.batches?.start_date ? format(parseISO(enrollment.batches.start_date), 'MMM d, yyyy') : enrollmentDate;
-  
-  // Parse duration for end date
-  const durationMonths = enrollment?.courses?.duration 
-    ? parseInt(enrollment.courses.duration.match(/(\d+)/)?.[1] || '3') 
+
+  const durationMonths = enrollment?.courses?.duration
+    ? parseInt(enrollment.courses.duration.match(/(\d+)/)?.[1] || '3')
     : 3;
-  const courseEndDate = enrollment?.enrollment_date 
-    ? format(addMonths(parseISO(enrollment.enrollment_date), durationMonths), 'MMM d, yyyy') 
+  const courseEndDate = enrollment?.enrollment_date
+    ? format(addMonths(parseISO(enrollment.enrollment_date), durationMonths), 'MMM d, yyyy')
     : 'N/A';
 
-  // Get recipe status - completion derived from student_recipe_progress (set via attendance)
   const getRecipeStatus = (recipeId: string) => {
     const progressItem = recipesData?.progress?.find(p => p.recipe_id === recipeId);
     if (progressItem?.status === 'completed') return 'completed';
@@ -118,7 +130,7 @@ const MyCourse = () => {
     return recipesData?.bookings?.find(b => b.recipe_id === recipeId);
   };
 
-  if (isLoading) {
+  if (enrollmentLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header role="student" />
@@ -129,7 +141,7 @@ const MyCourse = () => {
     );
   }
 
-  if (!enrollment) {
+  if (!enrollments || enrollments.length === 0) {
     return (
       <div className="min-h-screen bg-background">
         <Header role="student" />
@@ -151,12 +163,35 @@ const MyCourse = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header role="student" />
-      
+
       <div className="container px-4 md:px-6 py-6 md:py-8">
         <div className="max-w-5xl mx-auto">
+          {/* Course Selector (only when 2+ enrollments) */}
+          {enrollments.length > 1 && (
+            <Card className="p-4 border-border/60 mb-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium">Select course:</span>
+                <Select value={selectedEnrollmentId || ''} onValueChange={setSelectedEnrollmentId}>
+                  <SelectTrigger className="w-full sm:w-[320px]">
+                    <SelectValue placeholder="Choose a course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {enrollments.map(e => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.courses?.title}
+                        {e.status === 'completed' ? ' (Completed)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </Card>
+          )}
+
           <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">{enrollment.courses?.title}</h1>
-            <p className="text-muted-foreground">{enrollment.courses?.description}</p>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">{enrollment?.courses?.title}</h1>
+            <p className="text-muted-foreground">{enrollment?.courses?.description}</p>
           </div>
 
           {/* Enrollment Info */}
@@ -176,7 +211,7 @@ const MyCourse = () => {
               </div>
               <div>
                 <p className="text-muted-foreground mb-1">Duration</p>
-                <p className="font-medium">{enrollment.courses?.duration}</p>
+                <p className="font-medium">{enrollment?.courses?.duration}</p>
               </div>
             </div>
           </Card>
@@ -216,57 +251,61 @@ const MyCourse = () => {
               </Badge>
             </div>
 
-            <div className="space-y-3">
-              {recipesData?.recipes?.map((recipe, index) => {
-                const status = getRecipeStatus(recipe.id);
-                const completionDate = getCompletionDate(recipe.id);
-                const existingBooking = getRecipeBooking(recipe.id);
-                const isCompleted = status === 'completed';
-                
-                
-                return (
-                  <div key={recipe.id} className="border border-border rounded-lg overflow-hidden">
-                    <div className="flex items-center justify-between p-4 bg-card hover:bg-accent/30 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-mono text-muted-foreground w-6">{index + 1}.</span>
-                        {isCompleted ? (
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        ) : existingBooking ? (
-                          <CalendarCheck className="h-5 w-5 text-blue-600" />
-                        ) : (
-                          <Clock className="h-5 w-5 text-muted-foreground" />
-                        )}
-                        <div>
-                          <span className="font-medium">{recipe.title}</span>
-                          {recipe.difficulty && (
-                            <span className="ml-2 text-xs text-muted-foreground">({recipe.difficulty})</span>
+            {recipesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recipesData?.recipes?.map((recipe, index) => {
+                  const status = getRecipeStatus(recipe.id);
+                  const completionDate = getCompletionDate(recipe.id);
+                  const existingBooking = getRecipeBooking(recipe.id);
+                  const isCompleted = status === 'completed';
+
+                  return (
+                    <div key={recipe.id} className="border border-border rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between p-4 bg-card hover:bg-accent/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-mono text-muted-foreground w-6">{index + 1}.</span>
+                          {isCompleted ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : existingBooking ? (
+                            <CalendarCheck className="h-5 w-5 text-blue-600" />
+                          ) : (
+                            <Clock className="h-5 w-5 text-muted-foreground" />
                           )}
-                          {isCompleted && completionDate && (
-                            <p className="text-xs text-green-600 mt-0.5">Completed: {completionDate}</p>
-                          )}
-                          {existingBooking && !isCompleted && (
-                            <p className="text-xs text-blue-600 mt-0.5">
-                              Booked: {existingBooking.booking_date} at {existingBooking.time_slot}
-                            </p>
+                          <div>
+                            <span className="font-medium">{recipe.title}</span>
+                            {recipe.difficulty && (
+                              <span className="ml-2 text-xs text-muted-foreground">({recipe.difficulty})</span>
+                            )}
+                            {isCompleted && completionDate && (
+                              <p className="text-xs text-green-600 mt-0.5">Completed: {completionDate}</p>
+                            )}
+                            {existingBooking && !isCompleted && (
+                              <p className="text-xs text-blue-600 mt-0.5">
+                                Booked: {existingBooking.booking_date} at {existingBooking.time_slot}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isCompleted && (
+                            <Badge variant="outline" className="text-green-600 border-green-600">Done</Badge>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {isCompleted && (
-                          <Badge variant="outline" className="text-green-600 border-green-600">Done</Badge>
-                        )}
-                      </div>
                     </div>
-                    
-                  </div>
-                );
-              })}
-              {(!recipesData?.recipes || recipesData.recipes.length === 0) && (
-                <p className="text-center text-muted-foreground py-4">
-                  No recipes available for this course yet.
-                </p>
-              )}
-            </div>
+                  );
+                })}
+                {(!recipesData?.recipes || recipesData.recipes.length === 0) && (
+                  <p className="text-center text-muted-foreground py-4">
+                    No recipes available for this course yet.
+                  </p>
+                )}
+              </div>
+            )}
           </Card>
         </div>
       </div>

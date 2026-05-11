@@ -4,13 +4,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -19,41 +12,96 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Bell, Send, Square, CheckSquare } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Send, ChevronDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-// Renders a checkbox-style indicator for SelectItem options
-function ItemCheck({ checked }: { checked: boolean }) {
-  return checked ? (
-    <CheckSquare className="h-4 w-4 text-primary flex-shrink-0" />
-  ) : (
-    <Square className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+// Generic multi-select with checkbox rows inside a popover.
+function MultiSelectCheckbox({
+  options,
+  values,
+  onChange,
+  placeholder,
+  width = "w-[200px]",
+  disabled = false,
+  emptyLabel = "No options",
+}: {
+  options: { id: string; label: string }[];
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  width?: string;
+  disabled?: boolean;
+  emptyLabel?: string;
+}) {
+  const toggle = (id: string) => {
+    if (values.includes(id)) onChange(values.filter((v) => v !== id));
+    else onChange([...values, id]);
+  };
+
+  const summary =
+    values.length === 0
+      ? placeholder
+      : values.length <= 2
+      ? options
+          .filter((o) => values.includes(o.id))
+          .map((o) => o.label)
+          .join(", ")
+      : `${values.length} selected`;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          disabled={disabled}
+          className={cn(width, "justify-between font-normal h-9")}
+        >
+          <span className="truncate text-left">{summary}</span>
+          <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[260px] p-0 bg-background border shadow-lg z-50" align="start">
+        <ScrollArea className="max-h-[280px]">
+          <div className="p-1">
+            {options.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">{emptyLabel}</div>
+            ) : (
+              options.map((opt) => {
+                const checked = values.includes(opt.id);
+                return (
+                  <label
+                    key={opt.id}
+                    className="flex items-center gap-2 px-2 py-2 rounded-md cursor-pointer hover:bg-accent"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => toggle(opt.id)}
+                    />
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-// Renders a recipe dropdown that hides recipes the student has already completed
-// (i.e., attended a session where that recipe was assigned).
-function RecipeSelect({
-  studentId,
-  value,
-  recipes,
-  onChange,
-}: {
-  studentId: string;
-  value: string | null;
-  recipes: { id: string; title: string }[];
-  onChange: (value: string | null) => void;
-}) {
+// Returns the recipes that the student has not yet completed (plus any
+// currently assigned recipes so they remain visible).
+function useVisibleRecipes(studentId: string, currentSelectedIds: string[], allRecipes: { id: string; title: string }[]) {
   const { data: completedRecipeIds = [] } = useQuery({
     queryKey: ["student-completed-recipes", studentId],
     queryFn: async () => {
-      // Recipes from past bookings where attendance is "present"
       const { data: att } = await supabase
         .from("attendance")
         .select("class_date")
@@ -72,36 +120,8 @@ function RecipeSelect({
     enabled: !!studentId,
   });
 
-  const visibleRecipes = recipes.filter((r) => {
-    if (r.id === value) return true; // keep current selection visible
-    return !completedRecipeIds.includes(r.id);
-  });
-
-  return (
-    <Select
-      value={value || "none"}
-      onValueChange={(v) => onChange(v === "none" ? null : v)}
-    >
-      <SelectTrigger className="w-[180px]">
-        <SelectValue placeholder="Select recipe" />
-      </SelectTrigger>
-      <SelectContent className="bg-background border shadow-lg z-50">
-        <SelectItem value="none">
-          <div className="flex items-center gap-2">
-            <ItemCheck checked={!value} />
-            <span>No Recipe</span>
-          </div>
-        </SelectItem>
-        {visibleRecipes.map((recipe) => (
-          <SelectItem key={recipe.id} value={recipe.id}>
-            <div className="flex items-center gap-2">
-              <ItemCheck checked={value === recipe.id} />
-              <span>{recipe.title}</span>
-            </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+  return allRecipes.filter((r) =>
+    currentSelectedIds.includes(r.id) || !completedRecipeIds.includes(r.id)
   );
 }
 

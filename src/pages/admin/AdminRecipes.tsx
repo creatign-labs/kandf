@@ -32,13 +32,7 @@ const AdminRecipes = () => {
   const [formData, setFormData] = useState({
     title: "",
     recipe_code: "",
-    description: "",
-    course_id: "",
-    difficulty: "Easy",
-    prep_time: "",
-    cook_time: "",
     video_url: "",
-    instructions: "",
   });
   const [selectedIngredients, setSelectedIngredients] = useState<
     { inventory_id: string; quantity_per_student: number }[]
@@ -92,14 +86,8 @@ const AdminRecipes = () => {
         .insert({
           title: formData.title,
           recipe_code: formData.recipe_code || null,
-          description: formData.description || null,
-          course_id: formData.course_id,
-          difficulty: formData.difficulty,
-          prep_time: formData.prep_time ? parseInt(formData.prep_time) : null,
-          cook_time: formData.cook_time ? parseInt(formData.cook_time) : null,
           video_url: formData.video_url || null,
-          instructions: formData.instructions || null,
-        })
+        } as any)
         .select()
         .single();
       if (error) throw error;
@@ -131,8 +119,7 @@ const AdminRecipes = () => {
 
   const resetForm = () => {
     setFormData({
-      title: "", recipe_code: "", description: "", course_id: "",
-      difficulty: "Easy", prep_time: "", cook_time: "", video_url: "", instructions: "",
+      title: "", recipe_code: "", video_url: "",
     });
     setSelectedIngredients([]);
   };
@@ -223,56 +210,6 @@ const AdminRecipes = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Course *</Label>
-                    <Select value={formData.course_id} onValueChange={(v) => setFormData({ ...formData, course_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select course" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {courses?.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Recipe description..."
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Difficulty</Label>
-                      <Select value={formData.difficulty} onValueChange={(v) => setFormData({ ...formData, difficulty: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Easy">Easy</SelectItem>
-                          <SelectItem value="Medium">Medium</SelectItem>
-                          <SelectItem value="Hard">Hard</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Prep Time (min)</Label>
-                      <Input
-                        type="number"
-                        value={formData.prep_time}
-                        onChange={(e) => setFormData({ ...formData, prep_time: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Cook Time (min)</Label>
-                      <Input
-                        type="number"
-                        value={formData.cook_time}
-                        onChange={(e) => setFormData({ ...formData, cook_time: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Youtube className="h-4 w-4 text-red-500" />
                       YouTube Video URL
@@ -282,16 +219,6 @@ const AdminRecipes = () => {
                       onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
                       placeholder="https://www.youtube.com/watch?v=..."
                       maxLength={500}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Instructions</Label>
-                    <Textarea
-                      value={formData.instructions}
-                      onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-                      placeholder="Step by step instructions..."
-                      className="min-h-[100px]"
-                      maxLength={5000}
                     />
                   </div>
 
@@ -352,7 +279,7 @@ const AdminRecipes = () => {
                   <Button
                     className="w-full"
                     onClick={() => createRecipeMutation.mutate()}
-                    disabled={!formData.title || !formData.course_id || createRecipeMutation.isPending}
+                    disabled={!formData.title || createRecipeMutation.isPending}
                   >
                     {createRecipeMutation.isPending ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>

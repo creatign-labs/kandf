@@ -125,6 +125,35 @@ function useVisibleRecipes(studentId: string, currentSelectedIds: string[], allR
   );
 }
 
+// Recipe multi-select scoped to a single booking — filters out recipes the
+// student has already completed (excluding currently selected ones).
+function BookingRecipeMultiSelect({
+  studentId,
+  recipes,
+  values,
+  onChange,
+  disabled = false,
+}: {
+  studentId: string;
+  recipes: { id: string; title: string }[];
+  values: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+}) {
+  const visible = useVisibleRecipes(studentId, values, recipes);
+  return (
+    <MultiSelectCheckbox
+      options={visible.map((r) => ({ id: r.id, label: r.title }))}
+      values={values}
+      onChange={onChange}
+      placeholder="Select recipes"
+      width="w-[200px]"
+      disabled={disabled}
+      emptyLabel="No recipes available"
+    />
+  );
+}
+
 const BookingRecipeAssignment = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isNotifying, setIsNotifying] = useState(false);

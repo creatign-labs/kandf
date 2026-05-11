@@ -491,7 +491,7 @@ export type Database = {
           base_fee: number
           course_code: string | null
           created_at: string
-          description: string
+          description: string | null
           duration: string
           id: string
           image_url: string | null
@@ -504,7 +504,7 @@ export type Database = {
           base_fee: number
           course_code?: string | null
           created_at?: string
-          description: string
+          description?: string | null
           duration: string
           id?: string
           image_url?: string | null
@@ -517,7 +517,7 @@ export type Database = {
           base_fee?: number
           course_code?: string | null
           created_at?: string
-          description?: string
+          description?: string | null
           duration?: string
           id?: string
           image_url?: string | null
@@ -896,7 +896,7 @@ export type Database = {
       }
       inventory: {
         Row: {
-          category: string
+          category: string | null
           cost_per_unit: number | null
           created_at: string
           current_stock: number
@@ -908,7 +908,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          category: string
+          category?: string | null
           cost_per_unit?: number | null
           created_at?: string
           current_stock?: number
@@ -920,7 +920,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          category?: string
+          category?: string | null
           cost_per_unit?: number | null
           created_at?: string
           current_stock?: number
@@ -2061,6 +2061,7 @@ export type Database = {
           notes: string | null
           quantity_per_student: number
           recipe_id: string
+          unit: string | null
           updated_at: string
         }
         Insert: {
@@ -2070,6 +2071,7 @@ export type Database = {
           notes?: string | null
           quantity_per_student?: number
           recipe_id: string
+          unit?: string | null
           updated_at?: string
         }
         Update: {
@@ -2079,6 +2081,7 @@ export type Database = {
           notes?: string | null
           quantity_per_student?: number
           recipe_id?: string
+          unit?: string | null
           updated_at?: string
         }
         Relationships: [

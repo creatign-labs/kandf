@@ -21,6 +21,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Search, AlertTriangle, Plus, Package, Loader2, Utensils } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,8 +38,7 @@ const Inventory = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newItem, setNewItem] = useState({
     name: "",
-    category: "",
-    unit: "",
+    unit: "g",
     current_stock: 0,
     required_stock: 0,
     reorder_level: 10,
@@ -102,7 +108,7 @@ const Inventory = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setIsAddDialogOpen(false);
-      setNewItem({ name: "", category: "", unit: "", current_stock: 0, required_stock: 0, reorder_level: 10 });
+      setNewItem({ name: "", unit: "g", current_stock: 0, required_stock: 0, reorder_level: 10 });
       toast({ title: "Item added successfully" });
     },
   });
@@ -148,8 +154,7 @@ const Inventory = () => {
   };
 
   const filteredInventory = inventory?.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchQuery.toLowerCase())
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const criticalItems = filteredInventory?.filter(item => 
@@ -261,21 +266,17 @@ const Inventory = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="category">Category</Label>
-                      <Input 
-                        id="category" 
-                        value={newItem.category}
-                        onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-                      />
-                    </div>
-                    <div>
                       <Label htmlFor="unit">Unit</Label>
-                      <Input 
-                        id="unit" 
-                        placeholder="kg, liters, pieces"
-                        value={newItem.unit}
-                        onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                      />
+                      <Select value={newItem.unit} onValueChange={(v) => setNewItem({ ...newItem, unit: v })}>
+                        <SelectTrigger id="unit">
+                          <SelectValue placeholder="Select unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ml">ml</SelectItem>
+                          <SelectItem value="g">g</SelectItem>
+                          <SelectItem value="pieces">pieces</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -300,7 +301,7 @@ const Inventory = () => {
                     <Button 
                       className="w-full" 
                       onClick={() => addItemMutation.mutate(newItem)}
-                      disabled={!newItem.name || !newItem.category || !newItem.unit}
+                      disabled={!newItem.name || !newItem.unit}
                     >
                       Add Item
                     </Button>
@@ -320,7 +321,7 @@ const Inventory = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Ingredient</TableHead>
-                    <TableHead>Category</TableHead>
+                    <TableHead>Unit</TableHead>
                     <TableHead>Closing Stock</TableHead>
                     <TableHead>Required Stock</TableHead>
                     <TableHead>Upcoming Demand (7d)</TableHead>
@@ -340,7 +341,7 @@ const Inventory = () => {
                     return (
                       <TableRow key={item.id} className={demandShort ? "bg-destructive/5" : ""}>
                         <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.category}</TableCell>
+                        <TableCell>{item.unit}</TableCell>
                         <TableCell>
                           <span className="font-semibold">{item.current_stock}</span> {item.unit}
                         </TableCell>

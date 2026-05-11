@@ -21,12 +21,21 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Bell, Send } from "lucide-react";
+import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Bell, Send, Square, CheckSquare } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
+// Renders a checkbox-style indicator for SelectItem options
+function ItemCheck({ checked }: { checked: boolean }) {
+  return checked ? (
+    <CheckSquare className="h-4 w-4 text-primary flex-shrink-0" />
+  ) : (
+    <Square className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+  );
+}
 
 // Renders a recipe dropdown that hides recipes the student has already completed
 // (i.e., attended a session where that recipe was assigned).

@@ -138,7 +138,7 @@ const Batches = () => {
             total_seats: formData.total_seats,
             available_seats: formData.total_seats - (editingBatch.enrolled_count || 0),
             start_date: formData.start_date || null,
-            end_date: formData.end_date || null,
+            end_date: derivedEndDate || null,
           } as any)
           .eq("id", editingBatch.id);
 

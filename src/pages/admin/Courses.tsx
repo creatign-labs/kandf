@@ -37,8 +37,6 @@ const Courses = () => {
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<any>(null);
-  const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
-  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     course_code: "",

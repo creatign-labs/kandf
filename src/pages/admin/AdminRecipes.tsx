@@ -141,6 +141,24 @@ const AdminRecipes = () => {
     setSelectedIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const validateCost = (raw: string): string | null => {
+    if (raw === "" || raw == null) return null; // optional
+    if (!/^\d+(\.\d{1,2})?$/.test(raw)) {
+      return "Enter a valid amount with up to 2 decimal places (e.g., 250 or 99.50)";
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return "Enter a valid number";
+    if (n < 0) return "Cost cannot be negative";
+    if (n > 1_000_000) return "Cost must be ₹10,00,000 or less";
+    return null;
+  };
+  const costError = validateCost(formData.cost);
+
+  const formatINR = (val: number | null | undefined) => {
+    if (val == null) return null;
+    return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(Number(val));
+  };
+
   const filteredRecipes = recipes?.filter((recipe) => {
     const matchesSearch =
       recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -227,8 +245,12 @@ const AdminRecipes = () => {
                         value={formData.cost}
                         onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
                         placeholder="0.00"
+                        aria-invalid={!!costError}
                       />
                     </div>
+                    {costError && (
+                      <p className="text-xs text-destructive">{costError}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
@@ -313,7 +335,7 @@ const AdminRecipes = () => {
                   <Button
                     className="w-full"
                     onClick={() => createRecipeMutation.mutate()}
-                    disabled={!formData.title || createRecipeMutation.isPending}
+                    disabled={!formData.title || !!costError || createRecipeMutation.isPending}
                   >
                     {createRecipeMutation.isPending ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
@@ -398,12 +420,20 @@ const AdminRecipes = () => {
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Cook: {recipe.cook_time}m</span>
                   )}
                 </div>
-                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2 flex-wrap">
                   <Badge variant="outline">{recipe.courses?.title}</Badge>
-                  <Badge variant="secondary" className="gap-1">
-                    <Package className="h-3 w-3" />
-                    {ingredientCounts?.[recipe.id] || 0} linked
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {(recipe as any).cost != null && (
+                      <Badge variant="outline" className="gap-1">
+                        <IndianRupee className="h-3 w-3" />
+                        {formatINR((recipe as any).cost)}
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="gap-1">
+                      <Package className="h-3 w-3" />
+                      {ingredientCounts?.[recipe.id] || 0} linked
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -440,6 +470,12 @@ const AdminRecipes = () => {
                 )}
                 {selectedRecipe?.prep_time && <Badge variant="outline">Prep: {selectedRecipe.prep_time} min</Badge>}
                 {selectedRecipe?.cook_time && <Badge variant="outline">Cook: {selectedRecipe.cook_time} min</Badge>}
+                {(selectedRecipe as any)?.cost != null && (
+                  <Badge variant="outline" className="gap-1">
+                    <IndianRupee className="h-3 w-3" />
+                    Cost: ₹{formatINR((selectedRecipe as any).cost)}
+                  </Badge>
+                )}
               </div>
               {selectedRecipe?.description && (
                 <div>

@@ -484,7 +484,7 @@ const Batches = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="start_date">Start Date (First Payment Date)</Label>
+                      <Label htmlFor="start_date">Start Date (Course Enrollment Date)</Label>
                       <Input
                         id="start_date"
                         type="date"
@@ -494,7 +494,7 @@ const Batches = () => {
                         }
                       />
                       <p className="text-xs text-muted-foreground">
-                        Set this to the date of the student's first payment
+                        Set this to the course enrollment date
                       </p>
                     </div>
                     <div className="space-y-2">

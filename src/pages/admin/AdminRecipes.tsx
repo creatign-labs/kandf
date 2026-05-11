@@ -227,8 +227,12 @@ const AdminRecipes = () => {
                         value={formData.cost}
                         onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
                         placeholder="0.00"
+                        aria-invalid={!!costError}
                       />
                     </div>
+                    {costError && (
+                      <p className="text-xs text-destructive">{costError}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">

@@ -214,6 +214,23 @@ const AdminRecipes = () => {
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
+                      <IndianRupee className="h-4 w-4" />
+                      Cost (₹)
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="pl-7"
+                        value={formData.cost}
+                        onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
                       <Youtube className="h-4 w-4 text-red-500" />
                       YouTube Video URL
                     </Label>

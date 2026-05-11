@@ -4,13 +4,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -19,41 +12,96 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Bell, Send, Square, CheckSquare } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Send, ChevronDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-// Renders a checkbox-style indicator for SelectItem options
-function ItemCheck({ checked }: { checked: boolean }) {
-  return checked ? (
-    <CheckSquare className="h-4 w-4 text-primary flex-shrink-0" />
-  ) : (
-    <Square className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+// Generic multi-select with checkbox rows inside a popover.
+function MultiSelectCheckbox({
+  options,
+  values,
+  onChange,
+  placeholder,
+  width = "w-[200px]",
+  disabled = false,
+  emptyLabel = "No options",
+}: {
+  options: { id: string; label: string }[];
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  width?: string;
+  disabled?: boolean;
+  emptyLabel?: string;
+}) {
+  const toggle = (id: string) => {
+    if (values.includes(id)) onChange(values.filter((v) => v !== id));
+    else onChange([...values, id]);
+  };
+
+  const summary =
+    values.length === 0
+      ? placeholder
+      : values.length <= 2
+      ? options
+          .filter((o) => values.includes(o.id))
+          .map((o) => o.label)
+          .join(", ")
+      : `${values.length} selected`;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          disabled={disabled}
+          className={cn(width, "justify-between font-normal h-9")}
+        >
+          <span className="truncate text-left">{summary}</span>
+          <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[260px] p-0 bg-background border shadow-lg z-50" align="start">
+        <ScrollArea className="max-h-[280px]">
+          <div className="p-1">
+            {options.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">{emptyLabel}</div>
+            ) : (
+              options.map((opt) => {
+                const checked = values.includes(opt.id);
+                return (
+                  <label
+                    key={opt.id}
+                    className="flex items-center gap-2 px-2 py-2 rounded-md cursor-pointer hover:bg-accent"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => toggle(opt.id)}
+                    />
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-// Renders a recipe dropdown that hides recipes the student has already completed
-// (i.e., attended a session where that recipe was assigned).
-function RecipeSelect({
-  studentId,
-  value,
-  recipes,
-  onChange,
-}: {
-  studentId: string;
-  value: string | null;
-  recipes: { id: string; title: string }[];
-  onChange: (value: string | null) => void;
-}) {
+// Returns the recipes that the student has not yet completed (plus any
+// currently assigned recipes so they remain visible).
+function useVisibleRecipes(studentId: string, currentSelectedIds: string[], allRecipes: { id: string; title: string }[]) {
   const { data: completedRecipeIds = [] } = useQuery({
     queryKey: ["student-completed-recipes", studentId],
     queryFn: async () => {
-      // Recipes from past bookings where attendance is "present"
       const { data: att } = await supabase
         .from("attendance")
         .select("class_date")
@@ -72,36 +120,37 @@ function RecipeSelect({
     enabled: !!studentId,
   });
 
-  const visibleRecipes = recipes.filter((r) => {
-    if (r.id === value) return true; // keep current selection visible
-    return !completedRecipeIds.includes(r.id);
-  });
+  return allRecipes.filter((r) =>
+    currentSelectedIds.includes(r.id) || !completedRecipeIds.includes(r.id)
+  );
+}
 
+// Recipe multi-select scoped to a single booking — filters out recipes the
+// student has already completed (excluding currently selected ones).
+function BookingRecipeMultiSelect({
+  studentId,
+  recipes,
+  values,
+  onChange,
+  disabled = false,
+}: {
+  studentId: string;
+  recipes: { id: string; title: string }[];
+  values: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+}) {
+  const visible = useVisibleRecipes(studentId, values, recipes);
   return (
-    <Select
-      value={value || "none"}
-      onValueChange={(v) => onChange(v === "none" ? null : v)}
-    >
-      <SelectTrigger className="w-[180px]">
-        <SelectValue placeholder="Select recipe" />
-      </SelectTrigger>
-      <SelectContent className="bg-background border shadow-lg z-50">
-        <SelectItem value="none">
-          <div className="flex items-center gap-2">
-            <ItemCheck checked={!value} />
-            <span>No Recipe</span>
-          </div>
-        </SelectItem>
-        {visibleRecipes.map((recipe) => (
-          <SelectItem key={recipe.id} value={recipe.id}>
-            <div className="flex items-center gap-2">
-              <ItemCheck checked={value === recipe.id} />
-              <span>{recipe.title}</span>
-            </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <MultiSelectCheckbox
+      options={visible.map((r) => ({ id: r.id, label: r.title }))}
+      values={values}
+      onChange={onChange}
+      placeholder="Select recipes"
+      width="w-[200px]"
+      disabled={disabled}
+      emptyLabel="No recipes available"
+    />
   );
 }
 
@@ -205,47 +254,51 @@ const BookingRecipeAssignment = () => {
     }
   });
 
-  const assignRecipeMutation = useMutation({
-    mutationFn: async ({ bookingId, recipeId }: { bookingId: string; recipeId: string | null }) => {
+  const assignRecipesMutation = useMutation({
+    mutationFn: async ({ bookingId, recipeIds }: { bookingId: string; recipeIds: string[] }) => {
       const { error } = await supabase
         .from('bookings')
-        .update({ recipe_id: recipeId })
+        .update({ recipe_ids: recipeIds } as any)
         .eq('id', bookingId);
-
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
-      toast({ title: "Recipe assigned successfully" });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to assign recipe",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Failed to assign recipes", description: error.message, variant: "destructive" });
     }
   });
 
-  const assignChefMutation = useMutation({
-    mutationFn: async ({ bookingId, chefId }: { bookingId: string; chefId: string | null }) => {
+  const assignChefsMutation = useMutation({
+    mutationFn: async ({ bookingId, chefIds }: { bookingId: string; chefIds: string[] }) => {
       const { error } = await supabase
         .from('bookings')
-        .update({ assigned_chef_id: chefId })
+        .update({ assigned_chef_ids: chefIds } as any)
         .eq('id', bookingId);
-
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
-      toast({ title: "Chef assigned successfully" });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to assign chef",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Failed to assign chefs", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const assignTablesMutation = useMutation({
+    mutationFn: async ({ bookingId, tableNumbers }: { bookingId: string; tableNumbers: string[] }) => {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ table_numbers: tableNumbers } as any)
+        .eq('id', bookingId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to assign tables", description: error.message, variant: "destructive" });
     }
   });
 
@@ -519,74 +572,45 @@ const BookingRecipeAssignment = () => {
                         {booking.courses?.title}
                       </TableCell>
                       <TableCell>
-                        <RecipeSelect
+                        <BookingRecipeMultiSelect
                           studentId={booking.student_id}
-                          value={booking.recipe_id}
                           recipes={recipes || []}
-                          onChange={(value) =>
-                            assignRecipeMutation.mutate({
-                              bookingId: booking.id,
-                              recipeId: value,
-                            })
+                          values={(booking as any).recipe_ids || []}
+                          disabled={booking.status === 'cancelled'}
+                          onChange={(ids) =>
+                            assignRecipesMutation.mutate({ bookingId: booking.id, recipeIds: ids })
                           }
                         />
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={booking.assigned_chef_id || "none"}
-                          onValueChange={(value) => 
-                            assignChefMutation.mutate({
-                              bookingId: booking.id,
-                              chefId: value === "none" ? null : value
-                            })
+                        <MultiSelectCheckbox
+                          options={(chefsWithSpecializations || []).map((c: any) => ({
+                            id: c.id,
+                            label: `${c.first_name} ${c.last_name}`,
+                          }))}
+                          values={(booking as any).assigned_chef_ids || []}
+                          onChange={(ids) =>
+                            assignChefsMutation.mutate({ bookingId: booking.id, chefIds: ids })
                           }
+                          placeholder="Select chefs"
+                          width="w-[200px]"
                           disabled={booking.status === 'cancelled'}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select chef" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border shadow-lg z-50">
-                            <SelectItem value="none">
-                              <div className="flex items-center gap-2">
-                                <ItemCheck checked={!booking.assigned_chef_id} />
-                                <span>No Chef</span>
-                              </div>
-                            </SelectItem>
-                            {chefsWithSpecializations?.map((chef) => (
-                              <SelectItem key={chef.id} value={chef.id}>
-                                <div className="flex items-center gap-2">
-                                  <ItemCheck checked={booking.assigned_chef_id === chef.id} />
-                                  <span>{chef.first_name} {chef.last_name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={(booking as any).table_number || ""}
-                          onValueChange={async (val) => {
-                            const bookingId = booking.id;
-                            await supabase.from('bookings').update({ table_number: val || null }).eq('id', bookingId);
-                            queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
-                          }}
+                        <MultiSelectCheckbox
+                          options={Array.from({ length: 25 }, (_, i) => ({
+                            id: String(i + 1),
+                            label: `Table ${i + 1}`,
+                          }))}
+                          values={(booking as any).table_numbers || []}
+                          onChange={(ids) =>
+                            assignTablesMutation.mutate({ bookingId: booking.id, tableNumbers: ids })
+                          }
+                          placeholder="Tables"
+                          width="w-[140px]"
                           disabled={booking.status === 'cancelled'}
-                        >
-                          <SelectTrigger className="w-20 h-8 text-sm">
-                            <SelectValue placeholder="#" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 25 }, (_, i) => (
-                              <SelectItem key={i + 1} value={String(i + 1)}>
-                                <div className="flex items-center gap-2">
-                                  <ItemCheck checked={(booking as any).table_number === String(i + 1)} />
-                                  <span>{i + 1}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

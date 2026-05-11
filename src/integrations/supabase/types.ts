@@ -351,40 +351,49 @@ export type Database = {
       bookings: {
         Row: {
           assigned_chef_id: string | null
+          assigned_chef_ids: string[]
           booking_date: string
           course_id: string
           created_at: string
           id: string
           recipe_id: string | null
+          recipe_ids: string[]
           status: string
           student_id: string
           table_number: string | null
+          table_numbers: string[]
           time_slot: string
           updated_at: string
         }
         Insert: {
           assigned_chef_id?: string | null
+          assigned_chef_ids?: string[]
           booking_date: string
           course_id: string
           created_at?: string
           id?: string
           recipe_id?: string | null
+          recipe_ids?: string[]
           status?: string
           student_id: string
           table_number?: string | null
+          table_numbers?: string[]
           time_slot: string
           updated_at?: string
         }
         Update: {
           assigned_chef_id?: string | null
+          assigned_chef_ids?: string[]
           booking_date?: string
           course_id?: string
           created_at?: string
           id?: string
           recipe_id?: string | null
+          recipe_ids?: string[]
           status?: string
           student_id?: string
           table_number?: string | null
+          table_numbers?: string[]
           time_slot?: string
           updated_at?: string
         }

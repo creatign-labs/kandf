@@ -499,11 +499,15 @@ const Batches = () => {
                       <Input
                         id="end_date"
                         type="date"
-                        value={formData.end_date}
-                        onChange={(e) =>
-                          setFormData(prev => ({ ...prev, end_date: e.target.value }))
-                        }
+                        value={derivedEndDate}
+                        readOnly
+                        disabled
+                        className="bg-muted"
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Auto-calculated from Start Date + course duration
+                        {selectedCourse?.duration ? ` (${selectedCourse.duration})` : ""}
+                      </p>
                     </div>
                   </div>
 

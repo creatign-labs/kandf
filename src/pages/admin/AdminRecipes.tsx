@@ -88,6 +88,7 @@ const AdminRecipes = () => {
           title: formData.title,
           recipe_code: formData.recipe_code || null,
           video_url: formData.video_url || null,
+          cost: formData.cost === "" ? null : Number(formData.cost),
         } as any)
         .select()
         .single();

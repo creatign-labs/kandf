@@ -321,7 +321,7 @@ const Inventory = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Ingredient</TableHead>
-                    <TableHead>Category</TableHead>
+                    <TableHead>Unit</TableHead>
                     <TableHead>Closing Stock</TableHead>
                     <TableHead>Required Stock</TableHead>
                     <TableHead>Upcoming Demand (7d)</TableHead>
@@ -341,7 +341,7 @@ const Inventory = () => {
                     return (
                       <TableRow key={item.id} className={demandShort ? "bg-destructive/5" : ""}>
                         <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.category}</TableCell>
+                        <TableCell>{item.unit}</TableCell>
                         <TableCell>
                           <span className="font-semibold">{item.current_stock}</span> {item.unit}
                         </TableCell>

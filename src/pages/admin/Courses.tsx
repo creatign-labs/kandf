@@ -37,8 +37,6 @@ const Courses = () => {
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<any>(null);
-  const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
-  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     course_code: "",
@@ -125,16 +123,6 @@ const Courses = () => {
       
       if (error) throw error;
 
-      // Update selected recipes to link to this course
-      if (selectedRecipeIds.length > 0 && newCourse) {
-        const { error: recipeError } = await supabase
-          .from("recipes")
-          .update({ course_id: newCourse.id })
-          .in("id", selectedRecipeIds);
-        
-        if (recipeError) throw recipeError;
-      }
-
       return newCourse;
     },
     onSuccess: () => {
@@ -151,13 +139,6 @@ const Courses = () => {
 
   const updateCourseMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      // Snapshot existing recipe links so we can roll back on failure
-      const { data: existingRecipes } = await supabase
-        .from("recipes")
-        .select("id")
-        .eq("course_id", id);
-      const previousRecipeIds = (existingRecipes || []).map((r) => r.id);
-
       const { error } = await supabase
         .from("courses")
         .update({
@@ -170,31 +151,6 @@ const Courses = () => {
         })
         .eq("id", id);
       if (error) throw error;
-
-      // Unlink current recipes
-      const { error: unlinkError } = await supabase
-        .from("recipes")
-        .update({ course_id: null })
-        .eq("course_id", id);
-      if (unlinkError) throw unlinkError;
-
-      // Link selected recipes; on failure, restore previous links
-      if (selectedRecipeIds.length > 0) {
-        const { error: linkError } = await supabase
-          .from("recipes")
-          .update({ course_id: id })
-          .in("id", selectedRecipeIds);
-
-        if (linkError) {
-          if (previousRecipeIds.length > 0) {
-            await supabase
-              .from("recipes")
-              .update({ course_id: id })
-              .in("id", previousRecipeIds);
-          }
-          throw linkError;
-        }
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
@@ -230,8 +186,6 @@ const Courses = () => {
       level: "Beginner",
       base_fee: "",
     });
-    setSelectedRecipeIds([]);
-    setRecipeSearchQuery("");
   };
 
   const handleEdit = (course: any) => {
@@ -244,10 +198,6 @@ const Courses = () => {
       level: course.level,
       base_fee: course.base_fee.toString(),
     });
-    // Pre-select recipes that are linked to this course
-    const linkedRecipeIds = course.recipes?.map((r: any) => r.id) || [];
-    setSelectedRecipeIds(linkedRecipeIds);
-    setRecipeSearchQuery("");
   };
 
   const validateForm = (): string | null => {
@@ -300,19 +250,6 @@ const Courses = () => {
     );
   }
 
-  // Filter recipes for selection - exclude recipes already linked to other courses
-  const availableRecipes = allRecipes?.filter((recipe) => {
-    const matchesSearch = recipe.title.toLowerCase().includes(recipeSearchQuery.toLowerCase());
-    return matchesSearch;
-  }) || [];
-
-  const toggleRecipe = (recipeId: string) => {
-    setSelectedRecipeIds((prev) =>
-      prev.includes(recipeId)
-        ? prev.filter((id) => id !== recipeId)
-        : [...prev, recipeId]
-    );
-  };
 
   const courseFormJSX = (
     <form onSubmit={handleSubmit} className="space-y-4">

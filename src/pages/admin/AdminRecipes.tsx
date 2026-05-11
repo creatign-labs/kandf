@@ -122,7 +122,7 @@ const AdminRecipes = () => {
 
   const resetForm = () => {
     setFormData({
-      title: "", recipe_code: "", video_url: "",
+      title: "", recipe_code: "", video_url: "", cost: "",
     });
     setSelectedIngredients([]);
   };

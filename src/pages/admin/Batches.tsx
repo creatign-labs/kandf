@@ -34,8 +34,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
-const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
-
 const TIME_OPTIONS = [
   "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM",
   "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM",
@@ -46,16 +44,15 @@ const TIME_OPTIONS = [
 const Batches = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any>(null);
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [formData, setFormData] = useState({
     batch_name: "",
     course_id: "",
     time_slot: "",
-    days: "",
     total_seats: 30,
     start_date: "",
+    end_date: "",
   });
   const queryClient = useQueryClient();
 
@@ -104,35 +101,34 @@ const Batches = () => {
   // Create/Update mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const timeSlot = startTime && endTime ? `${startTime} - ${endTime}` : formData.time_slot;
       if (editingBatch) {
-        const timeSlot = startTime && endTime ? `${startTime} - ${endTime}` : formData.time_slot;
-        const days = selectedDays.length > 0 ? selectedDays.join(", ") : formData.days;
         const { error } = await supabase
           .from("batches")
           .update({
             batch_name: formData.batch_name,
             course_id: formData.course_id,
             time_slot: timeSlot,
-            days: days,
+            days: null,
             total_seats: formData.total_seats,
             available_seats: formData.total_seats - (editingBatch.enrolled_count || 0),
             start_date: formData.start_date || null,
-          })
+            end_date: formData.end_date || null,
+          } as any)
           .eq("id", editingBatch.id);
 
         if (error) throw error;
       } else {
-        const timeSlot = startTime && endTime ? `${startTime} - ${endTime}` : formData.time_slot;
-        const days = selectedDays.length > 0 ? selectedDays.join(", ") : formData.days;
         const { error } = await supabase.from("batches").insert({
           batch_name: formData.batch_name,
           course_id: formData.course_id,
           time_slot: timeSlot,
-          days: days,
+          days: null,
           total_seats: formData.total_seats,
           available_seats: formData.total_seats,
           start_date: formData.start_date || null,
-        });
+          end_date: formData.end_date || null,
+        } as any);
 
         if (error) throw error;
       }
@@ -245,12 +241,11 @@ const Batches = () => {
       batch_name: "",
       course_id: "",
       time_slot: "",
-      days: "",
       total_seats: 30,
       start_date: "",
+      end_date: "",
     });
     setEditingBatch(null);
-    setSelectedDays([]);
     setStartTime("");
     setEndTime("");
   };
@@ -261,17 +256,13 @@ const Batches = () => {
       batch_name: batch.batch_name,
       course_id: batch.course_id,
       time_slot: batch.time_slot,
-      days: batch.days,
       total_seats: batch.total_seats,
       start_date: batch.start_date || "",
+      end_date: batch.end_date || "",
     });
-    // Parse time slot back into start/end
     const timeParts = batch.time_slot?.split(" - ") || [];
     setStartTime(timeParts[0] || "");
     setEndTime(timeParts[1] || "");
-    // Parse days back into selected array
-    const daysParsed = batch.days?.split(", ").filter((d: string) => WEEK_DAYS.includes(d as any)) || [];
-    setSelectedDays(daysParsed);
     setIsDialogOpen(true);
   };
 
@@ -466,48 +457,7 @@ const Batches = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Days</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {WEEK_DAYS.map((day) => {
-                        const isSelected = selectedDays.includes(day);
-                        return (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() =>
-                              setSelectedDays((prev) =>
-                                isSelected ? prev.filter((d) => d !== day) : [...prev, day]
-                              )
-                            }
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
-                              isSelected
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-background text-foreground border-border hover:bg-muted"
-                            }`}
-                          >
-                            {day.slice(0, 3)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="total_seats">Total Seats</Label>
-                      <Input
-                        id="total_seats"
-                        type="number"
-                        value={formData.total_seats || ""}
-                        onChange={(e) =>
-                          setFormData(prev => ({
-                            ...prev,
-                            total_seats: parseInt(e.target.value),
-                          }))
-                        }
-                      />
-                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="start_date">Start Date</Label>
                       <Input
@@ -519,6 +469,32 @@ const Batches = () => {
                         }
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="end_date">End Date</Label>
+                      <Input
+                        id="end_date"
+                        type="date"
+                        value={formData.end_date}
+                        onChange={(e) =>
+                          setFormData(prev => ({ ...prev, end_date: e.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="total_seats">Total Seats</Label>
+                    <Input
+                      id="total_seats"
+                      type="number"
+                      value={formData.total_seats || ""}
+                      onChange={(e) =>
+                        setFormData(prev => ({
+                          ...prev,
+                          total_seats: parseInt(e.target.value),
+                        }))
+                      }
+                    />
                   </div>
 
                   <Button
@@ -553,9 +529,10 @@ const Batches = () => {
                 <TableRow>
                   <TableHead>Batch Name</TableHead>
                   <TableHead>Course</TableHead>
-                  <TableHead>Schedule</TableHead>
+                  <TableHead>Time</TableHead>
                   <TableHead>Capacity</TableHead>
                   <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
                   <TableHead>Booking</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -568,10 +545,7 @@ const Batches = () => {
                     </TableCell>
                     <TableCell>{batch.courses?.title}</TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        <div>{batch.time_slot}</div>
-                        <div className="text-muted-foreground">{batch.days}</div>
-                      </div>
+                      <div className="text-sm">{batch.time_slot}</div>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -585,6 +559,11 @@ const Batches = () => {
                     <TableCell>
                       {batch.start_date
                         ? format(new Date(batch.start_date), "MMM d, yyyy")
+                        : "Not set"}
+                    </TableCell>
+                    <TableCell>
+                      {(batch as any).end_date
+                        ? format(new Date((batch as any).end_date), "MMM d, yyyy")
                         : "Not set"}
                     </TableCell>
                     <TableCell>
@@ -626,7 +605,7 @@ const Batches = () => {
                 {(!batches || batches.length === 0) && (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="text-center py-8 text-muted-foreground"
                     >
                       No batches created yet

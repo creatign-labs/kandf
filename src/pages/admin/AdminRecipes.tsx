@@ -377,11 +377,14 @@ const AdminRecipes = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search recipes by name or code..."
+                placeholder="Search by recipe code (e.g., TRCP-001, RCP-023) or name…"
                 className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Case-insensitive. Try a code like <span className="font-mono">TRCP-001</span> or <span className="font-mono">RCP-023</span>.
+              </p>
             </div>
             <Select value={courseFilter} onValueChange={setCourseFilter}>
               <SelectTrigger className="w-full md:w-48">

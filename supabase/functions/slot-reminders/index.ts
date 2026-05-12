@@ -79,7 +79,16 @@ Deno.serve(async (req) => {
       }
       if (!email) continue;
 
-      const recipe_title = (b as any).recipes?.title;
+      const resolvedRecipeIds = Array.from(new Set(
+        [(b as any).recipe_id, ...(((b as any).recipe_ids as string[]) || [])].filter(Boolean)
+      )) as string[];
+      const recipeTitles = resolvedRecipeIds.map((rid) => recipeTitleMap.get(rid)).filter(Boolean) as string[];
+      const recipe_title = recipeTitles.join(", ") || null;
+      const tableNumbers = Array.from(new Set([
+        ...(((b as any).table_numbers as string[]) || []),
+        ...((b as any).table_number ? [(b as any).table_number] : []),
+      ])).filter(Boolean) as string[];
+      const table_number = tableNumbers.join(", ") || null;
 
       type Rem = { type: "24h" | "cutoff" | "2h"; template: "slot_reminder_24h" | "slot_cancellation_cutoff" | "slot_reminder_2h"; window: [number, number] };
       // Cron runs every 15 min. Each window is generous enough to catch one tick but narrow enough not to overlap.

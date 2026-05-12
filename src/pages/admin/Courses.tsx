@@ -117,9 +117,35 @@ const Courses = () => {
     },
   });
 
+  const syncRecipesForCourse = async (courseId: string, recipeIds: string[]) => {
+    // Unlink recipes previously linked to this course but no longer selected
+    const { data: existing, error: fetchErr } = await supabase
+      .from("recipes")
+      .select("id")
+      .eq("course_id", courseId);
+    if (fetchErr) throw fetchErr;
+    const existingIds = (existing || []).map((r) => r.id);
+    const toUnlink = existingIds.filter((id) => !recipeIds.includes(id));
+    const toLink = recipeIds.filter((id) => !existingIds.includes(id));
+
+    if (toUnlink.length > 0) {
+      const { error } = await supabase
+        .from("recipes")
+        .update({ course_id: null })
+        .in("id", toUnlink);
+      if (error) throw error;
+    }
+    if (toLink.length > 0) {
+      const { error } = await supabase
+        .from("recipes")
+        .update({ course_id: courseId })
+        .in("id", toLink);
+      if (error) throw error;
+    }
+  };
+
   const createCourseMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // Create the course first
       const { data: newCourse, error } = await supabase.from("courses").insert({
         title: data.title,
         course_code: data.course_code || null,
@@ -128,8 +154,12 @@ const Courses = () => {
         level: data.level,
         base_fee: parseFloat(data.base_fee),
       }).select().single();
-      
+
       if (error) throw error;
+
+      if (selectedRecipeIds.length > 0) {
+        await syncRecipesForCourse(newCourse.id, selectedRecipeIds);
+      }
 
       return newCourse;
     },
@@ -159,6 +189,8 @@ const Courses = () => {
         })
         .eq("id", id);
       if (error) throw error;
+
+      await syncRecipesForCourse(id, selectedRecipeIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });

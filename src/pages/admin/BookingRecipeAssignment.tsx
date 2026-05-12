@@ -39,6 +39,7 @@ function MultiSelectCheckbox({
   disabled?: boolean;
   emptyLabel?: string;
 }) {
+  const [open, setOpen] = useState(false);
   const [selectedValues, setSelectedValues] = useState(values);
   const hasLocalChanges = useRef(false);
   const selectedKey = values.join("|");
@@ -50,13 +51,13 @@ function MultiSelectCheckbox({
     setSelectedValues(values);
   }, [selectedKey]);
 
-  useEffect(() => {
-    if (!hasLocalChanges.current) return;
-    const timeout = window.setTimeout(() => {
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen && hasLocalChanges.current) {
+      hasLocalChanges.current = false;
       onChange(selectedValues);
-    }, 250);
-    return () => window.clearTimeout(timeout);
-  }, [localKey]);
+    }
+  };
 
   const toggle = (id: string) => {
     hasLocalChanges.current = true;
@@ -79,7 +80,7 @@ function MultiSelectCheckbox({
       : `${selectedValues.length} selected`;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"

@@ -262,6 +262,14 @@ const BookingRecipeAssignment = () => {
     }
   });
 
+  const recipesById = new Map((recipes || []).map((r: any) => [r.id, r]));
+  const getBookingRecipeIds = (booking: any) =>
+    Array.from(new Set([booking.recipe_id, ...((booking.recipe_ids as string[]) || [])].filter(Boolean))) as string[];
+  const getBookingChefIds = (booking: any) =>
+    Array.from(new Set([booking.assigned_chef_id, ...((booking.assigned_chef_ids as string[]) || [])].filter(Boolean))) as string[];
+  const getBookingTableNumbers = (booking: any) =>
+    Array.from(new Set([booking.table_number, ...((booking.table_numbers as string[]) || [])].filter(Boolean))) as string[];
+
   const assignRecipesMutation = useMutation({
     mutationFn: async ({ bookingId, recipeIds }: { bookingId: string; recipeIds: string[] }) => {
       const { error } = await supabase
@@ -320,8 +328,8 @@ const BookingRecipeAssignment = () => {
     setIsNotifying(true);
 
     try {
-      // Filter bookings that have both a recipe and an assigned chef
-      const assignedBookings = bookings.filter(b => b.recipe_id && b.assigned_chef_id);
+      // Filter bookings that have at least one recipe and one assigned chef
+      const assignedBookings = bookings.filter((b: any) => getBookingRecipeIds(b).length > 0 && getBookingChefIds(b).length > 0);
 
       if (assignedBookings.length === 0) {
         toast({ title: "No chef assignments found", description: "Assign chefs to bookings before notifying", variant: "destructive" });
@@ -331,13 +339,15 @@ const BookingRecipeAssignment = () => {
 
       // Group by assigned chef
       const chefBookings: Record<string, { recipes: Set<string>; studentCount: number }> = {};
-      assignedBookings.forEach(b => {
-        const chefId = b.assigned_chef_id!;
-        if (!chefBookings[chefId]) {
-          chefBookings[chefId] = { recipes: new Set(), studentCount: 0 };
-        }
-        chefBookings[chefId].recipes.add(b.recipes?.title || 'Unknown Recipe');
-        chefBookings[chefId].studentCount++;
+      assignedBookings.forEach((b: any) => {
+        const recipeTitles = getBookingRecipeIds(b).map((rid) => recipesById.get(rid)?.title || 'Unknown Recipe');
+        getBookingChefIds(b).forEach((chefId) => {
+          if (!chefBookings[chefId]) {
+            chefBookings[chefId] = { recipes: new Set(), studentCount: 0 };
+          }
+          recipeTitles.forEach((title) => chefBookings[chefId].recipes.add(title));
+          chefBookings[chefId].studentCount++;
+        });
       });
 
       const dateStr = format(selectedDate, 'MMMM d, yyyy');
@@ -373,23 +383,29 @@ const BookingRecipeAssignment = () => {
   };
 
   // Group bookings by recipe and time slot for display
-  const groupedByRecipe = bookings?.reduce((acc, booking) => {
-    const recipeKey = booking.recipe_id || 'unassigned';
-    const slotKey = booking.time_slot;
-    const key = `${recipeKey}-${slotKey}`;
-    
-    if (!acc[key]) {
-      acc[key] = {
-        recipe: booking.recipes,
-        recipeId: booking.recipe_id,
-        timeSlot: booking.time_slot,
-        students: [],
-      };
-    }
-    acc[key].students.push({
-      id: booking.id,
-      name: `${booking.profile?.first_name || ''} ${booking.profile?.last_name || ''}`,
-      course: booking.courses?.title,
+  const groupedByRecipe = bookings?.reduce((acc, booking: any) => {
+    const bookingRecipeIds = getBookingRecipeIds(booking);
+    const recipeKeys = bookingRecipeIds.length > 0 ? bookingRecipeIds : ['unassigned'];
+
+    recipeKeys.forEach((recipeKey) => {
+      const slotKey = booking.time_slot;
+      const key = `${recipeKey}-${slotKey}`;
+      const recipe = recipeKey === 'unassigned' ? null : recipesById.get(recipeKey) || booking.recipes;
+
+      if (!acc[key]) {
+        acc[key] = {
+          recipe,
+          recipeId: recipeKey === 'unassigned' ? null : recipeKey,
+          timeSlot: booking.time_slot,
+          students: [],
+        };
+      }
+      acc[key].students.push({
+        id: booking.id,
+        name: `${booking.profile?.first_name || ''} ${booking.profile?.last_name || ''}`,
+        course: booking.courses?.title,
+        tables: getBookingTableNumbers(booking),
+      });
     });
     return acc;
   }, {} as Record<string, { recipe: any; recipeId: string | null; timeSlot: string; students: any[] }>) || {};

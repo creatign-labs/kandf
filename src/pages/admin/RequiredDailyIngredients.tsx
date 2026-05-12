@@ -179,7 +179,7 @@ const RequiredDailyIngredients = () => {
     queryFn: async () => {
       const { data: bookings, error: bErr } = await supabase
         .from("bookings")
-        .select("id, recipe_id, assigned_chef_id, student_id, time_slot, booking_date")
+        .select("id, recipe_id, recipe_ids, assigned_chef_id, assigned_chef_ids, student_id, time_slot, booking_date")
         .gte("booking_date", fromStr)
         .lte("booking_date", toStr)
         .eq("status", "confirmed");
@@ -187,7 +187,12 @@ const RequiredDailyIngredients = () => {
 
       if (!bookings || bookings.length === 0) return { chefGroups: [], cumulative: [] };
 
-      const recipeIds = [...new Set(bookings.filter(b => b.recipe_id).map(b => b.recipe_id!))];
+      const getRecipeIds = (booking: any) =>
+        Array.from(new Set([booking.recipe_id, ...((booking.recipe_ids as string[]) || [])].filter(Boolean))) as string[];
+      const getChefIds = (booking: any) =>
+        Array.from(new Set([booking.assigned_chef_id, ...((booking.assigned_chef_ids as string[]) || [])].filter(Boolean))) as string[];
+
+      const recipeIds = [...new Set(bookings.flatMap((b: any) => getRecipeIds(b)))];
       if (recipeIds.length === 0) return { chefGroups: [], cumulative: [] };
 
       const { data: recipes } = await supabase
@@ -198,7 +203,7 @@ const RequiredDailyIngredients = () => {
         .select("recipe_id, inventory_id, quantity_per_student, inventory(id, name, unit, current_stock)")
         .in("recipe_id", recipeIds);
 
-      const chefIds = [...new Set(bookings.filter(b => b.assigned_chef_id).map(b => b.assigned_chef_id!))];
+      const chefIds = [...new Set(bookings.flatMap((b: any) => getChefIds(b)))];
       let chefProfiles: Record<string, string> = {};
       if (chefIds.length > 0) {
         const { data: profiles } = await supabase
@@ -211,12 +216,23 @@ const RequiredDailyIngredients = () => {
       const recipeMap = new Map((recipes || []).map(r => [r.id, r.title]));
 
       const chefRecipeMap: Record<string, Record<string, string[]>> = {};
-      bookings.forEach(b => {
-        if (!b.recipe_id) return;
-        const chefKey = b.assigned_chef_id || "unassigned";
-        if (!chefRecipeMap[chefKey]) chefRecipeMap[chefKey] = {};
-        if (!chefRecipeMap[chefKey][b.recipe_id]) chefRecipeMap[chefKey][b.recipe_id] = [];
-        chefRecipeMap[chefKey][b.recipe_id].push(b.student_id);
+      const recipeStudentMap: Record<string, string[]> = {};
+      bookings.forEach((b: any) => {
+        const bookingRecipeIds = getRecipeIds(b);
+        if (bookingRecipeIds.length === 0) return;
+        const bookingChefIds = getChefIds(b);
+        const chefKeys = bookingChefIds.length > 0 ? bookingChefIds : ["unassigned"];
+
+        bookingRecipeIds.forEach((recipeId) => {
+          if (!recipeStudentMap[recipeId]) recipeStudentMap[recipeId] = [];
+          recipeStudentMap[recipeId].push(b.student_id);
+
+          chefKeys.forEach((chefKey) => {
+            if (!chefRecipeMap[chefKey]) chefRecipeMap[chefKey] = {};
+            if (!chefRecipeMap[chefKey][recipeId]) chefRecipeMap[chefKey][recipeId] = [];
+            chefRecipeMap[chefKey][recipeId].push(b.student_id);
+          });
+        });
       });
 
       const chefGroups: ChefGroup[] = Object.entries(chefRecipeMap).map(([chefId, recipesObj]) => ({
@@ -245,16 +261,27 @@ const RequiredDailyIngredients = () => {
       }));
 
       const cumulativeMap: Record<string, IngredientRequirement> = {};
-      chefGroups.forEach(cg => {
-        cg.recipes.forEach(r => {
-          r.ingredients.forEach(ing => {
-            if (cumulativeMap[ing.inventory_id]) {
-              cumulativeMap[ing.inventory_id].total_required += ing.total_required;
-              cumulativeMap[ing.inventory_id].student_count += ing.student_count;
-            } else {
-              cumulativeMap[ing.inventory_id] = { ...ing };
-            }
-          });
+      Object.entries(recipeStudentMap).forEach(([recipeId, studentIds]) => {
+        const studentCount = studentIds.length;
+        (recipeIngredients || []).filter(ri => ri.recipe_id === recipeId).forEach((ri) => {
+          const inv = ri.inventory as any;
+          const totalRequired = Number(ri.quantity_per_student) * studentCount;
+          if (cumulativeMap[ri.inventory_id]) {
+            cumulativeMap[ri.inventory_id].total_required += totalRequired;
+            cumulativeMap[ri.inventory_id].student_count += studentCount;
+          } else {
+            cumulativeMap[ri.inventory_id] = {
+              inventory_id: ri.inventory_id,
+              ingredient_name: inv?.name || "Unknown",
+              unit: inv?.unit || "",
+              quantity_per_student: Number(ri.quantity_per_student),
+              student_count: studentCount,
+              total_required: totalRequired,
+              current_stock: Number(inv?.current_stock || 0),
+              sufficient: Number(inv?.current_stock || 0) >= totalRequired,
+              recipe_title: recipeMap.get(recipeId) || "Unknown",
+            };
+          }
         });
       });
       const cumulative = Object.values(cumulativeMap).map(c => ({

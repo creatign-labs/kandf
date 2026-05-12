@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,6 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Send, ChevronDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,23 +39,47 @@ function MultiSelectCheckbox({
   disabled?: boolean;
   emptyLabel?: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const [selectedValues, setSelectedValues] = useState(values);
+  const hasLocalChanges = useRef(false);
+  const selectedKey = values.join("|");
+
+  useEffect(() => {
+    if (hasLocalChanges.current) return;
+    hasLocalChanges.current = false;
+    setSelectedValues(selectedKey ? selectedKey.split("|") : []);
+  }, [selectedKey]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen && hasLocalChanges.current) {
+      hasLocalChanges.current = false;
+      onChange(selectedValues);
+    }
+  };
+
   const toggle = (id: string) => {
-    if (values.includes(id)) onChange(values.filter((v) => v !== id));
-    else onChange([...values, id]);
+    hasLocalChanges.current = true;
+    setSelectedValues((current) => {
+      const next = current.includes(id)
+        ? current.filter((v) => v !== id)
+        : [...current, id];
+      return next;
+    });
   };
 
   const summary =
-    values.length === 0
+    selectedValues.length === 0
       ? placeholder
-      : values.length <= 2
+      : selectedValues.length <= 2
       ? options
-          .filter((o) => values.includes(o.id))
+          .filter((o) => selectedValues.includes(o.id))
           .map((o) => o.label)
           .join(", ")
-      : `${values.length} selected`;
+      : `${selectedValues.length} selected`;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -68,13 +91,12 @@ function MultiSelectCheckbox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[260px] p-0 bg-background border shadow-lg z-50" align="start">
-        <ScrollArea className="max-h-[280px]">
-          <div className="p-1">
+        <div className="max-h-[280px] overflow-y-auto overscroll-contain p-1">
             {options.length === 0 ? (
               <div className="px-3 py-2 text-sm text-muted-foreground">{emptyLabel}</div>
             ) : (
               options.map((opt) => {
-                const checked = values.includes(opt.id);
+                const checked = selectedValues.includes(opt.id);
                 return (
                   <label
                     key={opt.id}
@@ -89,8 +111,7 @@ function MultiSelectCheckbox({
                 );
               })
             )}
-          </div>
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
@@ -111,11 +132,10 @@ function useVisibleRecipes(studentId: string, currentSelectedIds: string[], allR
       if (dates.length === 0) return [] as string[];
       const { data: bks } = await supabase
         .from("bookings")
-        .select("recipe_id, booking_date")
+        .select("recipe_id, recipe_ids, booking_date")
         .eq("student_id", studentId)
         .in("booking_date", dates)
-        .not("recipe_id", "is", null);
-      return [...new Set((bks || []).map((b) => b.recipe_id as string))];
+      return [...new Set((bks || []).flatMap((b: any) => [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean)))];
     },
     enabled: !!studentId,
   });
@@ -254,6 +274,14 @@ const BookingRecipeAssignment = () => {
     }
   });
 
+  const recipesById = new Map((recipes || []).map((r: any) => [r.id, r]));
+  const getBookingRecipeIds = (booking: any) =>
+    Array.from(new Set([booking.recipe_id, ...((booking.recipe_ids as string[]) || [])].filter(Boolean))) as string[];
+  const getBookingChefIds = (booking: any) =>
+    Array.from(new Set([booking.assigned_chef_id, ...((booking.assigned_chef_ids as string[]) || [])].filter(Boolean))) as string[];
+  const getBookingTableNumbers = (booking: any) =>
+    Array.from(new Set([booking.table_number, ...((booking.table_numbers as string[]) || [])].filter(Boolean))) as string[];
+
   const assignRecipesMutation = useMutation({
     mutationFn: async ({ bookingId, recipeIds }: { bookingId: string; recipeIds: string[] }) => {
       const { error } = await supabase
@@ -312,8 +340,8 @@ const BookingRecipeAssignment = () => {
     setIsNotifying(true);
 
     try {
-      // Filter bookings that have both a recipe and an assigned chef
-      const assignedBookings = bookings.filter(b => b.recipe_id && b.assigned_chef_id);
+      // Filter bookings that have at least one recipe and one assigned chef
+      const assignedBookings = bookings.filter((b: any) => getBookingRecipeIds(b).length > 0 && getBookingChefIds(b).length > 0);
 
       if (assignedBookings.length === 0) {
         toast({ title: "No chef assignments found", description: "Assign chefs to bookings before notifying", variant: "destructive" });
@@ -323,13 +351,15 @@ const BookingRecipeAssignment = () => {
 
       // Group by assigned chef
       const chefBookings: Record<string, { recipes: Set<string>; studentCount: number }> = {};
-      assignedBookings.forEach(b => {
-        const chefId = b.assigned_chef_id!;
-        if (!chefBookings[chefId]) {
-          chefBookings[chefId] = { recipes: new Set(), studentCount: 0 };
-        }
-        chefBookings[chefId].recipes.add(b.recipes?.title || 'Unknown Recipe');
-        chefBookings[chefId].studentCount++;
+      assignedBookings.forEach((b: any) => {
+        const recipeTitles = getBookingRecipeIds(b).map((rid) => recipesById.get(rid)?.title || 'Unknown Recipe');
+        getBookingChefIds(b).forEach((chefId) => {
+          if (!chefBookings[chefId]) {
+            chefBookings[chefId] = { recipes: new Set(), studentCount: 0 };
+          }
+          recipeTitles.forEach((title) => chefBookings[chefId].recipes.add(title));
+          chefBookings[chefId].studentCount++;
+        });
       });
 
       const dateStr = format(selectedDate, 'MMMM d, yyyy');
@@ -365,23 +395,29 @@ const BookingRecipeAssignment = () => {
   };
 
   // Group bookings by recipe and time slot for display
-  const groupedByRecipe = bookings?.reduce((acc, booking) => {
-    const recipeKey = booking.recipe_id || 'unassigned';
-    const slotKey = booking.time_slot;
-    const key = `${recipeKey}-${slotKey}`;
-    
-    if (!acc[key]) {
-      acc[key] = {
-        recipe: booking.recipes,
-        recipeId: booking.recipe_id,
-        timeSlot: booking.time_slot,
-        students: [],
-      };
-    }
-    acc[key].students.push({
-      id: booking.id,
-      name: `${booking.profile?.first_name || ''} ${booking.profile?.last_name || ''}`,
-      course: booking.courses?.title,
+  const groupedByRecipe = bookings?.reduce((acc, booking: any) => {
+    const bookingRecipeIds = getBookingRecipeIds(booking);
+    const recipeKeys = bookingRecipeIds.length > 0 ? bookingRecipeIds : ['unassigned'];
+
+    recipeKeys.forEach((recipeKey) => {
+      const slotKey = booking.time_slot;
+      const key = `${recipeKey}-${slotKey}`;
+      const recipe = recipeKey === 'unassigned' ? null : recipesById.get(recipeKey) || booking.recipes;
+
+      if (!acc[key]) {
+        acc[key] = {
+          recipe,
+          recipeId: recipeKey === 'unassigned' ? null : recipeKey,
+          timeSlot: booking.time_slot,
+          students: [],
+        };
+      }
+      acc[key].students.push({
+        id: booking.id,
+        name: `${booking.profile?.first_name || ''} ${booking.profile?.last_name || ''}`,
+        course: booking.courses?.title,
+        tables: getBookingTableNumbers(booking),
+      });
     });
     return acc;
   }, {} as Record<string, { recipe: any; recipeId: string | null; timeSlot: string; students: any[] }>) || {};
@@ -575,7 +611,7 @@ const BookingRecipeAssignment = () => {
                         <BookingRecipeMultiSelect
                           studentId={booking.student_id}
                           recipes={recipes || []}
-                          values={(booking as any).recipe_ids || []}
+                          values={getBookingRecipeIds(booking)}
                           disabled={booking.status === 'cancelled'}
                           onChange={(ids) =>
                             assignRecipesMutation.mutate({ bookingId: booking.id, recipeIds: ids })
@@ -588,7 +624,7 @@ const BookingRecipeAssignment = () => {
                             id: c.id,
                             label: `${c.first_name} ${c.last_name}`,
                           }))}
-                          values={(booking as any).assigned_chef_ids || []}
+                          values={getBookingChefIds(booking)}
                           onChange={(ids) =>
                             assignChefsMutation.mutate({ bookingId: booking.id, chefIds: ids })
                           }
@@ -603,7 +639,7 @@ const BookingRecipeAssignment = () => {
                             id: String(i + 1),
                             label: `Table ${i + 1}`,
                           }))}
-                          values={(booking as any).table_numbers || []}
+                          values={getBookingTableNumbers(booking)}
                           onChange={(ids) =>
                             assignTablesMutation.mutate({ bookingId: booking.id, tableNumbers: ids })
                           }

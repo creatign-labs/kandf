@@ -26,6 +26,7 @@ const TomorrowIngredientShortageWidget = () => {
     queryKey: ["tomorrow-ingredient-shortage", tomorrowStr],
     staleTime: 5 * 60 * 1000, // 5 min cache — manual refresh forces refetch
     refetchOnWindowFocus: false,
+    queryFn: async () => {
       const { data: bookings, error: bErr } = await supabase
         .from("bookings")
         .select("id, course_id, recipe_id, recipe_ids")

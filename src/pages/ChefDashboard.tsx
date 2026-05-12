@@ -133,33 +133,53 @@ const ChefDashboard = () => {
       const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
       const weekAhead = format(addDays(new Date(), 7), 'yyyy-MM-dd');
 
-      // Get bookings assigned to this chef only
+      // Get bookings for the next week, then filter to those assigned to this chef
       const { data: assigned } = await supabase
         .from('bookings')
-        .select(`id, student_id, recipe_id, time_slot, booking_date, recipes(title), courses(title)`)
+        .select(`id, student_id, recipe_id, recipe_ids, assigned_chef_id, assigned_chef_ids, time_slot, booking_date, courses(title)`)
         .gte('booking_date', tomorrow)
         .lte('booking_date', weekAhead)
-        .eq('assigned_chef_id', user.id)
         .in('status', ['confirmed']);
 
-      const all = assigned || [];
+      const all = (assigned || []).filter((b: any) => {
+        const chefs = [b.assigned_chef_id, ...((b.assigned_chef_ids as string[]) || [])].filter(Boolean);
+        return chefs.includes(user.id);
+      });
 
-      // Group by date → time_slot + recipe
+      // Resolve recipe titles
+      const recipeIdSet = new Set<string>();
+      all.forEach((b: any) => {
+        [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean).forEach((r: string) => recipeIdSet.add(r));
+      });
+      const recipeIdList = Array.from(recipeIdSet);
+      const { data: recipeRows } = recipeIdList.length > 0
+        ? await supabase.from('recipes').select('id, title').in('id', recipeIdList)
+        : { data: [] as { id: string; title: string }[] };
+      const recipeTitleMap = new Map((recipeRows || []).map((r: any) => [r.id, r.title]));
+
+      // Group by date → time_slot + recipe (one row per recipe per booking)
       const grouped: Record<string, { timeSlot: string; recipe: string; course: string; studentCount: number }[]> = {};
-      all.forEach(b => {
+      all.forEach((b: any) => {
         const d = b.booking_date;
         if (!grouped[d]) grouped[d] = [];
-        const existing = grouped[d].find(e => e.timeSlot === b.time_slot && e.recipe === (b.recipes?.title || 'No Recipe'));
-        if (existing) {
-          existing.studentCount++;
-        } else {
-          grouped[d].push({
-            timeSlot: b.time_slot,
-            recipe: b.recipes?.title || 'No Recipe',
-            course: b.courses?.title || '',
-            studentCount: 1
-          });
-        }
+        const resolvedRecipes = Array.from(new Set(
+          [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean)
+        )) as string[];
+        const recipeKeys: (string | null)[] = resolvedRecipes.length > 0 ? resolvedRecipes : [null];
+        recipeKeys.forEach((rid) => {
+          const recipeTitle = rid ? (recipeTitleMap.get(rid) || 'Recipe') : 'No Recipe';
+          const existing = grouped[d].find(e => e.timeSlot === b.time_slot && e.recipe === recipeTitle);
+          if (existing) {
+            existing.studentCount++;
+          } else {
+            grouped[d].push({
+              timeSlot: b.time_slot,
+              recipe: recipeTitle,
+              course: b.courses?.title || '',
+              studentCount: 1
+            });
+          }
+        });
       });
 
       // Sort dates

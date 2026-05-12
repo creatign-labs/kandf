@@ -165,6 +165,17 @@ const AdminRecipes = () => {
   };
   const costError = validateCost(formData.cost);
 
+  const normalizeCode = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  const recipeCodeError: string | null = (() => {
+    const raw = formData.recipe_code.trim();
+    if (!raw) return null;
+    if (raw.length > 20) return "Recipe code must be 20 characters or less";
+    const target = normalizeCode(raw);
+    const dup = recipes?.find((r: any) => r.recipe_code && normalizeCode(r.recipe_code) === target);
+    if (dup) return `Recipe code "${raw}" is already used by "${dup.title}". Please enter a unique code.`;
+    return null;
+  })();
+
   const formatINR = (val: number | null | undefined) => {
     if (val == null) return null;
     return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(Number(val));

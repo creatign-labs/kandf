@@ -571,7 +571,7 @@ const Attendance = () => {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3">
-                  {!isCompleted && (
+                  {!isCompleted ? (
                     <Button
                       className="flex-1"
                       disabled={
@@ -590,6 +590,16 @@ const Attendance = () => {
                           Confirm Batch Completion
                         </>
                       )}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="flex-1"
+                      variant="outline"
+                      disabled
+                      title="This batch has already been completed"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                      Already Completed
                     </Button>
                   )}
 

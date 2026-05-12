@@ -15,7 +15,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Search, ChefHat, Clock, Loader2, Package, Plus, Trash2, Youtube, IndianRupee } from "lucide-react";
+import { Search, ChefHat, Clock, Loader2, Package, Plus, Trash2, Youtube, IndianRupee, Copy, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPlayer } from "@/components/VideoPlayer";
@@ -34,6 +34,19 @@ const AdminRecipes = () => {
   const [courseFilter, setCourseFilter] = useState("all");
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleCopyCode = async (e: React.MouseEvent, code: string) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      toast({ title: "Copied", description: `Recipe code "${code}" copied to clipboard.` });
+      setTimeout(() => setCopiedCode((c) => (c === code ? null : c)), 1500);
+    } catch {
+      toast({ title: "Copy failed", description: "Could not access clipboard.", variant: "destructive" });
+    }
+  };
   const [formData, setFormData] = useState({
     title: "",
     recipe_code: "",
@@ -437,10 +450,23 @@ const AdminRecipes = () => {
               </div>
               <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold">{recipe.title}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold truncate">{recipe.title}</h3>
                     {(recipe as any).recipe_code && (
-                      <span className="text-xs text-muted-foreground font-mono">{(recipe as any).recipe_code}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyCode(e, (recipe as any).recipe_code)}
+                        className="mt-1 inline-flex items-center gap-1 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-xs font-mono text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        title="Click to copy recipe code"
+                        aria-label={`Copy recipe code ${(recipe as any).recipe_code}`}
+                      >
+                        <span>{(recipe as any).recipe_code}</span>
+                        {copiedCode === (recipe as any).recipe_code ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </button>
                     )}
                   </div>
                   {recipe.difficulty && (

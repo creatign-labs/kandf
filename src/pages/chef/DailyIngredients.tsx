@@ -132,17 +132,21 @@ const DailyIngredients = () => {
   const getRecipeStudentCount = (): Record<string, { count: number; title: string }> => {
     const recipeStudentCount: Record<string, { count: number; title: string }> = {};
 
-    // Source 1: Individual bookings (each booking = 1 student)
+    // Source 1: Individual bookings — each booking contributes 1 student
+    // for every resolved recipe (recipe_ids ∪ recipe_id).
     (bookings || []).forEach((booking: any) => {
-      if (booking.recipe_id) {
-        if (!recipeStudentCount[booking.recipe_id]) {
-          recipeStudentCount[booking.recipe_id] = {
+      const resolved = Array.from(new Set(
+        [booking.recipe_id, ...((booking.recipe_ids as string[]) || [])].filter(Boolean)
+      )) as string[];
+      resolved.forEach((rid) => {
+        if (!recipeStudentCount[rid]) {
+          recipeStudentCount[rid] = {
             count: 0,
-            title: booking.recipes?.title || "Unknown Recipe",
+            title: recipeTitleMap?.get(rid) || "Recipe",
           };
         }
-        recipeStudentCount[booking.recipe_id].count += 1;
-      }
+        recipeStudentCount[rid].count += 1;
+      });
     });
 
     // Source 2: Recipe batches (student count from memberships)

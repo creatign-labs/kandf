@@ -98,7 +98,7 @@ const Batches = () => {
     },
   });
 
-  const selectedCourse = courses?.find((c) => c.id === formData.course_id);
+  
 
   // Create/Update mutation
   const saveMutation = useMutation({

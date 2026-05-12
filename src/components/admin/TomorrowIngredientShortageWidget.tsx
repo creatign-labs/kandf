@@ -151,7 +151,7 @@ const TomorrowIngredientShortageWidget = () => {
             disabled={isFetching}
           >
             <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
-            Refresh
+            {isFetching ? "Updating…" : "Refresh"}
           </Button>
           <Button asChild size="sm" variant="outline" className="gap-1">
             <Link to="/admin/required-daily-ingredients">

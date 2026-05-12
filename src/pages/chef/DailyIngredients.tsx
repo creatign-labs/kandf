@@ -56,15 +56,35 @@ const DailyIngredients = () => {
           time_slot,
           status,
           recipe_id,
-          recipes(id, title)
+          recipe_ids,
+          assigned_chef_id,
+          assigned_chef_ids
         `)
         .eq("booking_date", formattedDate)
-        .eq("assigned_chef_id", user.id)
-        .in("status", ["confirmed", "attended"])
-        .not("recipe_id", "is", null);
+        .in("status", ["confirmed", "attended"]);
 
       if (error) throw error;
-      return data || [];
+      const filtered = (data || []).filter((b: any) => {
+        const chefs = [b.assigned_chef_id, ...((b.assigned_chef_ids as string[]) || [])].filter(Boolean);
+        return chefs.includes(user.id);
+      });
+      return filtered;
+    },
+  });
+
+  // Resolve titles for all recipes referenced (singular + array) on these bookings
+  const { data: recipeTitleMap } = useQuery({
+    queryKey: ["chef-daily-recipe-titles", formattedDate, (bookings || []).map((b: any) => b.id).join(",")],
+    enabled: !!bookings,
+    queryFn: async () => {
+      const ids = new Set<string>();
+      (bookings || []).forEach((b: any) => {
+        [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean).forEach((r: string) => ids.add(r));
+      });
+      const list = Array.from(ids);
+      if (list.length === 0) return new Map<string, string>();
+      const { data } = await supabase.from("recipes").select("id, title").in("id", list);
+      return new Map((data || []).map((r: any) => [r.id, r.title]));
     },
   });
 

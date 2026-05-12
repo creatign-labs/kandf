@@ -599,7 +599,7 @@ const BookingRecipeAssignment = () => {
                         <BookingRecipeMultiSelect
                           studentId={booking.student_id}
                           recipes={recipes || []}
-                          values={(booking as any).recipe_ids || []}
+                          values={getBookingRecipeIds(booking)}
                           disabled={booking.status === 'cancelled'}
                           onChange={(ids) =>
                             assignRecipesMutation.mutate({ bookingId: booking.id, recipeIds: ids })
@@ -612,7 +612,7 @@ const BookingRecipeAssignment = () => {
                             id: c.id,
                             label: `${c.first_name} ${c.last_name}`,
                           }))}
-                          values={(booking as any).assigned_chef_ids || []}
+                          values={getBookingChefIds(booking)}
                           onChange={(ids) =>
                             assignChefsMutation.mutate({ bookingId: booking.id, chefIds: ids })
                           }
@@ -627,7 +627,7 @@ const BookingRecipeAssignment = () => {
                             id: String(i + 1),
                             label: `Table ${i + 1}`,
                           }))}
-                          values={(booking as any).table_numbers || []}
+                          values={getBookingTableNumbers(booking)}
                           onChange={(ids) =>
                             assignTablesMutation.mutate({ bookingId: booking.id, tableNumbers: ids })
                           }

@@ -24,23 +24,19 @@ Deno.serve(async (req) => {
 
     console.log(`Processing ingredient push for date: ${tomorrowStr}`);
 
-    // Get all confirmed bookings for tomorrow with assigned recipes
+    // Get all confirmed bookings for tomorrow
     const { data: bookings, error: bookingsError } = await supabaseAdmin
       .from('bookings')
       .select(`
         id,
         student_id,
+        course_id,
         recipe_id,
-        time_slot,
-        recipes (
-          id,
-          title,
-          course_id
-        )
+        recipe_ids,
+        time_slot
       `)
       .eq('booking_date', tomorrowStr)
-      .eq('status', 'confirmed')
-      .not('recipe_id', 'is', null);
+      .eq('status', 'confirmed');
 
     if (bookingsError) {
       console.error('Error fetching bookings:', bookingsError);
@@ -48,10 +44,10 @@ Deno.serve(async (req) => {
     }
 
     if (!bookings || bookings.length === 0) {
-      console.log('No bookings with recipes for tomorrow');
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'No bookings with recipes for tomorrow',
+      console.log('No bookings for tomorrow');
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'No bookings for tomorrow',
         notificationsSent: 0
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -60,26 +56,81 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${bookings.length} bookings for tomorrow`);
 
+    // Resolve the set of recipes per booking. Prefer explicitly assigned
+    // recipes (recipe_ids array, then legacy recipe_id). If none are assigned
+    // but the booking has a course, fall back to all recipes linked to that
+    // course via the course_recipes junction table.
+    const courseIdsNeedingFallback = new Set<string>();
+    for (const b of bookings) {
+      const explicit = [
+        ...((b as any).recipe_ids || []),
+        ...(b.recipe_id ? [b.recipe_id] : []),
+      ].filter(Boolean);
+      if (explicit.length === 0 && b.course_id) {
+        courseIdsNeedingFallback.add(b.course_id);
+      }
+    }
+
+    const courseToRecipes: Record<string, string[]> = {};
+    if (courseIdsNeedingFallback.size > 0) {
+      const { data: junctionRows, error: junctionErr } = await supabaseAdmin
+        .from('course_recipes')
+        .select('course_id, recipe_id')
+        .in('course_id', Array.from(courseIdsNeedingFallback));
+      if (junctionErr) {
+        console.error('Error fetching course_recipes:', junctionErr);
+        throw junctionErr;
+      }
+      for (const row of junctionRows || []) {
+        if (!courseToRecipes[row.course_id]) courseToRecipes[row.course_id] = [];
+        courseToRecipes[row.course_id].push(row.recipe_id);
+      }
+    }
+
     // Group bookings by recipe
     const recipeGroups: Record<string, { recipeId: string; recipeTitle: string; studentCount: number; timeSlots: Set<string> }> = {};
-    
+
     for (const booking of bookings) {
-      const recipeId = booking.recipe_id;
-      const recipeData = booking.recipes as unknown;
-      const recipe = recipeData as { id: string; title: string; course_id: string } | null;
-      
-      if (!recipeId || !recipe) continue;
-      
-      if (!recipeGroups[recipeId]) {
-        recipeGroups[recipeId] = {
-          recipeId,
-          recipeTitle: recipe.title,
-          studentCount: 0,
-          timeSlots: new Set()
-        };
+      const explicit = [
+        ...((booking as any).recipe_ids || []),
+        ...(booking.recipe_id ? [booking.recipe_id] : []),
+      ].filter(Boolean);
+      const resolved: string[] = explicit.length > 0
+        ? Array.from(new Set(explicit))
+        : (booking.course_id ? (courseToRecipes[booking.course_id] || []) : []);
+
+      for (const rid of resolved) {
+        if (!recipeGroups[rid]) {
+          recipeGroups[rid] = {
+            recipeId: rid,
+            recipeTitle: '',
+            studentCount: 0,
+            timeSlots: new Set()
+          };
+        }
+        recipeGroups[rid].studentCount++;
+        recipeGroups[rid].timeSlots.add(booking.time_slot);
       }
-      recipeGroups[recipeId].studentCount++;
-      recipeGroups[recipeId].timeSlots.add(booking.time_slot);
+    }
+
+    // Fetch titles for all resolved recipes
+    const resolvedRecipeIds = Object.keys(recipeGroups);
+    if (resolvedRecipeIds.length === 0) {
+      console.log('No recipes resolved for tomorrow bookings');
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'No recipes resolved for tomorrow bookings',
+        notificationsSent: 0
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: recipeRows } = await supabaseAdmin
+      .from('recipes')
+      .select('id, title')
+      .in('id', resolvedRecipeIds);
+    for (const r of recipeRows || []) {
+      if (recipeGroups[r.id]) recipeGroups[r.id].recipeTitle = r.title;
     }
 
     // Get recipe ingredients for all recipes

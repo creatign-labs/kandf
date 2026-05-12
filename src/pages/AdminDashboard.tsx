@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import TomorrowIngredientShortageWidget from "@/components/admin/TomorrowIngredientShortageWidget";
 
 const AdminDashboard = () => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -287,6 +288,10 @@ const AdminDashboard = () => {
             variant="default"
             description="Items below reorder level"
           />
+        </div>
+
+        <div className="mb-6 md:mb-8">
+          <TomorrowIngredientShortageWidget />
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6 md:gap-8">

@@ -62,16 +62,19 @@ export const OnlineClassManager = ({
     enabled: open,
   });
 
-  // Fetch recipes for the course
+  // Fetch recipes for the course (via course_recipes junction)
   const { data: recipes } = useQuery({
     queryKey: ["course-recipes-online", enrollment?.course_id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("recipes")
-        .select("id, title, video_url, difficulty")
-        .eq("course_id", enrollment!.course_id)
-        .order("created_at");
-      return data || [];
+        .from("course_recipes")
+        .select("recipe:recipes(id, title, video_url, difficulty, created_at)")
+        .eq("course_id", enrollment!.course_id);
+      const list = (data || [])
+        .map((row: any) => row.recipe)
+        .filter(Boolean);
+      list.sort((a: any, b: any) => (a.created_at || "").localeCompare(b.created_at || ""));
+      return list;
     },
     enabled: !!enrollment?.course_id && open,
   });

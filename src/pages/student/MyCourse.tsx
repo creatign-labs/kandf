@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { Clock, CheckCircle, Loader2, CalendarCheck, Info, BookOpen } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchRecipesForCourse } from "@/lib/courseRecipes";
 import { format, addMonths, parseISO } from "date-fns";
 
 const MyCourse = () => {
@@ -51,15 +52,8 @@ const MyCourse = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data: recipes, error: recipesError } = await supabase
-        .from('recipes')
-        .select('*')
-        .eq('course_id', enrollment.course_id)
-        .order('created_at');
-
-      if (recipesError) throw recipesError;
-
-      const recipeIds = (recipes || []).map(r => r.id);
+      const recipes = await fetchRecipesForCourse(enrollment.course_id);
+      const recipeIds = recipes.map((r: any) => r.id);
 
       // Scope progress to only recipes in THIS course
       const { data: progress, error: progressError } = recipeIds.length > 0
@@ -81,7 +75,7 @@ const MyCourse = () => {
 
       if (bookingsError) throw bookingsError;
 
-      return { recipes: recipes || [], progress: progress || [], bookings: bookings || [] };
+      return { recipes, progress: progress || [], bookings: bookings || [] };
     },
     enabled: !!enrollment?.course_id
   });

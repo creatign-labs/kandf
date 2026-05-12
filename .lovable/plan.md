@@ -1,71 +1,67 @@
-## Problem
+## Goal
 
-The Data Management Centre templates and the importer in `src/pages/admin/DataTemplate.tsx` drifted from the actual Add-dialog forms. Several templates expose fields the form no longer collects, miss fields the form requires, mark optional fields as required (and vice-versa), or use a column shape no admin form actually produces. Result: imports succeed/fail in ways that don't match what an admin sees when adding the same row by hand.
+Make every "recipes for a course" / "course for a recipe" read go through the new `course_recipes` junction table, so recipes linked to multiple courses appear correctly in all portals.
 
-## Field-by-field audit (template vs Add dialog)
+`recipes.course_id` stays in the schema for now (legacy/backfill), but no read path should rely on it.
 
-### Courses — `src/pages/admin/Courses.tsx`
-Form sends: `title`, `course_code`, `description`, `duration` (Select `1 month`..`12 months`), `base_fee`, `level` (Beginner/Intermediate/Advanced), and a multi-select **Recipes for this Course**.
-Validation: `title`, `description`, `duration`, `base_fee>0` required. `level` defaults to `Beginner`.
-Template today: marks `level` as required, and has no way to attach existing recipes.
+## Files to update
 
-Fixes:
-- Drop `level` from `requiredFields` (form has a default; not blocking).
-- Add an optional `recipe_titles` column (semicolon-separated, e.g. `Classic Chocolate Chip Cookies; Sourdough Bread`). Importer resolves names → recipe ids and updates `recipes.course_id` for each match (mirrors the dialog's recipe relinking, with same "skip unmatched" behaviour as ingredients).
-- Update notes: clarify duration is "1 month..12 months" exactly, level optional (default Beginner).
+### Student portal
+1. **`src/pages/student/MyCourse.tsx`** — recipe list and progress query currently `recipes.eq('course_id', enrollment.course_id)`. Switch to `course_recipes.select('recipe:recipes(*)').eq('course_id', enrollment.course_id)` and flatten.
+2. **`src/pages/student/RecipeDetail.tsx`** — eligibility check that compares `recipes.course_id` to enrollment's course. Switch to `course_recipes` lookup (`exists where recipe_id = X and course_id = enrollment.course_id`).
+3. **`src/pages/student/OnlineClasses.tsx`** — recipe list filter by course. Switch to junction-based join.
+4. **`src/pages/StudentDashboard.tsx`** — "recipe-progress-dashboard" count of recipes per course. Switch to `course_recipes` count.
 
-### Recipes — `src/pages/admin/AdminRecipes.tsx`
-Form sends: `title`, `recipe_code`, `course_id` (required), `description`, `difficulty` (default Easy), `prep_time`, `cook_time`, `video_url`, `instructions`, plus `recipe_ingredients` rows `{inventory_id, quantity_per_student}`.
-Validation: `title` and `course_id` required.
-Template today: matches well. Already requires `course_title` + `title`. Ingredients column shape `name:qty;name:qty` matches the form's per-ingredient pair.
+### Admin portal
+5. **`src/pages/admin/AdminRecipes.tsx`** — load recipes with their course(s) via `course_recipes` join; the `courseFilter` becomes a junction filter instead of `recipe.course_id`.
+6. **`src/pages/admin/RecipeInventory.tsx`** — same pattern for course filter.
+7. **`src/pages/admin/RecipeIngredients.tsx`** — recipe list keyed by course.
+8. **`src/pages/admin/BookingRecipeAssignment.tsx`** — recipe options for a booking should include any recipe linked to that course via junction.
+9. **`src/pages/admin/InventoryChecklist.tsx`** — `recipe_ingredients` join currently uses `recipes.course_id` to scope ingredients per course; switch to `course_recipes` membership check.
+10. **`src/components/admin/OnlineClassManager.tsx`** — recipe dropdown filtered by enrollment course.
 
-Fixes:
-- No schema change required. Tighten notes to mention difficulty default (`Easy` if blank) and that `course_title` must match exactly.
+### Chef portal
+11. **`src/pages/chef/Recipes.tsx`** — recipes list with `courses(...)` join and `recipe.course_id` filter. Replace with `course_recipes(course:courses(id,title))` and filter via junction membership; show all linked courses as badges (a recipe may now have multiple).
 
-### Inventory — `src/pages/admin/Inventory.tsx`
-Form sends: `name`, `category`, `unit`, `current_stock`, `required_stock`, `reorder_level` (default 10). **No `cost_per_unit`.**
-Template today: includes `cost_per_unit` as a column.
+### Hooks
+12. **`src/hooks/useRecipeBooking.ts`** — two `recipes.eq('course_id', courseId)` lookups for slot booking (lines ~85, ~125). Switch to junction-based filtering.
+13. **`src/hooks/useAdminRecipeBatches.ts`** — `query.eq('course_id', courseFilter)` on recipes. Switch to junction filter (e.g. `recipe_id in (select recipe_id from course_recipes where course_id = X)`).
 
-Fixes:
-- Keep `cost_per_unit` but mark it explicitly optional in notes (used by Purchase Orders only — not collected by the Add Item dialog). This is the one intentional template-only field; we will surface that in the preview dialog so admins know it's safe to leave empty.
+### Edge functions
+14. **`supabase/functions/daily-ingredient-push/index.ts`** — reads `recipe.course_id` from a single recipe. If the function only needs *a* course label, keep it (it's denormalized convenience); if it needs every linked course, switch to `course_recipes`. Decision noted in Open Questions.
 
-### Batches — `src/pages/admin/Batches.tsx`
-Form sends: `course_id`, `batch_name`, `start_date`, `days` (joined from selected weekdays), `time_slot` (built from `startTime - endTime`), `total_seats` (default 30), `available_seats = total_seats`, `booking_enabled` (default true via DB).
-Validation: `batch_name`, `course_id`, days, time required.
-Template today: matches except missing optional `booking_enabled`.
+## Files NOT changing
+- `src/pages/admin/Courses.tsx` — already uses `course_recipes` (write path).
+- `src/integrations/supabase/types.ts` — auto-generated.
+- `recipes.course_id` column — left in place for now; can be dropped in a future cleanup migration once all reads are gone.
+- `bookings.course_id`, `enrollments.course_id`, `chef_specializations`, `recipe_batches` — these are not "recipes-belong-to-course" relationships and are out of scope.
+- `DataTemplate.tsx`, `create-demo-users` — bulk import/seed code that writes `recipes.course_id` directly. Will additionally insert into `course_recipes` so seeded data shows up in the new junction-based reads.
 
-Fixes:
-- Add optional `booking_enabled` column (`true`/`false`, default `true`).
-- Note: `days` must use the long weekday names the picker accepts (`Mon, Tue, Wed, Thu, Fri, Sat, Sun`) and `time_slot` must follow `HH:MM AM - HH:MM PM` to round-trip into the form.
+## Query pattern (reference)
 
-### Jobs — `src/pages/vendor/JobForm.tsx`
-Form sends: `title`, `location`, `type` (Full-time / Part-time / **Contract** / Internship), `salary_range`, `description` (min 50 chars). Company auto-filled from vendor profile; no separate requirement columns — requirements are not part of the dialog.
-Template today: requires `company` + four `requirement_N` columns.
+Replace:
+```ts
+supabase.from('recipes').select('*').eq('course_id', courseId)
+```
+with:
+```ts
+supabase
+  .from('course_recipes')
+  .select('recipe:recipes(*)')
+  .eq('course_id', courseId)
+  .then(r => (r.data ?? []).map(x => x.recipe).filter(Boolean))
+```
 
-Fixes:
-- Keep `company` required for **admin** bulk import (jobs table needs it; vendor portal handles it differently). Add `Contract` to allowed `type` values in notes.
-- Replace `requirement_1..4` with a single optional `requirements` column (semicolon-separated). Importer splits on `;`, trims, and stores as `text[]`. Old 4-column files still work via a back-compat path that also reads `requirement_1..4` if present.
-- Add note: description should be ≥50 chars to match the dialog's validation.
+Replace single-recipe → course lookups:
+```ts
+recipe.course_id === enrollment.course_id
+```
+with an `exists` query against `course_recipes` (or include `course_recipes(course_id)` in the recipe select and check `.some(...)`).
 
-### Modules — `src/pages/admin/...` (no dedicated dialog; managed via course content)
-No form drift. Leave as-is.
+## Open questions
 
-### Users — handled by `import-real-users` edge function
-Already matches the bulk admin flow. No change.
+1. **Chef Recipes UI** — show all linked courses as multiple badges, or just the first? (Current UI assumes one badge.)
+2. **`daily-ingredient-push`** — should the per-recipe push include every course the recipe is linked to, or keep the legacy single `course_id`? Most likely fine to leave as-is since it's metadata only.
+3. **Seed/import scripts** (`DataTemplate.tsx`, `create-demo-users`) — also mirror writes into `course_recipes`? Recommended yes, otherwise seeded recipes won't appear in the new course-scoped lists.
 
-## Implementation plan
-
-1. **Update `src/pages/admin/DataTemplate.tsx` `templates` array** to the corrected schemas above (headers, requiredFields, example, notes).
-2. **Extend `processRowData`**:
-   - `courses`: after insert, if `recipe_titles` is set, resolve names → ids and `update recipes set course_id = newCourseId where id in (...)`. Skip unmatched titles (mirrors ingredients).
-   - `batches`: pass `booking_enabled` (parse `true`/`false`/`1`/`0`, default `true`).
-   - `jobs`: build `requirements` from new `requirements` column first, fall back to `requirement_1..4` for back-compat.
-3. **Preview dialog tweak**: when `cost_per_unit` (inventory) or `recipe_titles` (courses) is missing, surface it as "Optional — not collected by the Add dialog" rather than a generic missing-optional warning, so admins aren't confused about parity.
-4. **Bump example rows** so each downloaded CSV imports cleanly end-to-end against a fresh DB (Foundation Baking → its module → its recipe → a batch → a job).
-5. **Smoke test (in build mode)** by downloading each template, re-importing it on a clean test row, and confirming the resulting record matches what the Add dialog would produce.
-
-## Out of scope
-
-- No DB schema or RLS changes (the previous round already fixed `super_admin` write access for these tables).
-- No changes to the Users importer or the edge functions.
-- No new templates beyond the existing six.
+Confirm answers (or say "use sensible defaults" — multiple badges, leave edge function alone, mirror writes in seeders) and I'll implement.

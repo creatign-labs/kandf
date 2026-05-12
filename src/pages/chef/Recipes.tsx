@@ -33,7 +33,7 @@ const ChefRecipes = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recipes")
-        .select("*, courses(id, title), modules(id, title)")
+        .select("*, course_recipes(courses(id, title)), modules(id, title)")
         .order("title");
 
       if (error) throw error;
@@ -59,8 +59,11 @@ const ChefRecipes = () => {
     const matchesSearch =
       recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       recipe.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const linkedCourseIds = ((recipe as any).course_recipes || [])
+      .map((cr: any) => cr.courses?.id)
+      .filter(Boolean);
     const matchesCourse =
-      courseFilter === "all" || recipe.course_id === courseFilter;
+      courseFilter === "all" || linkedCourseIds.includes(courseFilter);
     return matchesSearch && matchesCourse;
   });
 
@@ -167,8 +170,13 @@ const ChefRecipes = () => {
                     </span>
                   )}
                 </div>
-                <div className="mt-3 pt-3 border-t border-border">
-                  <Badge variant="outline">{recipe.courses?.title}</Badge>
+                <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-1">
+                  {((recipe as any).course_recipes || [])
+                    .map((cr: any) => cr.courses)
+                    .filter(Boolean)
+                    .map((c: any) => (
+                      <Badge key={c.id} variant="outline">{c.title}</Badge>
+                    ))}
                 </div>
               </div>
             </Card>

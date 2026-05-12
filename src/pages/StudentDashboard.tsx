@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { countRecipesForCourse, fetchRecipeIdsForCourse } from "@/lib/courseRecipes";
 import { format, isPast, parseISO } from "date-fns";
 
 const StudentDashboard = () => {
@@ -57,18 +58,21 @@ const StudentDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { total: 0, completed: 0 };
 
-      const { count: totalCount } = await supabase
-        .from('recipes')
-        .select('*', { count: 'exact', head: true })
-        .eq('course_id', enrollment.course_id);
+      const totalCount = await countRecipesForCourse(enrollment.course_id);
+      const courseRecipeIds = await fetchRecipeIdsForCourse(enrollment.course_id);
 
-      const { count: completedCount } = await supabase
-        .from('student_recipe_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('student_id', user.id)
-        .eq('status', 'completed');
+      let completedCount = 0;
+      if (courseRecipeIds.length > 0) {
+        const { count } = await supabase
+          .from('student_recipe_progress')
+          .select('*', { count: 'exact', head: true })
+          .eq('student_id', user.id)
+          .eq('status', 'completed')
+          .in('recipe_id', courseRecipeIds);
+        completedCount = count || 0;
+      }
 
-      return { total: totalCount || 0, completed: completedCount || 0 };
+      return { total: totalCount, completed: completedCount };
     },
     enabled: !!enrollment?.course_id
   });

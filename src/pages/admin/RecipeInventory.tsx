@@ -44,7 +44,7 @@ const RecipeInventory = () => {
         .from("recipes")
         .select(`
           *,
-          courses(id, title),
+          course_recipes(courses(id, title)),
           modules(id, title),
           recipe_ingredients(
             id,
@@ -78,8 +78,11 @@ const RecipeInventory = () => {
     const matchesSearch =
       recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       recipe.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const linkedCourseIds = ((recipe as any).course_recipes || [])
+      .map((cr: any) => cr.courses?.id)
+      .filter(Boolean);
     const matchesCourse =
-      courseFilter === "all" || recipe.course_id === courseFilter;
+      courseFilter === "all" || linkedCourseIds.includes(courseFilter);
     return matchesSearch && matchesCourse;
   });
 
@@ -257,7 +260,11 @@ const RecipeInventory = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{recipe.courses?.title}</Badge>
+                        <div className="flex flex-wrap gap-1">
+                          {((recipe as any).course_recipes || []).map((cr: any) => cr.courses).filter(Boolean).map((c: any) => (
+                            <Badge key={c.id} variant="outline">{c.title}</Badge>
+                          ))}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {recipe.difficulty && (

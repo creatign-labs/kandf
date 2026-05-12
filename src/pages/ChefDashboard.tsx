@@ -198,23 +198,31 @@ const ChefDashboard = () => {
 
       const { data: bookings } = await supabase
         .from('bookings')
-        .select('recipe_id')
+        .select('recipe_id, recipe_ids, assigned_chef_id, assigned_chef_ids')
         .eq('booking_date', today)
-        .eq('status', 'confirmed')
-        .eq('assigned_chef_id', user.id)
-        .not('recipe_id', 'is', null);
+        .eq('status', 'confirmed');
 
-      if (!bookings?.length) return [];
+      const myBookings = (bookings || []).filter((b: any) => {
+        const chefs = [b.assigned_chef_id, ...((b.assigned_chef_ids as string[]) || [])].filter(Boolean);
+        return chefs.includes(user.id);
+      });
 
-      // Count students per recipe
+      if (!myBookings.length) return [];
+
+      // Count students per recipe — each booking contributes 1 student per
+      // resolved recipe (recipe_ids ∪ recipe_id).
       const recipeCounts: Record<string, number> = {};
-      bookings.forEach(b => {
-        if (b.recipe_id) {
-          recipeCounts[b.recipe_id] = (recipeCounts[b.recipe_id] || 0) + 1;
-        }
+      myBookings.forEach((b: any) => {
+        const resolved = Array.from(new Set(
+          [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean)
+        )) as string[];
+        resolved.forEach((rid) => {
+          recipeCounts[rid] = (recipeCounts[rid] || 0) + 1;
+        });
       });
 
       const recipeIds = Object.keys(recipeCounts);
+      if (recipeIds.length === 0) return [];
       const { data: recipeIngredients } = await supabase
         .from('recipe_ingredients')
         .select('recipe_id, quantity_per_student, inventory:inventory_id(name, unit)')

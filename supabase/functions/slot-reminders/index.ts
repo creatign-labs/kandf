@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
             to: email,
             data: {
               name, booking_date: b.booking_date, time_slot: b.time_slot,
-              recipe_title, table_number: b.table_number,
+              recipe_title, recipe_titles: recipeTitles, table_number, table_numbers: tableNumbers,
             },
           }),
         }).catch((e) => console.error("send fail", e));

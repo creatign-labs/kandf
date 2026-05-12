@@ -461,7 +461,7 @@ const Batches = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="start_date">Start Date (Course Enrollment Date)</Label>
+                      <Label htmlFor="start_date">Batch Start Date</Label>
                       <Input
                         id="start_date"
                         type="date"
@@ -470,24 +470,17 @@ const Batches = () => {
                           setFormData(prev => ({ ...prev, start_date: e.target.value }))
                         }
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Set this to the course enrollment date
-                      </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="end_date">End Date</Label>
+                      <Label htmlFor="end_date">Batch End Date</Label>
                       <Input
                         id="end_date"
                         type="date"
-                        value={derivedEndDate}
-                        readOnly
-                        disabled
-                        className="bg-muted"
+                        value={formData.end_date}
+                        onChange={(e) =>
+                          setFormData(prev => ({ ...prev, end_date: e.target.value }))
+                        }
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Auto-calculated from Start Date + course duration
-                        {selectedCourse?.duration ? ` (${selectedCourse.duration})` : ""}
-                      </p>
                     </div>
                   </div>
 

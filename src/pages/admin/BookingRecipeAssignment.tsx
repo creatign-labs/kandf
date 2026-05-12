@@ -145,22 +145,28 @@ function useVisibleRecipes(studentId: string, currentSelectedIds: string[], allR
   );
 }
 
-// Recipe multi-select scoped to a single booking — filters out recipes the
-// student has already completed (excluding currently selected ones).
+// Recipe multi-select scoped to a single booking — restricts options to the
+// booking's course recipes and filters out recipes the student already completed.
 function BookingRecipeMultiSelect({
   studentId,
+  courseId,
   recipes,
   values,
   onChange,
   disabled = false,
 }: {
   studentId: string;
-  recipes: { id: string; title: string }[];
+  courseId: string | null;
+  recipes: { id: string; title: string; course_ids: string[] }[];
   values: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
 }) {
-  const visible = useVisibleRecipes(studentId, values, recipes);
+  // Restrict to recipes belonging to this booking's course
+  const courseScoped = courseId
+    ? recipes.filter((r) => r.course_ids.includes(courseId) || values.includes(r.id))
+    : recipes;
+  const visible = useVisibleRecipes(studentId, values, courseScoped);
   return (
     <MultiSelectCheckbox
       options={visible.map((r) => ({ id: r.id, label: r.title }))}
@@ -169,7 +175,7 @@ function BookingRecipeMultiSelect({
       placeholder="Select recipes"
       width="w-[200px]"
       disabled={disabled}
-      emptyLabel="No recipes available"
+      emptyLabel="No recipes for this course"
     />
   );
 }

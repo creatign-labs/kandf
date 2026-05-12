@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const UNIT_OPTIONS = ["g", "kg", "ml", "l", "pieces"] as const;
 import { CalendarIcon, ChefHat, Loader2, Package, Users, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,16 +56,19 @@ function UpdateStockDialog({
   ingredientName,
   unit,
   currentStock,
+  defaultQuantity,
   onUpdated,
 }: {
   inventoryId: string;
   ingredientName: string;
   unit: string;
   currentStock: number;
+  defaultQuantity?: number;
   onUpdated: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [delta, setDelta] = useState<string>("");
+  const [delta, setDelta] = useState<string>(defaultQuantity != null ? String(defaultQuantity) : "");
+  const [selectedUnit, setSelectedUnit] = useState<string>(unit || "g");
   const [movement, setMovement] = useState<"in" | "out" | "set">("in");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -91,9 +97,11 @@ function UpdateStockDialog({
         ledgerQty = Math.abs(diff);
       }
 
+      const updatePayload: any = { current_stock: newStock };
+      if (selectedUnit && selectedUnit !== unit) updatePayload.unit = selectedUnit;
       const { error: invErr } = await supabase
         .from("inventory")
-        .update({ current_stock: newStock })
+        .update(updatePayload)
         .eq("id", inventoryId);
       if (invErr) throw invErr;
 
@@ -120,7 +128,14 @@ function UpdateStockDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => {
+      setOpen(o);
+      if (o) {
+        setDelta(defaultQuantity != null ? String(defaultQuantity) : "");
+        setSelectedUnit(unit || "g");
+        setMovement("in");
+      }
+    }}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="gap-1">
           <Pencil className="h-3 w-3" /> Update
@@ -147,9 +162,22 @@ function UpdateStockDialog({
               </Button>
             ))}
           </div>
-          <div>
-            <Label htmlFor="qty">Quantity ({unit})</Label>
-            <Input id="qty" type="number" min="0" step="any" value={delta} onChange={(e) => setDelta(e.target.value)} />
+          <div className="grid grid-cols-[1fr_120px] gap-2">
+            <div>
+              <Label htmlFor="qty">Quantity</Label>
+              <Input id="qty" type="number" min="0" step="any" value={delta} onChange={(e) => setDelta(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="unit">Unit</Label>
+              <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                <SelectTrigger id="unit"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {UNIT_OPTIONS.map((u) => (
+                    <SelectItem key={u} value={u}>{u}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div>
             <Label htmlFor="notes">Notes (optional)</Label>
@@ -466,6 +494,7 @@ const RequiredDailyIngredients = () => {
                             ingredientName={item.ingredient_name}
                             unit={item.unit}
                             currentStock={item.current_stock}
+                            defaultQuantity={item.total_required}
                             onUpdated={refresh}
                           />
                         </TableCell>

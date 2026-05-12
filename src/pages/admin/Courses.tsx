@@ -60,8 +60,8 @@ const Courses = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recipes")
-        .select("id, title, difficulty, course_id")
-        .order("title");
+        .select("id, title, difficulty, course_id, recipe_code")
+        .order("recipe_code", { nullsFirst: false });
 
       if (error) throw error;
       return data;

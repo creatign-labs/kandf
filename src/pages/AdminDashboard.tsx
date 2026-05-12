@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import TomorrowIngredientShortageWidget from "@/components/admin/TomorrowIngredientShortageWidget";
 
 const AdminDashboard = () => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);

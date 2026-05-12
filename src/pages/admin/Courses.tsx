@@ -371,7 +371,7 @@ const Courses = () => {
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search recipes..."
+            placeholder="Search by recipe code (e.g., RCP-001)..."
             value={recipeSearchQuery}
             onChange={(e) => setRecipeSearchQuery(e.target.value)}
             className="pl-8"
@@ -380,10 +380,14 @@ const Courses = () => {
         <ScrollArea className="h-48 rounded-md border p-2">
           <div className="space-y-1">
             {(allRecipes || [])
-              .filter((r) =>
-                r.title.toLowerCase().includes(recipeSearchQuery.toLowerCase())
-              )
-              .map((recipe) => {
+              .filter((r: any) => {
+                const q = recipeSearchQuery.toLowerCase();
+                return (
+                  (r.recipe_code || "").toLowerCase().includes(q) ||
+                  r.title.toLowerCase().includes(q)
+                );
+              })
+              .map((recipe: any) => {
                 const isSelected = selectedRecipeIds.includes(recipe.id);
                 return (
                   <label
@@ -394,7 +398,9 @@ const Courses = () => {
                       checked={isSelected}
                       onCheckedChange={() => toggleRecipe(recipe.id)}
                     />
-                    <span className="text-sm flex-1">{recipe.title}</span>
+                    <span className="text-sm flex-1 font-mono">
+                      {recipe.recipe_code || <span className="italic text-muted-foreground">No code — {recipe.title}</span>}
+                    </span>
                     {recipe.difficulty && (
                       <Badge variant="outline" className="text-xs">
                         {recipe.difficulty}

@@ -76,7 +76,7 @@ const InventoryChecklist = () => {
     queryFn: async () => {
       const { data: bookings, error } = await supabase
         .from("bookings")
-        .select("*, courses(id, title)")
+        .select("id, course_id, recipe_id, recipe_ids")
         .eq("booking_date", selectedDate)
         .eq("status", "confirmed");
 
@@ -104,20 +104,48 @@ const InventoryChecklist = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Calculate required quantities based on bookings and recipes
-      const courseIds = [...new Set(bookingsData?.map(b => b.courses?.id) || [])];
-      const studentCount = bookingsData?.length || 0;
+      // For bookings without explicit recipes, fall back to all recipes
+      // linked to that booking's course (via the course_recipes junction).
+      const courseIdsNeedingFallback = new Set<string>();
+      (bookingsData || []).forEach((b: any) => {
+        const explicit = [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean);
+        if (explicit.length === 0 && b.course_id) courseIdsNeedingFallback.add(b.course_id);
+      });
 
-      // Get ingredients for courses being taught (via course_recipes junction)
-      const relevantIngredients = recipeIngredients?.filter((ri: any) => {
-        const linked = (ri.recipes?.course_recipes || []).map((cr: any) => cr.course_id);
-        return linked.some((cid: string) => courseIds.includes(cid));
-      }) || [];
+      const courseToRecipes: Record<string, string[]> = {};
+      if (courseIdsNeedingFallback.size > 0) {
+        const { data: junctionRows, error: jErr } = await supabase
+          .from("course_recipes")
+          .select("course_id, recipe_id")
+          .in("course_id", Array.from(courseIdsNeedingFallback));
+        if (jErr) throw jErr;
+        for (const row of junctionRows || []) {
+          if (!courseToRecipes[row.course_id]) courseToRecipes[row.course_id] = [];
+          courseToRecipes[row.course_id].push(row.recipe_id);
+        }
+      }
 
-      // Aggregate by inventory item
+      // Count students per recipe — each booking contributes 1 student for
+      // every resolved recipe (explicit recipe_ids/recipe_id, otherwise
+      // course_recipes fallback).
+      const recipeStudentCount: Record<string, number> = {};
+      (bookingsData || []).forEach((b: any) => {
+        const explicit = Array.from(new Set(
+          [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean)
+        )) as string[];
+        const resolved = explicit.length > 0
+          ? explicit
+          : (b.course_id ? (courseToRecipes[b.course_id] || []) : []);
+        resolved.forEach((rid) => {
+          recipeStudentCount[rid] = (recipeStudentCount[rid] || 0) + 1;
+        });
+      });
+
+      // Aggregate ingredient demand per inventory item
       const aggregated: Record<string, { required: number; current: number; inventoryId: string }> = {};
-
-      relevantIngredients.forEach(ri => {
+      (recipeIngredients || []).forEach((ri: any) => {
+        const count = recipeStudentCount[ri.recipe_id];
+        if (!count) return;
         const inventoryId = ri.inventory_id;
         if (!aggregated[inventoryId]) {
           aggregated[inventoryId] = {
@@ -126,7 +154,7 @@ const InventoryChecklist = () => {
             inventoryId,
           };
         }
-        aggregated[inventoryId].required += (ri.quantity_per_student || 0) * studentCount;
+        aggregated[inventoryId].required += (ri.quantity_per_student || 0) * count;
       });
 
       // Create checklist

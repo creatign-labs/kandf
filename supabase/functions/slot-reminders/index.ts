@@ -46,6 +46,18 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
+    // Resolve titles for every recipe referenced (singular + array)
+    const allRecipeIds = new Set<string>();
+    for (const b of bookings || []) {
+      const rids = [(b as any).recipe_id, ...(((b as any).recipe_ids as string[]) || [])].filter(Boolean);
+      rids.forEach((r: string) => allRecipeIds.add(r));
+    }
+    const recipeTitleMap = new Map<string, string>();
+    if (allRecipeIds.size > 0) {
+      const { data: rRows } = await admin.from("recipes").select("id, title").in("id", Array.from(allRecipeIds));
+      for (const r of rRows || []) recipeTitleMap.set(r.id, r.title);
+    }
+
     // Fetch recipients separately if FK alias not present
     const sent: any[] = [];
 

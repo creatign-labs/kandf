@@ -174,8 +174,10 @@ const RequiredDailyIngredients = () => {
   const toStr = format(toDate, "yyyy-MM-dd");
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["required-daily-ingredients", fromStr, toStr],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data: bookings, error: bErr } = await supabase
         .from("bookings")

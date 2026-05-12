@@ -44,7 +44,7 @@ function MultiSelectCheckbox({
 
   useEffect(() => {
     setSelectedValues(values);
-  }, [selectedKey, values]);
+  }, [selectedKey]);
 
   const toggle = (id: string) => {
     setSelectedValues((current) => {

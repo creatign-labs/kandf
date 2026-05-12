@@ -78,18 +78,32 @@ const Attendance = () => {
         .from("bookings")
         .select(
           `
-          id, student_id, course_id, recipe_id, time_slot, status, booking_date,
-          recipes(id, title),
+          id, student_id, course_id, recipe_id, recipe_ids, assigned_chef_id, assigned_chef_ids, time_slot, status, booking_date,
           courses(title)
         `
         )
         .eq("booking_date", dateStr)
-        .eq("assigned_chef_id", user.id)
+        .or(`assigned_chef_id.eq.${user.id},assigned_chef_ids.cs.{${user.id}}`)
         .in("status", ["confirmed", "attended", "no_show"]);
 
       if (error) throw error;
 
       const allBookings = bookings || [];
+
+      // Collect all recipe IDs across legacy + array columns
+      const allRecipeIds = [
+        ...new Set(
+          allBookings.flatMap((b: any) => [
+            ...(b.recipe_ids || []),
+            ...(b.recipe_id ? [b.recipe_id] : []),
+          ])
+        ),
+      ];
+      const { data: recipesData } =
+        allRecipeIds.length > 0
+          ? await supabase.from("recipes").select("id, title").in("id", allRecipeIds)
+          : { data: [] };
+      const recipeMap = new Map((recipesData || []).map((r: any) => [r.id, r.title]));
 
       // Get student profiles
       const studentIds = [...new Set(allBookings.map((b) => b.student_id))];

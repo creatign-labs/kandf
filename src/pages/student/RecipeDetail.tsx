@@ -79,22 +79,27 @@ const RecipeDetail = () => {
         .maybeSingle();
 
       if (enrollment) {
-        const { data: totalRecipes } = await supabase
-          .from("recipes")
-          .select("id")
+        // Get recipe IDs linked to this course via the junction table
+        const { data: courseRecipeRows } = await supabase
+          .from("course_recipes")
+          .select("recipe_id")
           .eq("course_id", enrollment.course_id);
 
-        const { data: completedProgress } = await supabase
-          .from("student_recipe_progress")
-          .select("id, recipes!inner(course_id)")
-          .eq("student_id", user.id)
-          .eq("status", "completed");
+        const courseRecipeIds = (courseRecipeRows || []).map((r: any) => r.recipe_id);
+        const totalCount = courseRecipeIds.length;
 
-        const completedInCourse = completedProgress?.filter(
-          (p: any) => p.recipes?.course_id === enrollment.course_id
-        ).length || 0;
+        let completedInCourse = 0;
+        if (courseRecipeIds.length > 0) {
+          const { count } = await supabase
+            .from("student_recipe_progress")
+            .select("*", { count: "exact", head: true })
+            .eq("student_id", user.id)
+            .eq("status", "completed")
+            .in("recipe_id", courseRecipeIds);
+          completedInCourse = count || 0;
+        }
 
-        const newProgress = Math.round((completedInCourse / (totalRecipes?.length || 1)) * 100);
+        const newProgress = Math.round((completedInCourse / (totalCount || 1)) * 100);
 
         await supabase
           .from("enrollments")

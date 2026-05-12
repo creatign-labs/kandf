@@ -44,7 +44,7 @@ const OnlineClasses = () => {
       const recipeIds = onlineRecipes.map((r) => r.recipe_id);
       const { data: recipes } = await supabase
         .from("recipes")
-        .select("id, title, description, video_url, difficulty, prep_time, cook_time, course_id, courses(title)")
+        .select("id, title, description, video_url, difficulty, prep_time, cook_time, course_recipes(courses(id, title))")
         .in("id", recipeIds)
         .order("created_at");
 

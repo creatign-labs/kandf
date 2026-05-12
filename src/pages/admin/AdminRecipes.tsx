@@ -44,7 +44,7 @@ const AdminRecipes = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recipes")
-        .select("*, courses(id, title), modules(id, title)")
+        .select("*, course_recipes(courses(id, title)), modules(id, title)")
         .order("title");
       if (error) throw error;
       return data;
@@ -164,7 +164,10 @@ const AdminRecipes = () => {
       recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       recipe.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (recipe as any).recipe_code?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCourse = courseFilter === "all" || recipe.course_id === courseFilter;
+    const linkedCourseIds = ((recipe as any).course_recipes || [])
+      .map((cr: any) => cr.courses?.id)
+      .filter(Boolean);
+    const matchesCourse = courseFilter === "all" || linkedCourseIds.includes(courseFilter);
     return matchesSearch && matchesCourse;
   });
 

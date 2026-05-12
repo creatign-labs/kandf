@@ -50,11 +50,20 @@ const RecipeIngredients = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recipes")
-        .select("*, courses(title)")
+        .select("*, course_recipes(courses(id, title))")
         .order("title");
 
       if (error) throw error;
-      return data;
+      // Flatten linked course titles into a single string for display
+      return (data || []).map((r: any) => ({
+        ...r,
+        courses: {
+          title: (r.course_recipes || [])
+            .map((cr: any) => cr.courses?.title)
+            .filter(Boolean)
+            .join(", "),
+        },
+      }));
     },
   });
 
@@ -78,11 +87,25 @@ const RecipeIngredients = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recipe_ingredients")
-        .select("*, recipes(id, title, courses(title)), inventory(id, name, unit, category)")
+        .select("*, recipes(id, title, course_recipes(courses(id, title))), inventory(id, name, unit, category)")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data;
+      // Flatten linked course titles for the recipe display
+      return (data || []).map((row: any) => ({
+        ...row,
+        recipes: row.recipes
+          ? {
+              ...row.recipes,
+              courses: {
+                title: (row.recipes.course_recipes || [])
+                  .map((cr: any) => cr.courses?.title)
+                  .filter(Boolean)
+                  .join(", "),
+              },
+            }
+          : row.recipes,
+      }));
     },
   });
 

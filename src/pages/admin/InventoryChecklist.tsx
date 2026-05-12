@@ -85,13 +85,13 @@ const InventoryChecklist = () => {
     },
   });
 
-  // Fetch recipe ingredients
+  // Fetch recipe ingredients (course membership comes from course_recipes junction)
   const { data: recipeIngredients } = useQuery({
     queryKey: ["recipe-ingredients-all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recipe_ingredients")
-        .select("*, recipes(course_id, title), inventory(id, name, unit, current_stock)");
+        .select("*, recipes(id, title, course_recipes(course_id)), inventory(id, name, unit, current_stock)");
 
       if (error) throw error;
       return data;
@@ -108,10 +108,11 @@ const InventoryChecklist = () => {
       const courseIds = [...new Set(bookingsData?.map(b => b.courses?.id) || [])];
       const studentCount = bookingsData?.length || 0;
 
-      // Get ingredients for courses being taught
-      const relevantIngredients = recipeIngredients?.filter(ri =>
-        courseIds.includes(ri.recipes?.course_id)
-      ) || [];
+      // Get ingredients for courses being taught (via course_recipes junction)
+      const relevantIngredients = recipeIngredients?.filter((ri: any) => {
+        const linked = (ri.recipes?.course_recipes || []).map((cr: any) => cr.course_id);
+        return linked.some((cid: string) => courseIds.includes(cid));
+      }) || [];
 
       // Aggregate by inventory item
       const aggregated: Record<string, { required: number; current: number; inventoryId: string }> = {};

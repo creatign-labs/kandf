@@ -43,10 +43,9 @@ function MultiSelectCheckbox({
   const [selectedValues, setSelectedValues] = useState(values);
   const hasLocalChanges = useRef(false);
   const selectedKey = values.join("|");
-  const localKey = selectedValues.join("|");
 
   useEffect(() => {
-    if (hasLocalChanges.current && selectedKey !== localKey) return;
+    if (hasLocalChanges.current && selectedKey !== selectedValues.join("|")) return;
     hasLocalChanges.current = false;
     setSelectedValues(values);
   }, [selectedKey]);

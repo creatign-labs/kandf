@@ -45,6 +45,14 @@ const Courses = () => {
     level: "Beginner",
     base_fee: "",
   });
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
+
+  const toggleRecipe = (id: string) => {
+    setSelectedRecipeIds((prev) =>
+      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
+    );
+  };
 
   // Fetch all recipes for selection
   const { data: allRecipes } = useQuery({
@@ -109,9 +117,35 @@ const Courses = () => {
     },
   });
 
+  const syncRecipesForCourse = async (courseId: string, recipeIds: string[]) => {
+    // Unlink recipes previously linked to this course but no longer selected
+    const { data: existing, error: fetchErr } = await supabase
+      .from("recipes")
+      .select("id")
+      .eq("course_id", courseId);
+    if (fetchErr) throw fetchErr;
+    const existingIds = (existing || []).map((r) => r.id);
+    const toUnlink = existingIds.filter((id) => !recipeIds.includes(id));
+    const toLink = recipeIds.filter((id) => !existingIds.includes(id));
+
+    if (toUnlink.length > 0) {
+      const { error } = await supabase
+        .from("recipes")
+        .update({ course_id: null })
+        .in("id", toUnlink);
+      if (error) throw error;
+    }
+    if (toLink.length > 0) {
+      const { error } = await supabase
+        .from("recipes")
+        .update({ course_id: courseId })
+        .in("id", toLink);
+      if (error) throw error;
+    }
+  };
+
   const createCourseMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // Create the course first
       const { data: newCourse, error } = await supabase.from("courses").insert({
         title: data.title,
         course_code: data.course_code || null,
@@ -120,8 +154,12 @@ const Courses = () => {
         level: data.level,
         base_fee: parseFloat(data.base_fee),
       }).select().single();
-      
+
       if (error) throw error;
+
+      if (selectedRecipeIds.length > 0) {
+        await syncRecipesForCourse(newCourse.id, selectedRecipeIds);
+      }
 
       return newCourse;
     },
@@ -151,6 +189,8 @@ const Courses = () => {
         })
         .eq("id", id);
       if (error) throw error;
+
+      await syncRecipesForCourse(id, selectedRecipeIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
@@ -186,6 +226,8 @@ const Courses = () => {
       level: "Beginner",
       base_fee: "",
     });
+    setSelectedRecipeIds([]);
+    setRecipeSearchQuery("");
   };
 
   const handleEdit = (course: any) => {
@@ -198,6 +240,8 @@ const Courses = () => {
       level: course.level,
       base_fee: course.base_fee.toString(),
     });
+    setSelectedRecipeIds((course.recipes || []).map((r: any) => r.id));
+    setRecipeSearchQuery("");
   };
 
   const validateForm = (): string | null => {
@@ -315,6 +359,83 @@ const Courses = () => {
             <SelectItem value="Advanced">Advanced</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Select Recipes for this Course</Label>
+        <p className="text-xs text-muted-foreground">
+          Choose recipes to link. Recipes already linked to other courses are disabled.
+        </p>
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search recipes..."
+            value={recipeSearchQuery}
+            onChange={(e) => setRecipeSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <ScrollArea className="h-48 rounded-md border p-2">
+          <div className="space-y-1">
+            {(allRecipes || [])
+              .filter((r) =>
+                r.title.toLowerCase().includes(recipeSearchQuery.toLowerCase())
+              )
+              .map((recipe) => {
+                const isSelected = selectedRecipeIds.includes(recipe.id);
+                const linkedElsewhere =
+                  !!recipe.course_id &&
+                  recipe.course_id !== editingCourse?.id &&
+                  !isSelected;
+                return (
+                  <label
+                    key={recipe.id}
+                    className={`flex items-center gap-2 rounded p-2 hover:bg-muted cursor-pointer ${
+                      linkedElsewhere ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      disabled={linkedElsewhere}
+                      onCheckedChange={() => toggleRecipe(recipe.id)}
+                    />
+                    <span className="text-sm flex-1">{recipe.title}</span>
+                    {recipe.difficulty && (
+                      <Badge variant="outline" className="text-xs">
+                        {recipe.difficulty}
+                      </Badge>
+                    )}
+                    {linkedElsewhere && (
+                      <span className="text-xs text-muted-foreground">linked</span>
+                    )}
+                  </label>
+                );
+              })}
+            {(!allRecipes || allRecipes.length === 0) && (
+              <p className="text-sm text-muted-foreground p-2">No recipes available.</p>
+            )}
+          </div>
+        </ScrollArea>
+        {selectedRecipeIds.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {selectedRecipeIds.map((id) => {
+              const r = allRecipes?.find((x) => x.id === id);
+              if (!r) return null;
+              return (
+                <Badge key={id} variant="secondary" className="gap-1">
+                  {r.title}
+                  <button
+                    type="button"
+                    onClick={() => toggleRecipe(id)}
+                    className="ml-1 text-xs hover:text-destructive"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <Button type="submit" className="w-full" disabled={createCourseMutation.isPending || updateCourseMutation.isPending}>

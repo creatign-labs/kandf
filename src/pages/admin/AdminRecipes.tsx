@@ -424,7 +424,14 @@ const AdminRecipes = () => {
                   )}
                 </div>
                 <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2 flex-wrap">
-                  <Badge variant="outline">{recipe.courses?.title}</Badge>
+                  <div className="flex flex-wrap gap-1">
+                    {((recipe as any).course_recipes || [])
+                      .map((cr: any) => cr.courses)
+                      .filter(Boolean)
+                      .map((c: any) => (
+                        <Badge key={c.id} variant="outline">{c.title}</Badge>
+                      ))}
+                  </div>
                   <div className="flex items-center gap-2">
                     {(recipe as any).cost != null && (
                       <Badge variant="outline" className="gap-1">

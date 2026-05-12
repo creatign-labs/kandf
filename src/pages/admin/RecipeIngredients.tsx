@@ -300,7 +300,7 @@ const RecipeIngredients = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {groupedByRecipe && Object.entries(groupedByRecipe).map(([recipeId, ingredients]) => {
+            {groupedByRecipe && Object.entries(groupedByRecipe).map(([recipeId, ingredients]: [string, any[]]) => {
               const recipe = recipes?.find(r => r.id === recipeId);
               return (
                 <Card key={recipeId} className="p-6">

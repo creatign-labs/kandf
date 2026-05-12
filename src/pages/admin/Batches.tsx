@@ -98,9 +98,7 @@ const Batches = () => {
     },
   });
 
-  // Auto-derive end_date = start_date + selected course's duration
   const selectedCourse = courses?.find((c) => c.id === formData.course_id);
-  const derivedEndDate = computeEndDate(formData.start_date, selectedCourse?.duration);
 
   // Create/Update mutation
   const saveMutation = useMutation({

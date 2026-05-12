@@ -70,13 +70,14 @@ const Inventory = () => {
 
       const { data: bks } = await supabase
         .from("bookings")
-        .select("recipe_id, student_id, booking_date")
+        .select("recipe_id, recipe_ids, student_id, booking_date")
         .gte("booking_date", fromStr)
         .lte("booking_date", toStr)
-        .eq("status", "confirmed")
-        .not("recipe_id", "is", null);
+        .eq("status", "confirmed");
 
-      const recipeIds = [...new Set((bks || []).map((b) => b.recipe_id as string))];
+      const bookingRecipeIds = (booking: any) =>
+        Array.from(new Set([booking.recipe_id, ...((booking.recipe_ids as string[]) || [])].filter(Boolean))) as string[];
+      const recipeIds = [...new Set((bks || []).flatMap((b: any) => bookingRecipeIds(b)))];
       if (recipeIds.length === 0) return {} as Record<string, number>;
 
       const { data: ris } = await supabase
@@ -85,9 +86,10 @@ const Inventory = () => {
         .in("recipe_id", recipeIds);
 
       const recipeCount: Record<string, number> = {};
-      (bks || []).forEach((b) => {
-        const k = b.recipe_id as string;
-        recipeCount[k] = (recipeCount[k] || 0) + 1;
+      (bks || []).forEach((b: any) => {
+        bookingRecipeIds(b).forEach((recipeId) => {
+          recipeCount[recipeId] = (recipeCount[recipeId] || 0) + 1;
+        });
       });
 
       const demand: Record<string, number> = {};

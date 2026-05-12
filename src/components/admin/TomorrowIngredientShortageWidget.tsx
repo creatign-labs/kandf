@@ -3,10 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, CheckCircle2, Loader2, Package, ArrowRight } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Package, ArrowRight, RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { addDays, format } from "date-fns";
+import { addDays, format, formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 
 interface IngredientRow {
@@ -22,8 +22,10 @@ const TomorrowIngredientShortageWidget = () => {
   const tomorrow = useMemo(() => addDays(new Date(), 1), []);
   const tomorrowStr = format(tomorrow, "yyyy-MM-dd");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["tomorrow-ingredient-shortage", tomorrowStr],
+    staleTime: 5 * 60 * 1000, // 5 min cache — manual refresh forces refetch
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data: bookings, error: bErr } = await supabase
         .from("bookings")
@@ -125,6 +127,11 @@ const TomorrowIngredientShortageWidget = () => {
           <p className="text-xs md:text-sm text-muted-foreground">
             {format(tomorrow, "EEE, dd MMM yyyy")} · {data?.totalStudents || 0} student bookings · {data?.recipeCount || 0} recipes
           </p>
+          {dataUpdatedAt > 0 && (
+            <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+              Updated {formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true })}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {shortages.length > 0 ? (
@@ -136,6 +143,16 @@ const TomorrowIngredientShortageWidget = () => {
               <CheckCircle2 className="h-3 w-3" /> Stock OK
             </Badge>
           ) : null}
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
           <Button asChild size="sm" variant="outline" className="gap-1">
             <Link to="/admin/required-daily-ingredients">
               View all <ArrowRight className="h-3 w-3" />

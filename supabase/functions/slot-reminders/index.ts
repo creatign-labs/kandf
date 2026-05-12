@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 
     const { data: bookings, error } = await admin
       .from("bookings")
-      .select("id, student_id, booking_date, time_slot, recipe_id, table_number, status, recipes(title), profiles!bookings_student_id_fkey(first_name, last_name, email)")
+      .select("id, student_id, booking_date, time_slot, recipe_id, recipe_ids, table_number, table_numbers, status, profiles!bookings_student_id_fkey(first_name, last_name, email)")
       .in("status", ["confirmed"])
       .gte("booking_date", isoFrom)
       .lte("booking_date", isoTo);

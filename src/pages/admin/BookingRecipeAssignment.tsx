@@ -145,22 +145,28 @@ function useVisibleRecipes(studentId: string, currentSelectedIds: string[], allR
   );
 }
 
-// Recipe multi-select scoped to a single booking — filters out recipes the
-// student has already completed (excluding currently selected ones).
+// Recipe multi-select scoped to a single booking — restricts options to the
+// booking's course recipes and filters out recipes the student already completed.
 function BookingRecipeMultiSelect({
   studentId,
+  courseId,
   recipes,
   values,
   onChange,
   disabled = false,
 }: {
   studentId: string;
-  recipes: { id: string; title: string }[];
+  courseId: string | null;
+  recipes: { id: string; title: string; course_ids: string[] }[];
   values: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
 }) {
-  const visible = useVisibleRecipes(studentId, values, recipes);
+  // Restrict to recipes belonging to this booking's course
+  const courseScoped = courseId
+    ? recipes.filter((r) => r.course_ids.includes(courseId) || values.includes(r.id))
+    : recipes;
+  const visible = useVisibleRecipes(studentId, values, courseScoped);
   return (
     <MultiSelectCheckbox
       options={visible.map((r) => ({ id: r.id, label: r.title }))}
@@ -169,7 +175,7 @@ function BookingRecipeMultiSelect({
       placeholder="Select recipes"
       width="w-[200px]"
       disabled={disabled}
-      emptyLabel="No recipes available"
+      emptyLabel="No recipes for this course"
     />
   );
 }
@@ -223,17 +229,21 @@ const BookingRecipeAssignment = () => {
     }
   });
 
-  // Fetch all recipes for assignment dropdown
+  // Fetch all recipes + their course mappings for assignment dropdown
   const { data: recipes } = useQuery({
-    queryKey: ['all-recipes'],
+    queryKey: ['all-recipes-with-courses'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('recipes')
-        .select('id, title, courses (title)')
+        .select('id, title, course_recipes(course_id)')
         .order('title');
 
       if (error) throw error;
-      return data;
+      return (data || []).map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        course_ids: (r.course_recipes || []).map((cr: any) => cr.course_id),
+      }));
     }
   });
 
@@ -610,6 +620,7 @@ const BookingRecipeAssignment = () => {
                       <TableCell>
                         <BookingRecipeMultiSelect
                           studentId={booking.student_id}
+                          courseId={booking.course_id || null}
                           recipes={recipes || []}
                           values={getBookingRecipeIds(booking)}
                           disabled={booking.status === 'cancelled'}

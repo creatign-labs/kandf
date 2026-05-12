@@ -158,13 +158,26 @@ const Attendance = () => {
     },
   });
 
+  const getBatchLabel = (batch: BatchGroup) =>
+    `${batch.recipeTitle} • ${batch.timeSlot} (${format(selectedDate, "MMM d, yyyy")})`;
+
   // Confirm batch completion mutation (atomic server-side RPC)
   const confirmBatchMutation = useMutation({
     mutationFn: async (batchKey: string) => {
       const batch = batches?.find(
         (_, i) => `batch-${i}` === batchKey
       );
-      if (!batch) throw new Error("Batch not found");
+      if (!batch) throw new Error("Batch not found in current view");
+
+      // Safeguard: prevent re-completion
+      const alreadyCompleted = batch.students.every(
+        (s) => s.bookingStatus === "attended" || s.bookingStatus === "no_show"
+      );
+      if (alreadyCompleted) {
+        throw new Error(
+          `Batch "${getBatchLabel(batch)}" is already completed and cannot be confirmed again.`
+        );
+      }
 
       const batchAttendance = attendanceState[batchKey] || {};
 
@@ -176,7 +189,7 @@ const Attendance = () => {
       );
       if (unmarked.length > 0) {
         throw new Error(
-          `Mark all students before confirming. ${unmarked.length} unmarked.`
+          `Mark all students before confirming. ${unmarked.length} unmarked in "${getBatchLabel(batch)}".`
         );
       }
 
@@ -197,29 +210,39 @@ const Attendance = () => {
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(
+          `[${getBatchLabel(batch)}] ${error.message || "Database error"}${
+            error.details ? ` — ${error.details}` : ""
+          }${error.hint ? ` (Hint: ${error.hint})` : ""}`
+        );
+      }
 
       const result = typeof data === "string" ? JSON.parse(data) : data;
       if (!result?.success) {
-        throw new Error(result?.message || "Batch confirmation failed");
+        throw new Error(
+          `[${getBatchLabel(batch)}] ${result?.message || "Batch confirmation failed for an unknown reason"}`
+        );
       }
+
+      return batch;
     },
-    onSuccess: () => {
+    onSuccess: (batch) => {
       queryClient.invalidateQueries({
         queryKey: ["chef-attendance-batches"],
       });
       toast({
-        title: "Batch Completed",
-        description:
-          "Attendance confirmed and inventory deducted atomically.",
+        title: "Batch Completed Successfully",
+        description: `${getBatchLabel(batch)} — attendance confirmed, recipe progress updated, and inventory deducted.`,
       });
       setConfirmBatchKey(null);
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: "Batch Completion Failed",
         description: error.message,
         variant: "destructive",
+        duration: 10000,
       });
       setConfirmBatchKey(null);
     },

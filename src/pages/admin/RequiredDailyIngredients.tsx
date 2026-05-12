@@ -56,16 +56,19 @@ function UpdateStockDialog({
   ingredientName,
   unit,
   currentStock,
+  defaultQuantity,
   onUpdated,
 }: {
   inventoryId: string;
   ingredientName: string;
   unit: string;
   currentStock: number;
+  defaultQuantity?: number;
   onUpdated: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [delta, setDelta] = useState<string>("");
+  const [delta, setDelta] = useState<string>(defaultQuantity != null ? String(defaultQuantity) : "");
+  const [selectedUnit, setSelectedUnit] = useState<string>(unit || "g");
   const [movement, setMovement] = useState<"in" | "out" | "set">("in");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);

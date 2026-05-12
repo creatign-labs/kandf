@@ -144,6 +144,17 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
     return '/student';
   };
 
+  const getLogoPath = () => {
+    switch (role) {
+      case 'admin':
+      case 'super_admin': return '/admin';
+      case 'chef': return '/chef';
+      case 'vendor': return '/vendor';
+      case 'student': return '/student';
+      default: return isLoggedIn && userPrimaryRole ? getDashboardPath() : '/';
+    }
+  };
+
   const getNavItems = () => {
     switch (role) {
       case "student": return studentMainNavItems;

@@ -308,11 +308,28 @@ const RequiredDailyIngredients = () => {
     <div className="min-h-screen bg-background">
       <Header role="admin" userName="Admin" />
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Required Daily Ingredients</h1>
-          <p className="text-muted-foreground">
-            View ingredient requirements for a date or a date range, grouped by chef
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Required Daily Ingredients</h1>
+            <p className="text-muted-foreground">
+              View ingredient requirements for a date or a date range, grouped by chef
+            </p>
+            {dataUpdatedAt > 0 && (
+              <p className="text-xs text-muted-foreground/80 mt-1">
+                Updated {formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true })}
+              </p>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            {isFetching ? "Updating…" : "Refresh"}
+          </Button>
         </div>
 
         <Card className="p-4 mb-6">

@@ -25,7 +25,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const AdminRecipes = () => {
   const queryClient = useQueryClient();
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(searchInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
   const [courseFilter, setCourseFilter] = useState("all");
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);

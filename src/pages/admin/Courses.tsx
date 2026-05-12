@@ -364,7 +364,7 @@ const Courses = () => {
       <div className="space-y-2">
         <Label>Select Recipes for this Course</Label>
         <p className="text-xs text-muted-foreground">
-          Choose recipes to link. Recipes already linked to other courses are disabled.
+          Choose recipes to link. A recipe can be linked to multiple courses.
         </p>
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -383,20 +383,13 @@ const Courses = () => {
               )
               .map((recipe) => {
                 const isSelected = selectedRecipeIds.includes(recipe.id);
-                const linkedElsewhere =
-                  !!recipe.course_id &&
-                  recipe.course_id !== editingCourse?.id &&
-                  !isSelected;
                 return (
                   <label
                     key={recipe.id}
-                    className={`flex items-center gap-2 rounded p-2 hover:bg-muted cursor-pointer ${
-                      linkedElsewhere ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                    className="flex items-center gap-2 rounded p-2 hover:bg-muted cursor-pointer"
                   >
                     <Checkbox
                       checked={isSelected}
-                      disabled={linkedElsewhere}
                       onCheckedChange={() => toggleRecipe(recipe.id)}
                     />
                     <span className="text-sm flex-1">{recipe.title}</span>
@@ -404,9 +397,6 @@ const Courses = () => {
                       <Badge variant="outline" className="text-xs">
                         {recipe.difficulty}
                       </Badge>
-                    )}
-                    {linkedElsewhere && (
-                      <span className="text-xs text-muted-foreground">linked</span>
                     )}
                   </label>
                 );

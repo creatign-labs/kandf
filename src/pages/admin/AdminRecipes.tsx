@@ -15,7 +15,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Search, ChefHat, Clock, Loader2, Package, Plus, Trash2, Youtube, IndianRupee } from "lucide-react";
+import { Search, ChefHat, Clock, Loader2, Package, Plus, Trash2, Youtube, IndianRupee, Copy, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPlayer } from "@/components/VideoPlayer";

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,6 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Send, ChevronDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,20 +39,31 @@ function MultiSelectCheckbox({
   disabled?: boolean;
   emptyLabel?: string;
 }) {
+  const [selectedValues, setSelectedValues] = useState(values);
+
+  useEffect(() => {
+    setSelectedValues(values);
+  }, [values.join("|")]);
+
   const toggle = (id: string) => {
-    if (values.includes(id)) onChange(values.filter((v) => v !== id));
-    else onChange([...values, id]);
+    setSelectedValues((current) => {
+      const next = current.includes(id)
+        ? current.filter((v) => v !== id)
+        : [...current, id];
+      onChange(next);
+      return next;
+    });
   };
 
   const summary =
-    values.length === 0
+    selectedValues.length === 0
       ? placeholder
-      : values.length <= 2
+      : selectedValues.length <= 2
       ? options
-          .filter((o) => values.includes(o.id))
+          .filter((o) => selectedValues.includes(o.id))
           .map((o) => o.label)
           .join(", ")
-      : `${values.length} selected`;
+      : `${selectedValues.length} selected`;
 
   return (
     <Popover>
@@ -68,13 +78,12 @@ function MultiSelectCheckbox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[260px] p-0 bg-background border shadow-lg z-50" align="start">
-        <ScrollArea className="max-h-[280px]">
-          <div className="p-1">
+        <div className="max-h-[280px] overflow-y-auto overscroll-contain p-1">
             {options.length === 0 ? (
               <div className="px-3 py-2 text-sm text-muted-foreground">{emptyLabel}</div>
             ) : (
               options.map((opt) => {
-                const checked = values.includes(opt.id);
+                const checked = selectedValues.includes(opt.id);
                 return (
                   <label
                     key={opt.id}
@@ -89,8 +98,7 @@ function MultiSelectCheckbox({
                 );
               })
             )}
-          </div>
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );

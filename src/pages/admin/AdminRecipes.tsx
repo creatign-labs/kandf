@@ -170,13 +170,16 @@ const AdminRecipes = () => {
     return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(Number(val));
   };
 
+  const normalize = (s: string) => s.toLowerCase().replace(/[\s-]+/g, "");
   const filteredRecipes = recipes?.filter((recipe) => {
     const q = searchQuery.toLowerCase();
+    const qNorm = normalize(searchQuery);
+    const code = (recipe as any).recipe_code as string | null | undefined;
     const matchesSearch =
       q === "" ||
       recipe.title.toLowerCase().includes(q) ||
       recipe.description?.toLowerCase().includes(q) ||
-      (recipe as any).recipe_code?.toLowerCase().includes(q);
+      (code && (code.toLowerCase().includes(q) || normalize(code).includes(qNorm)));
     const linkedCourseIds = ((recipe as any).course_recipes || [])
       .map((cr: any) => cr.courses?.id)
       .filter(Boolean);

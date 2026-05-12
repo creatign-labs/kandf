@@ -495,6 +495,45 @@ export type Database = {
           },
         ]
       }
+      course_recipes: {
+        Row: {
+          course_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          recipe_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          recipe_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          recipe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_recipes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_recipes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           base_fee: number

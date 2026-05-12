@@ -34,6 +34,19 @@ const AdminRecipes = () => {
   const [courseFilter, setCourseFilter] = useState("all");
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleCopyCode = async (e: React.MouseEvent, code: string) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      toast({ title: "Copied", description: `Recipe code "${code}" copied to clipboard.` });
+      setTimeout(() => setCopiedCode((c) => (c === code ? null : c)), 1500);
+    } catch {
+      toast({ title: "Copy failed", description: "Could not access clipboard.", variant: "destructive" });
+    }
+  };
   const [formData, setFormData] = useState({
     title: "",
     recipe_code: "",

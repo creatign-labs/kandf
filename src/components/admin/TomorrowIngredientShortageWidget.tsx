@@ -22,9 +22,10 @@ const TomorrowIngredientShortageWidget = () => {
   const tomorrow = useMemo(() => addDays(new Date(), 1), []);
   const tomorrowStr = format(tomorrow, "yyyy-MM-dd");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["tomorrow-ingredient-shortage", tomorrowStr],
-    queryFn: async () => {
+    staleTime: 5 * 60 * 1000, // 5 min cache — manual refresh forces refetch
+    refetchOnWindowFocus: false,
       const { data: bookings, error: bErr } = await supabase
         .from("bookings")
         .select("id, course_id, recipe_id, recipe_ids")

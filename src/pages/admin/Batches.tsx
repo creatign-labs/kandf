@@ -32,28 +32,7 @@ import { Plus, Edit, Trash2, Users, Calendar, Loader2, CalendarCheck } from "luc
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { format, addMonths, addWeeks, addDays, addYears } from "date-fns";
-
-// Parse a free-text duration like "2 months", "6 weeks", "10 days", "1 year"
-// and return the end date computed from the given start date.
-const computeEndDate = (startDate: string, duration?: string | null): string => {
-  if (!startDate || !duration) return "";
-  const match = duration.trim().match(/(\d+(?:\.\d+)?)\s*(day|week|month|year)s?/i);
-  if (!match) return "";
-  const qty = parseFloat(match[1]);
-  const unit = match[2].toLowerCase();
-  const start = new Date(startDate);
-  if (isNaN(start.getTime())) return "";
-  let end: Date;
-  switch (unit) {
-    case "day": end = addDays(start, Math.round(qty)); break;
-    case "week": end = addWeeks(start, Math.round(qty)); break;
-    case "month": end = addMonths(start, Math.round(qty)); break;
-    case "year": end = addYears(start, Math.round(qty)); break;
-    default: return "";
-  }
-  return format(end, "yyyy-MM-dd");
-};
+import { format } from "date-fns";
 
 const TIME_OPTIONS = [
   "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM",
@@ -119,9 +98,7 @@ const Batches = () => {
     },
   });
 
-  // Auto-derive end_date = start_date + selected course's duration
-  const selectedCourse = courses?.find((c) => c.id === formData.course_id);
-  const derivedEndDate = computeEndDate(formData.start_date, selectedCourse?.duration);
+  
 
   // Create/Update mutation
   const saveMutation = useMutation({
@@ -138,7 +115,7 @@ const Batches = () => {
             total_seats: formData.total_seats,
             available_seats: formData.total_seats - (editingBatch.enrolled_count || 0),
             start_date: formData.start_date || null,
-            end_date: derivedEndDate || null,
+            end_date: formData.end_date || null,
           } as any)
           .eq("id", editingBatch.id);
 
@@ -152,7 +129,7 @@ const Batches = () => {
           total_seats: formData.total_seats,
           available_seats: formData.total_seats,
           start_date: formData.start_date || null,
-          end_date: derivedEndDate || null,
+          end_date: formData.end_date || null,
         } as any);
 
         if (error) throw error;
@@ -484,7 +461,7 @@ const Batches = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="start_date">Start Date (Course Enrollment Date)</Label>
+                      <Label htmlFor="start_date">Batch Start Date</Label>
                       <Input
                         id="start_date"
                         type="date"
@@ -493,24 +470,17 @@ const Batches = () => {
                           setFormData(prev => ({ ...prev, start_date: e.target.value }))
                         }
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Set this to the course enrollment date
-                      </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="end_date">End Date</Label>
+                      <Label htmlFor="end_date">Batch End Date</Label>
                       <Input
                         id="end_date"
                         type="date"
-                        value={derivedEndDate}
-                        readOnly
-                        disabled
-                        className="bg-muted"
+                        value={formData.end_date}
+                        onChange={(e) =>
+                          setFormData(prev => ({ ...prev, end_date: e.target.value }))
+                        }
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Auto-calculated from Start Date + course duration
-                        {selectedCourse?.duration ? ` (${selectedCourse.duration})` : ""}
-                      </p>
                     </div>
                   </div>
 

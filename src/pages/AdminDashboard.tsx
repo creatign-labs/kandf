@@ -289,6 +289,10 @@ const AdminDashboard = () => {
           />
         </div>
 
+        <div className="mb-6 md:mb-8">
+          <TomorrowIngredientShortageWidget />
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6 md:space-y-8">

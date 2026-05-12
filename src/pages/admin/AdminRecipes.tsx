@@ -171,10 +171,12 @@ const AdminRecipes = () => {
   };
 
   const filteredRecipes = recipes?.filter((recipe) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
-      recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (recipe as any).recipe_code?.toLowerCase().includes(searchQuery.toLowerCase());
+      q === "" ||
+      recipe.title.toLowerCase().includes(q) ||
+      recipe.description?.toLowerCase().includes(q) ||
+      (recipe as any).recipe_code?.toLowerCase().includes(q);
     const linkedCourseIds = ((recipe as any).course_recipes || [])
       .map((cr: any) => cr.courses?.id)
       .filter(Boolean);

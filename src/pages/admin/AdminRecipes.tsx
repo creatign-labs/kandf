@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const AdminRecipes = () => {
   const queryClient = useQueryClient();
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(searchInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
   const [courseFilter, setCourseFilter] = useState("all");
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -165,11 +170,16 @@ const AdminRecipes = () => {
     return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(Number(val));
   };
 
+  const normalize = (s: string) => s.toLowerCase().replace(/[\s-]+/g, "");
   const filteredRecipes = recipes?.filter((recipe) => {
+    const q = searchQuery.toLowerCase();
+    const qNorm = normalize(searchQuery);
+    const code = (recipe as any).recipe_code as string | null | undefined;
     const matchesSearch =
-      recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (recipe as any).recipe_code?.toLowerCase().includes(searchQuery.toLowerCase());
+      q === "" ||
+      recipe.title.toLowerCase().includes(q) ||
+      recipe.description?.toLowerCase().includes(q) ||
+      (code && (code.toLowerCase().includes(q) || normalize(code).includes(qNorm)));
     const linkedCourseIds = ((recipe as any).course_recipes || [])
       .map((cr: any) => cr.courses?.id)
       .filter(Boolean);
@@ -370,11 +380,14 @@ const AdminRecipes = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search recipes by name or code..."
+                placeholder="Search by recipe code (e.g., TRCP-001, RCP-023) or name…"
                 className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Case-insensitive. Try a code like <span className="font-mono">TRCP-001</span> or <span className="font-mono">RCP-023</span>.
+              </p>
             </div>
             <Select value={courseFilter} onValueChange={setCourseFilter}>
               <SelectTrigger className="w-full md:w-48">

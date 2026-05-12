@@ -128,7 +128,14 @@ function UpdateStockDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => {
+      setOpen(o);
+      if (o) {
+        setDelta(defaultQuantity != null ? String(defaultQuantity) : "");
+        setSelectedUnit(unit || "g");
+        setMovement("in");
+      }
+    }}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="gap-1">
           <Pencil className="h-3 w-3" /> Update
@@ -155,9 +162,22 @@ function UpdateStockDialog({
               </Button>
             ))}
           </div>
-          <div>
-            <Label htmlFor="qty">Quantity ({unit})</Label>
-            <Input id="qty" type="number" min="0" step="any" value={delta} onChange={(e) => setDelta(e.target.value)} />
+          <div className="grid grid-cols-[1fr_120px] gap-2">
+            <div>
+              <Label htmlFor="qty">Quantity</Label>
+              <Input id="qty" type="number" min="0" step="any" value={delta} onChange={(e) => setDelta(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="unit">Unit</Label>
+              <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                <SelectTrigger id="unit"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {UNIT_OPTIONS.map((u) => (
+                    <SelectItem key={u} value={u}>{u}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div>
             <Label htmlFor="notes">Notes (optional)</Label>

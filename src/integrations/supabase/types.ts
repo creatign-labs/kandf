@@ -226,13 +226,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "attendance_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "attendance_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false

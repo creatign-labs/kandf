@@ -40,10 +40,11 @@ function MultiSelectCheckbox({
   emptyLabel?: string;
 }) {
   const [selectedValues, setSelectedValues] = useState(values);
+  const selectedKey = values.join("|");
 
   useEffect(() => {
     setSelectedValues(values);
-  }, [values.join("|")]);
+  }, [selectedKey, values]);
 
   const toggle = (id: string) => {
     setSelectedValues((current) => {
@@ -119,11 +120,10 @@ function useVisibleRecipes(studentId: string, currentSelectedIds: string[], allR
       if (dates.length === 0) return [] as string[];
       const { data: bks } = await supabase
         .from("bookings")
-        .select("recipe_id, booking_date")
+        .select("recipe_id, recipe_ids, booking_date")
         .eq("student_id", studentId)
         .in("booking_date", dates)
-        .not("recipe_id", "is", null);
-      return [...new Set((bks || []).map((b) => b.recipe_id as string))];
+      return [...new Set((bks || []).flatMap((b: any) => [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean)))];
     },
     enabled: !!studentId,
   });

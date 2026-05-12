@@ -39,12 +39,24 @@ Deno.serve(async (req) => {
 
     const { data: bookings, error } = await admin
       .from("bookings")
-      .select("id, student_id, booking_date, time_slot, recipe_id, table_number, status, recipes(title), profiles!bookings_student_id_fkey(first_name, last_name, email)")
+      .select("id, student_id, booking_date, time_slot, recipe_id, recipe_ids, table_number, table_numbers, status, profiles!bookings_student_id_fkey(first_name, last_name, email)")
       .in("status", ["confirmed"])
       .gte("booking_date", isoFrom)
       .lte("booking_date", isoTo);
 
     if (error) throw error;
+
+    // Resolve titles for every recipe referenced (singular + array)
+    const allRecipeIds = new Set<string>();
+    for (const b of bookings || []) {
+      const rids = [(b as any).recipe_id, ...(((b as any).recipe_ids as string[]) || [])].filter(Boolean);
+      rids.forEach((r: string) => allRecipeIds.add(r));
+    }
+    const recipeTitleMap = new Map<string, string>();
+    if (allRecipeIds.size > 0) {
+      const { data: rRows } = await admin.from("recipes").select("id, title").in("id", Array.from(allRecipeIds));
+      for (const r of rRows || []) recipeTitleMap.set(r.id, r.title);
+    }
 
     // Fetch recipients separately if FK alias not present
     const sent: any[] = [];
@@ -67,7 +79,16 @@ Deno.serve(async (req) => {
       }
       if (!email) continue;
 
-      const recipe_title = (b as any).recipes?.title;
+      const resolvedRecipeIds = Array.from(new Set(
+        [(b as any).recipe_id, ...(((b as any).recipe_ids as string[]) || [])].filter(Boolean)
+      )) as string[];
+      const recipeTitles = resolvedRecipeIds.map((rid) => recipeTitleMap.get(rid)).filter(Boolean) as string[];
+      const recipe_title = recipeTitles.join(", ") || null;
+      const tableNumbers = Array.from(new Set([
+        ...(((b as any).table_numbers as string[]) || []),
+        ...((b as any).table_number ? [(b as any).table_number] : []),
+      ])).filter(Boolean) as string[];
+      const table_number = tableNumbers.join(", ") || null;
 
       type Rem = { type: "24h" | "cutoff" | "2h"; template: "slot_reminder_24h" | "slot_cancellation_cutoff" | "slot_reminder_2h"; window: [number, number] };
       // Cron runs every 15 min. Each window is generous enough to catch one tick but narrow enough not to overlap.
@@ -121,7 +142,7 @@ Deno.serve(async (req) => {
             to: email,
             data: {
               name, booking_date: b.booking_date, time_slot: b.time_slot,
-              recipe_title, table_number: b.table_number,
+              recipe_title, recipe_titles: recipeTitles, table_number, table_numbers: tableNumbers,
             },
           }),
         }).catch((e) => console.error("send fail", e));

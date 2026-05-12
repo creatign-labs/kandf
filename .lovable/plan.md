@@ -1,67 +1,54 @@
-## Goal
+## Issue
 
-Make every "recipes for a course" / "course for a recipe" read go through the new `course_recipes` junction table, so recipes linked to multiple courses appear correctly in all portals.
+Bookings now store arrays — `recipe_ids`, `assigned_chef_ids`, `table_numbers` — but several ingredient-calculation and chef-visibility code paths still read only the legacy singular columns (`recipe_id`, `assigned_chef_id`, `table_number`). Result: when a booking has 3 recipes / 2 chefs / 2 tables selected, only one recipe contributes to ingredient totals and only the chef in the singular slot sees the session.
 
-`recipes.course_id` stays in the schema for now (legacy/backfill), but no read path should rely on it.
+### Where the bug lives
 
-## Files to update
+1. **`src/pages/ChefDashboard.tsx`** — `ingredientSummary` query (lines ~153–196):
+   - Selects only `recipe_id` and counts each booking as 1 student × 1 recipe.
+   - Filter uses `.eq('assigned_chef_id', user.id)` so chefs assigned via `assigned_chef_ids` are missed.
+   - Same singular pattern in `todaysBatches` and `upcomingBookings` grouping (recipe key uses `b.recipe_id`).
 
-### Student portal
-1. **`src/pages/student/MyCourse.tsx`** — recipe list and progress query currently `recipes.eq('course_id', enrollment.course_id)`. Switch to `course_recipes.select('recipe:recipes(*)').eq('course_id', enrollment.course_id)` and flatten.
-2. **`src/pages/student/RecipeDetail.tsx`** — eligibility check that compares `recipes.course_id` to enrollment's course. Switch to `course_recipes` lookup (`exists where recipe_id = X and course_id = enrollment.course_id`).
-3. **`src/pages/student/OnlineClasses.tsx`** — recipe list filter by course. Switch to junction-based join.
-4. **`src/pages/StudentDashboard.tsx`** — "recipe-progress-dashboard" count of recipes per course. Switch to `course_recipes` count.
+2. **`src/pages/chef/DailyIngredients.tsx`** (lines ~52–146):
+   - Bookings query uses `.eq('assigned_chef_id', user.id)` and `.not('recipe_id', 'is', null)`, then increments student count per booking by 1 against `booking.recipe_id` only. Multi-recipe bookings under-count by `(N-1)/N`.
 
-### Admin portal
-5. **`src/pages/admin/AdminRecipes.tsx`** — load recipes with their course(s) via `course_recipes` join; the `courseFilter` becomes a junction filter instead of `recipe.course_id`.
-6. **`src/pages/admin/RecipeInventory.tsx`** — same pattern for course filter.
-7. **`src/pages/admin/RecipeIngredients.tsx`** — recipe list keyed by course.
-8. **`src/pages/admin/BookingRecipeAssignment.tsx`** — recipe options for a booking should include any recipe linked to that course via junction.
-9. **`src/pages/admin/InventoryChecklist.tsx`** — `recipe_ingredients` join currently uses `recipes.course_id` to scope ingredients per course; switch to `course_recipes` membership check.
-10. **`src/components/admin/OnlineClassManager.tsx`** — recipe dropdown filtered by enrollment course.
+3. **`src/pages/admin/InventoryChecklist.tsx`** (lines ~73–130):
+   - `studentCount = bookingsData.length` and ingredient relevance is filtered by course only. A booking that explicitly selected 3 specific recipes is still treated as "all recipes for that course × 1 student". Per-recipe demand is wrong in both directions.
 
-### Chef portal
-11. **`src/pages/chef/Recipes.tsx`** — recipes list with `courses(...)` join and `recipe.course_id` filter. Replace with `course_recipes(course:courses(id,title))` and filter via junction membership; show all linked courses as badges (a recipe may now have multiple).
+4. **`supabase/functions/slot-reminders/index.ts`** (line 42 + 124) — singular `recipe_id` / `table_number` in the reminder payload.
 
-### Hooks
-12. **`src/hooks/useRecipeBooking.ts`** — two `recipes.eq('course_id', courseId)` lookups for slot booking (lines ~85, ~125). Switch to junction-based filtering.
-13. **`src/hooks/useAdminRecipeBatches.ts`** — `query.eq('course_id', courseFilter)` on recipes. Switch to junction filter (e.g. `recipe_id in (select recipe_id from course_recipes where course_id = X)`).
+5. **`supabase/functions/daily-ingredient-push/index.ts`** — already updated in the previous turn; honored as the reference pattern.
 
-### Edge functions
-14. **`supabase/functions/daily-ingredient-push/index.ts`** — reads `recipe.course_id` from a single recipe. If the function only needs *a* course label, keep it (it's denormalized convenience); if it needs every linked course, switch to `course_recipes`. Decision noted in Open Questions.
+## Fix plan
 
-## Files NOT changing
-- `src/pages/admin/Courses.tsx` — already uses `course_recipes` (write path).
-- `src/integrations/supabase/types.ts` — auto-generated.
-- `recipes.course_id` column — left in place for now; can be dropped in a future cleanup migration once all reads are gone.
-- `bookings.course_id`, `enrollments.course_id`, `chef_specializations`, `recipe_batches` — these are not "recipes-belong-to-course" relationships and are out of scope.
-- `DataTemplate.tsx`, `create-demo-users` — bulk import/seed code that writes `recipes.course_id` directly. Will additionally insert into `course_recipes` so seeded data shows up in the new junction-based reads.
+Apply one consistent rule everywhere ingredients or chef-visibility are computed:
 
-## Query pattern (reference)
+> The recipes scheduled for a booking = `recipe_ids` ∪ `recipe_id` (legacy fallback). The chefs assigned to a booking = `assigned_chef_ids` ∪ `assigned_chef_id`. Each booking contributes **1 student per resolved recipe** to ingredient totals.
 
-Replace:
-```ts
-supabase.from('recipes').select('*').eq('course_id', courseId)
-```
-with:
-```ts
-supabase
-  .from('course_recipes')
-  .select('recipe:recipes(*)')
-  .eq('course_id', courseId)
-  .then(r => (r.data ?? []).map(x => x.recipe).filter(Boolean))
-```
+### File-by-file changes
 
-Replace single-recipe → course lookups:
-```ts
-recipe.course_id === enrollment.course_id
-```
-with an `exists` query against `course_recipes` (or include `course_recipes(course_id)` in the recipe select and check `.some(...)`).
+1. **`src/pages/ChefDashboard.tsx`**
+   - `ingredientSummary`: select `recipe_id, recipe_ids, assigned_chef_id, assigned_chef_ids`. Drop the singular `.eq` chef filter; fetch by date+status, then in JS keep bookings where `user.id` is in either field. For each kept booking, iterate the merged unique recipe list and increment that recipe's student count by 1.
+   - `todaysBatches` / `upcomingBookings`: same chef filter relaxation; expand each booking into one row per resolved recipe so multi-recipe sessions show every recipe.
 
-## Open questions
+2. **`src/pages/chef/DailyIngredients.tsx`**
+   - Same chef filter change (membership-in-array), same recipe expansion in `getRecipeStudentCount` so each recipe in `recipe_ids` counts the student.
+   - Recipes title lookup: replace the single `recipes(id, title)` join with a follow-up `recipes` fetch keyed by the union of resolved recipe IDs.
 
-1. **Chef Recipes UI** — show all linked courses as multiple badges, or just the first? (Current UI assumes one badge.)
-2. **`daily-ingredient-push`** — should the per-recipe push include every course the recipe is linked to, or keep the legacy single `course_id`? Most likely fine to leave as-is since it's metadata only.
-3. **Seed/import scripts** (`DataTemplate.tsx`, `create-demo-users`) — also mirror writes into `course_recipes`? Recommended yes, otherwise seeded recipes won't appear in the new course-scoped lists.
+3. **`src/pages/admin/InventoryChecklist.tsx`**
+   - Replace the "all course recipes × total bookings" aggregation with explicit per-booking expansion:
+     - For each booking, resolve recipes (`recipe_ids` ∪ `recipe_id`); if empty, fall back to all `course_recipes` for the booking's `course_id`.
+     - For every (booking → recipe) pair, add `quantity_per_student × 1` to each ingredient on that recipe.
+   - Keeps the existing junction-aware query but removes the inflated/under-count behavior.
 
-Confirm answers (or say "use sensible defaults" — multiple badges, leave edge function alone, mirror writes in seeders) and I'll implement.
+4. **`supabase/functions/slot-reminders/index.ts`**
+   - Select and render the array fields; show all assigned recipe titles and all table numbers in the reminder payload (small change, no schema impact).
+
+5. **No DB schema changes.** Singular columns stay as legacy fallbacks.
+
+### Verification
+
+- Re-deploy `daily-ingredient-push` and `slot-reminders`.
+- Spot-check with a booking that has 2 recipes + 2 chefs + 2 tables: ChefDashboard ingredient summary should sum both recipes, both chefs should see the session, InventoryChecklist for that day should reflect both recipes' demand.
+
+Awaiting approval before I make these edits.

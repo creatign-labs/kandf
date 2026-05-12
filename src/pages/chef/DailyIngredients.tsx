@@ -56,15 +56,35 @@ const DailyIngredients = () => {
           time_slot,
           status,
           recipe_id,
-          recipes(id, title)
+          recipe_ids,
+          assigned_chef_id,
+          assigned_chef_ids
         `)
         .eq("booking_date", formattedDate)
-        .eq("assigned_chef_id", user.id)
-        .in("status", ["confirmed", "attended"])
-        .not("recipe_id", "is", null);
+        .in("status", ["confirmed", "attended"]);
 
       if (error) throw error;
-      return data || [];
+      const filtered = (data || []).filter((b: any) => {
+        const chefs = [b.assigned_chef_id, ...((b.assigned_chef_ids as string[]) || [])].filter(Boolean);
+        return chefs.includes(user.id);
+      });
+      return filtered;
+    },
+  });
+
+  // Resolve titles for all recipes referenced (singular + array) on these bookings
+  const { data: recipeTitleMap } = useQuery({
+    queryKey: ["chef-daily-recipe-titles", formattedDate, (bookings || []).map((b: any) => b.id).join(",")],
+    enabled: !!bookings,
+    queryFn: async () => {
+      const ids = new Set<string>();
+      (bookings || []).forEach((b: any) => {
+        [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean).forEach((r: string) => ids.add(r));
+      });
+      const list = Array.from(ids);
+      if (list.length === 0) return new Map<string, string>();
+      const { data } = await supabase.from("recipes").select("id, title").in("id", list);
+      return new Map((data || []).map((r: any) => [r.id, r.title]));
     },
   });
 
@@ -112,17 +132,21 @@ const DailyIngredients = () => {
   const getRecipeStudentCount = (): Record<string, { count: number; title: string }> => {
     const recipeStudentCount: Record<string, { count: number; title: string }> = {};
 
-    // Source 1: Individual bookings (each booking = 1 student)
+    // Source 1: Individual bookings — each booking contributes 1 student
+    // for every resolved recipe (recipe_ids ∪ recipe_id).
     (bookings || []).forEach((booking: any) => {
-      if (booking.recipe_id) {
-        if (!recipeStudentCount[booking.recipe_id]) {
-          recipeStudentCount[booking.recipe_id] = {
+      const resolved = Array.from(new Set(
+        [booking.recipe_id, ...((booking.recipe_ids as string[]) || [])].filter(Boolean)
+      )) as string[];
+      resolved.forEach((rid) => {
+        if (!recipeStudentCount[rid]) {
+          recipeStudentCount[rid] = {
             count: 0,
-            title: booking.recipes?.title || "Unknown Recipe",
+            title: recipeTitleMap?.get(rid) || "Recipe",
           };
         }
-        recipeStudentCount[booking.recipe_id].count += 1;
-      }
+        recipeStudentCount[rid].count += 1;
+      });
     });
 
     // Source 2: Recipe batches (student count from memberships)

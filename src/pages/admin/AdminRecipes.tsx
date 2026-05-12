@@ -246,7 +246,12 @@ const AdminRecipes = () => {
                         onChange={(e) => setFormData({ ...formData, recipe_code: e.target.value })}
                         placeholder="e.g., RCP-001"
                         maxLength={20}
+                        aria-invalid={!!recipeCodeError}
+                        className={recipeCodeError ? "border-destructive focus-visible:ring-destructive" : ""}
                       />
+                      {recipeCodeError && (
+                        <p className="text-xs text-destructive">{recipeCodeError}</p>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">

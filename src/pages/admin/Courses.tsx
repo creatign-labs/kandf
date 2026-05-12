@@ -98,8 +98,8 @@ const Courses = () => {
               .eq("course_id", course.id)
               .eq("status", "active"),
             supabase
-              .from("recipes")
-              .select("id, title, difficulty")
+              .from("course_recipes")
+              .select("recipe:recipes(id, title, difficulty)")
               .eq("course_id", course.id),
           ]);
 
@@ -107,7 +107,9 @@ const Courses = () => {
             ...course,
             modules: modulesResult.data || [],
             batches: batchesResult.data || [],
-            recipes: recipesResult.data || [],
+            recipes: (recipesResult.data || [])
+              .map((row: any) => row.recipe)
+              .filter(Boolean),
             studentCount: enrollmentsResult.data?.length || 0,
           };
         })
@@ -118,28 +120,28 @@ const Courses = () => {
   });
 
   const syncRecipesForCourse = async (courseId: string, recipeIds: string[]) => {
-    // Unlink recipes previously linked to this course but no longer selected
+    // Read existing junction rows for this course
     const { data: existing, error: fetchErr } = await supabase
-      .from("recipes")
-      .select("id")
+      .from("course_recipes")
+      .select("recipe_id")
       .eq("course_id", courseId);
     if (fetchErr) throw fetchErr;
-    const existingIds = (existing || []).map((r) => r.id);
-    const toUnlink = existingIds.filter((id) => !recipeIds.includes(id));
+    const existingIds = (existing || []).map((r: any) => r.recipe_id);
+    const toUnlink = existingIds.filter((id: string) => !recipeIds.includes(id));
     const toLink = recipeIds.filter((id) => !existingIds.includes(id));
 
     if (toUnlink.length > 0) {
       const { error } = await supabase
-        .from("recipes")
-        .update({ course_id: null })
-        .in("id", toUnlink);
+        .from("course_recipes")
+        .delete()
+        .eq("course_id", courseId)
+        .in("recipe_id", toUnlink);
       if (error) throw error;
     }
     if (toLink.length > 0) {
       const { error } = await supabase
-        .from("recipes")
-        .update({ course_id: courseId })
-        .in("id", toLink);
+        .from("course_recipes")
+        .insert(toLink.map((rid) => ({ course_id: courseId, recipe_id: rid })));
       if (error) throw error;
     }
   };

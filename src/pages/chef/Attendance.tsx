@@ -78,18 +78,32 @@ const Attendance = () => {
         .from("bookings")
         .select(
           `
-          id, student_id, course_id, recipe_id, time_slot, status, booking_date,
-          recipes(id, title),
+          id, student_id, course_id, recipe_id, recipe_ids, assigned_chef_id, assigned_chef_ids, time_slot, status, booking_date,
           courses(title)
         `
         )
         .eq("booking_date", dateStr)
-        .eq("assigned_chef_id", user.id)
+        .or(`assigned_chef_id.eq.${user.id},assigned_chef_ids.cs.{${user.id}}`)
         .in("status", ["confirmed", "attended", "no_show"]);
 
       if (error) throw error;
 
       const allBookings = bookings || [];
+
+      // Collect all recipe IDs across legacy + array columns
+      const allRecipeIds = [
+        ...new Set(
+          allBookings.flatMap((b: any) => [
+            ...(b.recipe_ids || []),
+            ...(b.recipe_id ? [b.recipe_id] : []),
+          ])
+        ),
+      ];
+      const { data: recipesData } =
+        allRecipeIds.length > 0
+          ? await supabase.from("recipes").select("id, title").in("id", allRecipeIds)
+          : { data: [] };
+      const recipeMap = new Map((recipesData || []).map((r: any) => [r.id, r.title]));
 
       // Get student profiles
       const studentIds = [...new Set(allBookings.map((b) => b.student_id))];
@@ -104,27 +118,37 @@ const Attendance = () => {
         (profiles || []).map((p) => [p.id, p])
       );
 
-      // Group by time_slot + recipe
+      // Group by time_slot + recipe — expand bookings with multiple recipes
       const grouped: Record<string, BatchGroup> = {};
 
-      allBookings.forEach((b) => {
-        const key = `${b.time_slot}__${b.recipe_id || "none"}`;
-        if (!grouped[key]) {
-          grouped[key] = {
-            timeSlot: b.time_slot,
-            recipeId: b.recipe_id,
-            recipeTitle: b.recipes?.title || "No Recipe",
-            courseName: b.courses?.title || "",
-            courseId: b.course_id,
-            students: [],
-          };
-        }
-        const p = profileMap.get(b.student_id);
-        grouped[key].students.push({
-          id: b.student_id,
-          name: p ? `${p.first_name} ${p.last_name}` : "Unknown",
-          bookingId: b.id,
-          bookingStatus: b.status,
+      allBookings.forEach((b: any) => {
+        const recipeIds: (string | null)[] =
+          b.recipe_ids && b.recipe_ids.length > 0
+            ? b.recipe_ids
+            : [b.recipe_id || null];
+
+        recipeIds.forEach((rid) => {
+          const key = `${b.time_slot}__${rid || "none"}`;
+          if (!grouped[key]) {
+            grouped[key] = {
+              timeSlot: b.time_slot,
+              recipeId: rid,
+              recipeTitle: rid ? recipeMap.get(rid) || "Recipe" : "No Recipe",
+              courseName: b.courses?.title || "",
+              courseId: b.course_id,
+              students: [],
+            };
+          }
+          const p = profileMap.get(b.student_id);
+          // Avoid duplicate student entries within same group
+          if (!grouped[key].students.find((s) => s.bookingId === b.id)) {
+            grouped[key].students.push({
+              id: b.student_id,
+              name: p ? `${p.first_name} ${p.last_name}` : "Unknown",
+              bookingId: b.id,
+              bookingStatus: b.status,
+            });
+          }
         });
       });
 

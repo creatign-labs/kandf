@@ -223,17 +223,21 @@ const BookingRecipeAssignment = () => {
     }
   });
 
-  // Fetch all recipes for assignment dropdown
+  // Fetch all recipes + their course mappings for assignment dropdown
   const { data: recipes } = useQuery({
-    queryKey: ['all-recipes'],
+    queryKey: ['all-recipes-with-courses'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('recipes')
-        .select('id, title, courses (title)')
+        .select('id, title, course_recipes(course_id)')
         .order('title');
 
       if (error) throw error;
-      return data;
+      return (data || []).map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        course_ids: (r.course_recipes || []).map((cr: any) => cr.course_id),
+      }));
     }
   });
 

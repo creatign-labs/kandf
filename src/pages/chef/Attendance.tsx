@@ -158,13 +158,26 @@ const Attendance = () => {
     },
   });
 
+  const getBatchLabel = (batch: BatchGroup) =>
+    `${batch.recipeTitle} • ${batch.timeSlot} (${format(selectedDate, "MMM d, yyyy")})`;
+
   // Confirm batch completion mutation (atomic server-side RPC)
   const confirmBatchMutation = useMutation({
     mutationFn: async (batchKey: string) => {
       const batch = batches?.find(
         (_, i) => `batch-${i}` === batchKey
       );
-      if (!batch) throw new Error("Batch not found");
+      if (!batch) throw new Error("Batch not found in current view");
+
+      // Safeguard: prevent re-completion
+      const alreadyCompleted = batch.students.every(
+        (s) => s.bookingStatus === "attended" || s.bookingStatus === "no_show"
+      );
+      if (alreadyCompleted) {
+        throw new Error(
+          `Batch "${getBatchLabel(batch)}" is already completed and cannot be confirmed again.`
+        );
+      }
 
       const batchAttendance = attendanceState[batchKey] || {};
 
@@ -176,7 +189,7 @@ const Attendance = () => {
       );
       if (unmarked.length > 0) {
         throw new Error(
-          `Mark all students before confirming. ${unmarked.length} unmarked.`
+          `Mark all students before confirming. ${unmarked.length} unmarked in "${getBatchLabel(batch)}".`
         );
       }
 
@@ -197,29 +210,39 @@ const Attendance = () => {
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(
+          `[${getBatchLabel(batch)}] ${error.message || "Database error"}${
+            error.details ? ` — ${error.details}` : ""
+          }${error.hint ? ` (Hint: ${error.hint})` : ""}`
+        );
+      }
 
       const result = typeof data === "string" ? JSON.parse(data) : data;
       if (!result?.success) {
-        throw new Error(result?.message || "Batch confirmation failed");
+        throw new Error(
+          `[${getBatchLabel(batch)}] ${result?.message || "Batch confirmation failed for an unknown reason"}`
+        );
       }
+
+      return batch;
     },
-    onSuccess: () => {
+    onSuccess: (batch) => {
       queryClient.invalidateQueries({
         queryKey: ["chef-attendance-batches"],
       });
       toast({
-        title: "Batch Completed",
-        description:
-          "Attendance confirmed and inventory deducted atomically.",
+        title: "Batch Completed Successfully",
+        description: `${getBatchLabel(batch)} — attendance confirmed, recipe progress updated, and inventory deducted.`,
       });
       setConfirmBatchKey(null);
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: "Batch Completion Failed",
         description: error.message,
         variant: "destructive",
+        duration: 10000,
       });
       setConfirmBatchKey(null);
     },
@@ -548,7 +571,7 @@ const Attendance = () => {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3">
-                  {!isCompleted && (
+                  {!isCompleted ? (
                     <Button
                       className="flex-1"
                       disabled={
@@ -567,6 +590,16 @@ const Attendance = () => {
                           Confirm Batch Completion
                         </>
                       )}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="flex-1"
+                      variant="outline"
+                      disabled
+                      title="This batch has already been completed"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                      Already Completed
                     </Button>
                   )}
 
@@ -590,30 +623,69 @@ const Attendance = () => {
       {/* Confirmation Dialog */}
       <AlertDialog
         open={!!confirmBatchKey}
-        onOpenChange={() => setConfirmBatchKey(null)}
+        onOpenChange={(open) => {
+          if (!open && !confirmBatchMutation.isPending) setConfirmBatchKey(null);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Batch Completion</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will finalize attendance, update recipe progress,
-              deduct inventory for present students, and apply no-show
-              rules. This action cannot be undone.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                {(() => {
+                  if (!confirmBatchKey || !batches) return null;
+                  const idx = parseInt(confirmBatchKey.replace("batch-", ""));
+                  const batch = batches[idx];
+                  if (!batch) return null;
+                  const ba = attendanceState[confirmBatchKey] || {};
+                  const present = Object.values(ba).filter((v) => v === "present").length;
+                  const absent = Object.values(ba).filter((v) => v === "absent").length;
+                  return (
+                    <div className="rounded-md border bg-muted/40 p-3 text-sm text-foreground">
+                      <div className="font-medium">{batch.recipeTitle}</div>
+                      <div className="text-muted-foreground text-xs mt-0.5">
+                        {batch.timeSlot} • {format(selectedDate, "MMM d, yyyy")}
+                      </div>
+                      <div className="mt-2 flex gap-4 text-xs">
+                        <span className="text-green-600">Present: {present}</span>
+                        <span className="text-red-500">No Show: {absent}</span>
+                        <span className="text-muted-foreground">Total: {batch.students.length}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <span className="block text-sm text-muted-foreground">
+                  Are you sure you want to mark this batch as completed? This will
+                  finalize attendance, update recipe progress, deduct inventory for
+                  present students, and apply no-show rules. This action cannot be undone.
+                </span>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={confirmBatchMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                confirmBatchKey &&
-                confirmBatchMutation.mutate(confirmBatchKey)
-              }
+              disabled={confirmBatchMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmBatchKey) confirmBatchMutation.mutate(confirmBatchKey);
+              }}
             >
-              Confirm
+              {confirmBatchMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Confirming...
+                </>
+              ) : (
+                "Yes, Mark Completed"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
 
       {/* After-Class Report Dialog */}
       <AlertDialog

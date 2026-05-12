@@ -228,12 +228,19 @@ const IngredientsInventory = () => {
                     </div>
                     <div>
                       <Label htmlFor="unit">Unit</Label>
-                      <Input 
-                        id="unit" 
-                        placeholder="kg, liters, pieces"
+                      <Select
                         value={newItem.unit}
-                        onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                      />
+                        onValueChange={(v) => setNewItem({ ...newItem, unit: v })}
+                      >
+                        <SelectTrigger id="unit">
+                          <SelectValue placeholder="Select unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {UNIT_OPTIONS.map((u) => (
+                            <SelectItem key={u} value={u}>{u}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>

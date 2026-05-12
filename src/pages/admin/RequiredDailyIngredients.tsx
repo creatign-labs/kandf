@@ -494,6 +494,7 @@ const RequiredDailyIngredients = () => {
                             ingredientName={item.ingredient_name}
                             unit={item.unit}
                             currentStock={item.current_stock}
+                            defaultQuantity={item.total_required}
                             onUpdated={refresh}
                           />
                         </TableCell>

@@ -620,6 +620,7 @@ const BookingRecipeAssignment = () => {
                       <TableCell>
                         <BookingRecipeMultiSelect
                           studentId={booking.student_id}
+                          courseId={booking.course_id || null}
                           recipes={recipes || []}
                           values={getBookingRecipeIds(booking)}
                           disabled={booking.status === 'cancelled'}

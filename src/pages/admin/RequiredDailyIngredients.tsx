@@ -97,9 +97,11 @@ function UpdateStockDialog({
         ledgerQty = Math.abs(diff);
       }
 
+      const updatePayload: any = { current_stock: newStock };
+      if (selectedUnit && selectedUnit !== unit) updatePayload.unit = selectedUnit;
       const { error: invErr } = await supabase
         .from("inventory")
-        .update({ current_stock: newStock })
+        .update(updatePayload)
         .eq("id", inventoryId);
       if (invErr) throw invErr;
 

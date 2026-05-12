@@ -226,6 +226,8 @@ const Courses = () => {
       level: "Beginner",
       base_fee: "",
     });
+    setSelectedRecipeIds([]);
+    setRecipeSearchQuery("");
   };
 
   const handleEdit = (course: any) => {
@@ -238,6 +240,8 @@ const Courses = () => {
       level: course.level,
       base_fee: course.base_fee.toString(),
     });
+    setSelectedRecipeIds((course.recipes || []).map((r: any) => r.id));
+    setRecipeSearchQuery("");
   };
 
   const validateForm = (): string | null => {

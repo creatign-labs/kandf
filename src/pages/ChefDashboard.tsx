@@ -47,21 +47,34 @@ const ChefDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Get bookings assigned to this chef for today
+      // Get bookings for today across all assigned chefs (singular + array)
       const { data: bookings, error } = await supabase
         .from('bookings')
         .select(`
-          id, student_id, course_id, recipe_id, time_slot, status, booking_date,
-          recipes(id, title),
+          id, student_id, course_id, recipe_id, recipe_ids, assigned_chef_id, assigned_chef_ids, time_slot, status, booking_date,
           courses(title)
         `)
         .eq('booking_date', today)
-        .eq('assigned_chef_id', user.id)
         .in('status', ['confirmed', 'attended', 'no_show']);
 
       if (error) throw error;
 
-      const allBookings = bookings || [];
+      const allBookings = (bookings || []).filter((b: any) => {
+        const chefs = [b.assigned_chef_id, ...((b.assigned_chef_ids as string[]) || [])].filter(Boolean);
+        return chefs.includes(user.id);
+      });
+
+      // Resolve all recipe IDs referenced by these bookings, then fetch titles
+      const recipeIdSet = new Set<string>();
+      allBookings.forEach((b: any) => {
+        const rids = [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean);
+        rids.forEach((r: string) => recipeIdSet.add(r));
+      });
+      const recipeIdList = Array.from(recipeIdSet);
+      const { data: recipeRows } = recipeIdList.length > 0
+        ? await supabase.from('recipes').select('id, title').in('id', recipeIdList)
+        : { data: [] as { id: string; title: string }[] };
+      const recipeTitleMap = new Map((recipeRows || []).map((r: any) => [r.id, r.title]));
 
       // Get student profiles
       const studentIds = [...new Set(allBookings.map(b => b.student_id))];
@@ -70,7 +83,7 @@ const ChefDashboard = () => {
         : { data: [] };
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
 
-      // Group by time_slot + recipe
+      // Group by time_slot + recipe (one row per recipe per booking)
       const grouped: Record<string, {
         timeSlot: string;
         recipeId: string | null;
@@ -79,23 +92,30 @@ const ChefDashboard = () => {
         students: { id: string; name: string; bookingId: string; bookingStatus: string }[];
       }> = {};
 
-      allBookings.forEach(b => {
-        const key = `${b.time_slot}__${b.recipe_id || 'none'}`;
-        if (!grouped[key]) {
-          grouped[key] = {
-            timeSlot: b.time_slot,
-            recipeId: b.recipe_id,
-            recipeTitle: b.recipes?.title || 'No Recipe',
-            courseName: b.courses?.title || '',
-            students: []
-          };
-        }
-        const p = profileMap.get(b.student_id);
-        grouped[key].students.push({
-          id: b.student_id,
-          name: p ? `${p.first_name} ${p.last_name}` : 'Unknown',
-          bookingId: b.id,
-          bookingStatus: b.status
+      allBookings.forEach((b: any) => {
+        const resolvedRecipes = Array.from(new Set(
+          [b.recipe_id, ...((b.recipe_ids as string[]) || [])].filter(Boolean)
+        ));
+        const recipeKeys: (string | null)[] = resolvedRecipes.length > 0 ? resolvedRecipes : [null];
+
+        recipeKeys.forEach((rid) => {
+          const key = `${b.time_slot}__${rid || 'none'}`;
+          if (!grouped[key]) {
+            grouped[key] = {
+              timeSlot: b.time_slot,
+              recipeId: rid,
+              recipeTitle: rid ? (recipeTitleMap.get(rid) || 'Recipe') : 'No Recipe',
+              courseName: b.courses?.title || '',
+              students: []
+            };
+          }
+          const p = profileMap.get(b.student_id);
+          grouped[key].students.push({
+            id: b.student_id,
+            name: p ? `${p.first_name} ${p.last_name}` : 'Unknown',
+            bookingId: b.id,
+            bookingStatus: b.status
+          });
         });
       });
 

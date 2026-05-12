@@ -194,7 +194,7 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-14 md:h-16 items-center justify-between px-4 md:px-6">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
+        <Link to={getLogoPath()} className="flex items-center gap-2">
           <ChefHat className="h-6 w-6 md:h-8 md:w-8 text-primary" />
           <span className="text-lg md:text-xl font-bold tracking-tight">Knead & Frost</span>
         </Link>

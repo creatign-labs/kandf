@@ -450,10 +450,23 @@ const AdminRecipes = () => {
               </div>
               <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold">{recipe.title}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold truncate">{recipe.title}</h3>
                     {(recipe as any).recipe_code && (
-                      <span className="text-xs text-muted-foreground font-mono">{(recipe as any).recipe_code}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyCode(e, (recipe as any).recipe_code)}
+                        className="mt-1 inline-flex items-center gap-1 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-xs font-mono text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        title="Click to copy recipe code"
+                        aria-label={`Copy recipe code ${(recipe as any).recipe_code}`}
+                      >
+                        <span>{(recipe as any).recipe_code}</span>
+                        {copiedCode === (recipe as any).recipe_code ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </button>
                     )}
                   </div>
                   {recipe.difficulty && (

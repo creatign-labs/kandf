@@ -292,16 +292,24 @@ const BookingRecipeAssignment = () => {
   const getBookingTableNumbers = (booking: any) =>
     Array.from(new Set([booking.table_number, ...((booking.table_numbers as string[]) || [])].filter(Boolean))) as string[];
 
+  const invalidateBookingDependents = () => {
+    queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+    queryClient.invalidateQueries({ queryKey: ['required-daily-ingredients'] });
+    queryClient.invalidateQueries({ queryKey: ['tomorrow-ingredient-shortages'] });
+    queryClient.invalidateQueries({ queryKey: ['daily-inventory-requirements'] });
+  };
+
   const assignRecipesMutation = useMutation({
     mutationFn: async ({ bookingId, recipeIds }: { bookingId: string; recipeIds: string[] }) => {
+      // Clear legacy singular recipe_id so removed recipes don't linger in aggregations
       const { error } = await supabase
         .from('bookings')
-        .update({ recipe_ids: recipeIds } as any)
+        .update({ recipe_ids: recipeIds, recipe_id: null } as any)
         .eq('id', bookingId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+      invalidateBookingDependents();
     },
     onError: (error: Error) => {
       toast({ title: "Failed to assign recipes", description: error.message, variant: "destructive" });
@@ -312,12 +320,12 @@ const BookingRecipeAssignment = () => {
     mutationFn: async ({ bookingId, chefIds }: { bookingId: string; chefIds: string[] }) => {
       const { error } = await supabase
         .from('bookings')
-        .update({ assigned_chef_ids: chefIds } as any)
+        .update({ assigned_chef_ids: chefIds, assigned_chef_id: null } as any)
         .eq('id', bookingId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+      invalidateBookingDependents();
     },
     onError: (error: Error) => {
       toast({ title: "Failed to assign chefs", description: error.message, variant: "destructive" });
@@ -328,12 +336,12 @@ const BookingRecipeAssignment = () => {
     mutationFn: async ({ bookingId, tableNumbers }: { bookingId: string; tableNumbers: string[] }) => {
       const { error } = await supabase
         .from('bookings')
-        .update({ table_numbers: tableNumbers } as any)
+        .update({ table_numbers: tableNumbers, table_number: null } as any)
         .eq('id', bookingId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings-with-recipes'] });
+      invalidateBookingDependents();
     },
     onError: (error: Error) => {
       toast({ title: "Failed to assign tables", description: error.message, variant: "destructive" });

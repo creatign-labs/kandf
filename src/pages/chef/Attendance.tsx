@@ -782,6 +782,46 @@ const Attendance = () => {
           )}
 
           <AlertDialogFooter>
+            <Button
+              variant="outline"
+              disabled={!reportData}
+              onClick={() => {
+                if (!reportData) return;
+                const esc = (v: unknown) => {
+                  const s = v == null ? "" : String(v);
+                  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+                };
+                const dateLabel = format(selectedDate, "yyyy-MM-dd");
+                const lines: string[] = [];
+                lines.push("After-Class Report");
+                lines.push(`Recipe,${esc(reportData.recipeTitle)}`);
+                lines.push(`Time Slot,${esc(reportData.timeSlot)}`);
+                lines.push(`Date,${dateLabel}`);
+                lines.push(`Total Students,${reportData.totalStudents}`);
+                lines.push(`Attended,${reportData.presentCount}`);
+                lines.push(`No Show,${reportData.noShowCount}`);
+                lines.push("");
+                lines.push("Ingredient,Unit,Per Student,Total Planned,Used (Attended),Unused (No Show)");
+                reportData.items.forEach((i) => {
+                  lines.push(
+                    [i.name, i.unit, i.perStudent, i.totalPlanned.toFixed(2), i.totalUsed.toFixed(2), i.totalUnused.toFixed(2)]
+                      .map(esc)
+                      .join(",")
+                  );
+                });
+                const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                const safeName = reportData.recipeTitle.replace(/[^a-z0-9]+/gi, "_");
+                a.download = `after_class_report_${safeName}_${dateLabel}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast({ title: "Report downloaded" });
+              }}
+            >
+              <Download className="h-4 w-4 mr-1" /> Download CSV
+            </Button>
             <AlertDialogCancel>Close</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>

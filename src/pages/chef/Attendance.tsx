@@ -623,30 +623,69 @@ const Attendance = () => {
       {/* Confirmation Dialog */}
       <AlertDialog
         open={!!confirmBatchKey}
-        onOpenChange={() => setConfirmBatchKey(null)}
+        onOpenChange={(open) => {
+          if (!open && !confirmBatchMutation.isPending) setConfirmBatchKey(null);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Batch Completion</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will finalize attendance, update recipe progress,
-              deduct inventory for present students, and apply no-show
-              rules. This action cannot be undone.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                {(() => {
+                  if (!confirmBatchKey || !batches) return null;
+                  const idx = parseInt(confirmBatchKey.replace("batch-", ""));
+                  const batch = batches[idx];
+                  if (!batch) return null;
+                  const ba = attendanceState[confirmBatchKey] || {};
+                  const present = Object.values(ba).filter((v) => v === "present").length;
+                  const absent = Object.values(ba).filter((v) => v === "absent").length;
+                  return (
+                    <div className="rounded-md border bg-muted/40 p-3 text-sm text-foreground">
+                      <div className="font-medium">{batch.recipeTitle}</div>
+                      <div className="text-muted-foreground text-xs mt-0.5">
+                        {batch.timeSlot} • {format(selectedDate, "MMM d, yyyy")}
+                      </div>
+                      <div className="mt-2 flex gap-4 text-xs">
+                        <span className="text-green-600">Present: {present}</span>
+                        <span className="text-red-500">No Show: {absent}</span>
+                        <span className="text-muted-foreground">Total: {batch.students.length}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <span className="block text-sm text-muted-foreground">
+                  Are you sure you want to mark this batch as completed? This will
+                  finalize attendance, update recipe progress, deduct inventory for
+                  present students, and apply no-show rules. This action cannot be undone.
+                </span>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={confirmBatchMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                confirmBatchKey &&
-                confirmBatchMutation.mutate(confirmBatchKey)
-              }
+              disabled={confirmBatchMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmBatchKey) confirmBatchMutation.mutate(confirmBatchKey);
+              }}
             >
-              Confirm
+              {confirmBatchMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Confirming...
+                </>
+              ) : (
+                "Yes, Mark Completed"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
 
       {/* After-Class Report Dialog */}
       <AlertDialog

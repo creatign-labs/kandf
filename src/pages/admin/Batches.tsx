@@ -129,7 +129,7 @@ const Batches = () => {
           total_seats: formData.total_seats,
           available_seats: formData.total_seats,
           start_date: formData.start_date || null,
-          end_date: derivedEndDate || null,
+          end_date: formData.end_date || null,
         } as any);
 
         if (error) throw error;

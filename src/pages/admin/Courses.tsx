@@ -45,6 +45,14 @@ const Courses = () => {
     level: "Beginner",
     base_fee: "",
   });
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
+
+  const toggleRecipe = (id: string) => {
+    setSelectedRecipeIds((prev) =>
+      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
+    );
+  };
 
   // Fetch all recipes for selection
   const { data: allRecipes } = useQuery({

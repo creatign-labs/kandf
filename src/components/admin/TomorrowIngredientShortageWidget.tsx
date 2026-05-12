@@ -127,6 +127,11 @@ const TomorrowIngredientShortageWidget = () => {
           <p className="text-xs md:text-sm text-muted-foreground">
             {format(tomorrow, "EEE, dd MMM yyyy")} · {data?.totalStudents || 0} student bookings · {data?.recipeCount || 0} recipes
           </p>
+          {dataUpdatedAt > 0 && (
+            <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+              Updated {formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true })}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {shortages.length > 0 ? (
@@ -138,6 +143,16 @@ const TomorrowIngredientShortageWidget = () => {
               <CheckCircle2 className="h-3 w-3" /> Stock OK
             </Badge>
           ) : null}
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
           <Button asChild size="sm" variant="outline" className="gap-1">
             <Link to="/admin/required-daily-ingredients">
               View all <ArrowRight className="h-3 w-3" />

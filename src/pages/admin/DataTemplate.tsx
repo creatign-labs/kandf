@@ -601,11 +601,17 @@ const DataTemplate = () => {
           },
           sideEffect: resolvedRecipeIds.length > 0
             ? async (courseId: string) => {
+                // Maintain legacy recipes.course_id for back-compat
                 const { error } = await supabase
                   .from("recipes")
                   .update({ course_id: courseId })
                   .in("id", resolvedRecipeIds);
                 if (error) throw error;
+                // Also link via the course_recipes junction (many-to-many)
+                const { error: linkError } = await supabase
+                  .from("course_recipes")
+                  .insert(resolvedRecipeIds.map((rid) => ({ course_id: courseId, recipe_id: rid })));
+                if (linkError && !/duplicate key/i.test(linkError.message)) throw linkError;
               }
             : undefined,
         };
@@ -661,17 +667,23 @@ const DataTemplate = () => {
             instructions: rowData.instructions ? String(rowData.instructions).replace(/\|/g, "\n") : null,
             video_url: rowData.video_url || null,
           },
-          sideEffect: resolvedIngredients.length > 0
-            ? async (recipeId: string) => {
-                const rows = resolvedIngredients.map((r) => ({
-                  recipe_id: recipeId,
-                  inventory_id: r.inventory_id,
-                  quantity_per_student: r.quantity_per_student,
-                }));
-                const { error } = await supabase.from("recipe_ingredients").insert(rows);
-                if (error) throw error;
-              }
-            : undefined,
+          sideEffect: async (recipeId: string) => {
+            // Link recipe to its course via the junction table
+            const { error: linkError } = await supabase
+              .from("course_recipes")
+              .insert({ course_id: course.id, recipe_id: recipeId });
+            if (linkError && !/duplicate key/i.test(linkError.message)) throw linkError;
+
+            if (resolvedIngredients.length > 0) {
+              const rows = resolvedIngredients.map((r) => ({
+                recipe_id: recipeId,
+                inventory_id: r.inventory_id,
+                quantity_per_student: r.quantity_per_student,
+              }));
+              const { error } = await supabase.from("recipe_ingredients").insert(rows);
+              if (error) throw error;
+            }
+          },
         };
       }
       case "inventory":

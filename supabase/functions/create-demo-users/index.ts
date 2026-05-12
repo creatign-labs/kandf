@@ -201,17 +201,18 @@ Deno.serve(async (req) => {
 
         // Add chef specializations if chef (only if a course exists)
         if (user.roles.includes('chef') && courseId) {
-          const recipes = await supabaseAdmin
-            .from('recipes')
-            .select('id')
+          // Pull recipes via the course_recipes junction table
+          const { data: linkRows } = await supabaseAdmin
+            .from('course_recipes')
+            .select('recipe_id')
             .eq('course_id', courseId)
             .limit(3);
-          
-          if (recipes.data) {
-            for (const recipe of recipes.data) {
+
+          if (linkRows) {
+            for (const row of linkRows) {
               await supabaseAdmin.from('chef_specializations').upsert({
                 chef_id: authData.user.id,
-                recipe_id: recipe.id
+                recipe_id: row.recipe_id
               }, { onConflict: 'chef_id,recipe_id' });
             }
           }

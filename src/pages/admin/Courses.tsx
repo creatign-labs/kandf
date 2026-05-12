@@ -361,6 +361,83 @@ const Courses = () => {
         </Select>
       </div>
 
+      <div className="space-y-2">
+        <Label>Select Recipes for this Course</Label>
+        <p className="text-xs text-muted-foreground">
+          Choose recipes to link. Recipes already linked to other courses are disabled.
+        </p>
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search recipes..."
+            value={recipeSearchQuery}
+            onChange={(e) => setRecipeSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <ScrollArea className="h-48 rounded-md border p-2">
+          <div className="space-y-1">
+            {(allRecipes || [])
+              .filter((r) =>
+                r.title.toLowerCase().includes(recipeSearchQuery.toLowerCase())
+              )
+              .map((recipe) => {
+                const isSelected = selectedRecipeIds.includes(recipe.id);
+                const linkedElsewhere =
+                  !!recipe.course_id &&
+                  recipe.course_id !== editingCourse?.id &&
+                  !isSelected;
+                return (
+                  <label
+                    key={recipe.id}
+                    className={`flex items-center gap-2 rounded p-2 hover:bg-muted cursor-pointer ${
+                      linkedElsewhere ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      disabled={linkedElsewhere}
+                      onCheckedChange={() => toggleRecipe(recipe.id)}
+                    />
+                    <span className="text-sm flex-1">{recipe.title}</span>
+                    {recipe.difficulty && (
+                      <Badge variant="outline" className="text-xs">
+                        {recipe.difficulty}
+                      </Badge>
+                    )}
+                    {linkedElsewhere && (
+                      <span className="text-xs text-muted-foreground">linked</span>
+                    )}
+                  </label>
+                );
+              })}
+            {(!allRecipes || allRecipes.length === 0) && (
+              <p className="text-sm text-muted-foreground p-2">No recipes available.</p>
+            )}
+          </div>
+        </ScrollArea>
+        {selectedRecipeIds.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {selectedRecipeIds.map((id) => {
+              const r = allRecipes?.find((x) => x.id === id);
+              if (!r) return null;
+              return (
+                <Badge key={id} variant="secondary" className="gap-1">
+                  {r.title}
+                  <button
+                    type="button"
+                    onClick={() => toggleRecipe(id)}
+                    className="ml-1 text-xs hover:text-destructive"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <Button type="submit" className="w-full" disabled={createCourseMutation.isPending || updateCourseMutation.isPending}>
         {createCourseMutation.isPending || updateCourseMutation.isPending ? (
           <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>

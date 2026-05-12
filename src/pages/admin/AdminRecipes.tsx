@@ -82,17 +82,23 @@ const AdminRecipes = () => {
 
   const createRecipeMutation = useMutation({
     mutationFn: async () => {
+      const code = formData.recipe_code.trim();
       const { data: newRecipe, error } = await supabase
         .from("recipes")
         .insert({
           title: formData.title,
-          recipe_code: formData.recipe_code || null,
+          recipe_code: code || null,
           video_url: formData.video_url || null,
           cost: formData.cost === "" ? null : Number(formData.cost),
         } as any)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === "23505" || /duplicate key|recipes_recipe_code_unique/i.test(error.message)) {
+          throw new Error(`Recipe code "${code}" is already in use. Please enter a unique code.`);
+        }
+        throw error;
+      }
 
       // Add ingredients
       if (selectedIngredients.length > 0 && newRecipe) {

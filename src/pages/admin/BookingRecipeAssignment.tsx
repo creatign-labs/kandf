@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,18 +40,30 @@ function MultiSelectCheckbox({
   emptyLabel?: string;
 }) {
   const [selectedValues, setSelectedValues] = useState(values);
+  const hasLocalChanges = useRef(false);
   const selectedKey = values.join("|");
+  const localKey = selectedValues.join("|");
 
   useEffect(() => {
+    if (hasLocalChanges.current && selectedKey !== localKey) return;
+    hasLocalChanges.current = false;
     setSelectedValues(values);
   }, [selectedKey]);
 
+  useEffect(() => {
+    if (!hasLocalChanges.current) return;
+    const timeout = window.setTimeout(() => {
+      onChange(selectedValues);
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [localKey]);
+
   const toggle = (id: string) => {
+    hasLocalChanges.current = true;
     setSelectedValues((current) => {
       const next = current.includes(id)
         ? current.filter((v) => v !== id)
         : [...current, id];
-      onChange(next);
       return next;
     });
   };

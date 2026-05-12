@@ -3,10 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, CheckCircle2, Loader2, Package, ArrowRight } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Package, ArrowRight, RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { addDays, format } from "date-fns";
+import { addDays, format, formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 
 interface IngredientRow {

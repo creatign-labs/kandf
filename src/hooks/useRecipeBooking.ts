@@ -79,13 +79,31 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
 
       // If recipeId is null, fetch generic slots (all batches for the course)
       if (!recipeId) {
-        const { data, error } = await supabase
-          .from('batches')
-          .select('*')
-          .eq('course_id', courseId)
-          .eq('booking_enabled', true);
+        const [{ data, error }, { data: course, error: courseErr }] = await Promise.all([
+          supabase
+            .from('batches')
+            .select('*')
+            .eq('course_id', courseId)
+            .eq('booking_enabled', true),
+          supabase
+            .from('courses')
+            .select('days_of_week')
+            .eq('id', courseId)
+            .single(),
+        ]);
 
         if (error) throw error;
+        if (courseErr) throw courseErr;
+
+        const courseDays = ((course?.days_of_week as string[] | null) || [])
+          .map(d => String(d).toLowerCase().trim())
+          .filter(Boolean);
+        const dayMatchesCourse = (dayName: string) => {
+          if (courseDays.length === 0) return true;
+          const day = dayName.toLowerCase();
+          const short = day.slice(0, 3);
+          return courseDays.some(d => d === day || d.startsWith(short) || day.startsWith(d));
+        };
 
         // Build the next 30 days of candidate slots
         const slots: AvailableSlot[] = [];
@@ -96,8 +114,12 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
           const date = new Date(today);
           date.setDate(date.getDate() + i);
           const dateStr = date.toISOString().split('T')[0];
-          dateStrs.push(dateStr);
           const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+
+          // Enforce course-level day-of-week schedule
+          if (!dayMatchesCourse(dayName)) continue;
+
+          dateStrs.push(dateStr);
 
           for (const batch of (data || [])) {
             if (batch.start_date && dateStr < batch.start_date) continue;
@@ -114,6 +136,7 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
             });
           }
         }
+
 
         // Fetch confirmed bookings for this course in the date window so we can
         // compute real available_spots per (date, time_slot). Cancelled bookings

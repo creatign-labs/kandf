@@ -32,8 +32,10 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
   // Use provided props or fall back to eligibility check
   const { data: eligibility, isLoading: eligibilityLoading } = useBookingEligibility();
   
-  // Determine which course to use — recipe is no longer specified
-  const effectiveCourseId = courseId || eligibility?.course_id || null;
+  // Determine which course to use — recipe is no longer specified.
+  // Course is locked to the student's active enrollment; we ignore any passed-in
+  // courseId that doesn't match to keep booking strictly course-scoped.
+  const effectiveCourseId = eligibility?.course_id || courseId || null;
 
   const { data: availableSlots, isLoading: slotsLoading } = useAvailableRecipeSlots(
     effectiveCourseId,
@@ -42,6 +44,10 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
   const bookMutation = useBookRecipeSlot();
 
   const tomorrow = addDays(new Date(), 1);
+
+  // Set of date strings (yyyy-MM-dd) the student's course actually runs on
+  const allowedDateSet = new Set((availableSlots || []).map(s => s.batch_date));
+
 
   // Filter slots for selected date
   const slotsForDate = selectedDate
@@ -120,7 +126,14 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
                 setSelectedDate(date);
                 setSelectedSlot(null);
               }}
-              disabled={(date) => date < tomorrow}
+              disabled={(date) => {
+                if (date < tomorrow) return true;
+                // Only allow dates within the course's running schedule
+                if (allowedDateSet.size === 0) return false;
+                const ds = format(date, 'yyyy-MM-dd');
+                return !allowedDateSet.has(ds);
+              }}
+
               className="rounded-md border"
             />
           </div>
@@ -141,7 +154,7 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
               {slotsForDate && slotsForDate.length > 0 ? (
                 slotsForDate.every(s => s.available_spots <= 0) ? (
                   <p className="text-center text-muted-foreground py-8">
-                    All slots booked for this batch for the selected date
+                    Slots for this batch are full. Please contact admin.
                   </p>
                 ) : (
                   slotsForDate.map((slot, index) => {
@@ -167,11 +180,12 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-semibold">{slot.time_slot}</span>
                           <Badge variant={isFull ? "secondary" : "default"}>
-                            {isFull ? "All slots booked" : `${slot.available_spots} spots`}
+                            {isFull ? "Slots full — contact admin" : `${slot.available_spots} spots`}
                           </Badge>
                         </div>
                       </button>
                     );
+
                   })
                 )
               ) : (

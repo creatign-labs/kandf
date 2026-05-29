@@ -152,31 +152,62 @@ Deno.serve(async (req) => {
       console.error("Failed to update approval record:", approvalError);
     }
 
-    // Determine the course to enroll in: use provided course_id or fall back to advance payment course
-    let enrollmentCourseId = course_id;
-    
-    if (!enrollmentCourseId) {
-      // Get advance payment to find the course the student paid for
-      const { data: advancePayment } = await supabaseAdmin
-        .from("advance_payments")
-        .select("course_id")
-        .eq("student_id", student_id)
-        .eq("status", "completed")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      
-      enrollmentCourseId = advancePayment?.course_id;
+    // === COURSE LOCK ENFORCEMENT ===
+    // The authoritative course is the one the student paid the advance for.
+    // It is locked from payment time through their entire active enrollment.
+    const { data: advancePayment } = await supabaseAdmin
+      .from("advance_payments")
+      .select("course_id")
+      .eq("student_id", student_id)
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // If the student already has an active enrollment, that course wins (immutable).
+    const { data: existingActive } = await supabaseAdmin
+      .from("enrollments")
+      .select("id, course_id, batch_id, student_code")
+      .eq("student_id", student_id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    const lockedCourseId: string | undefined =
+      existingActive?.course_id || advancePayment?.course_id || course_id;
+
+    // Reject any attempt to override the locked course at approval time.
+    if (course_id && lockedCourseId && course_id !== lockedCourseId) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: "Course mismatch: this student's course is locked to the one they paid for and cannot be changed at approval.",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    let enrollmentCourseId = lockedCourseId;
 
     if (enrollmentCourseId) {
       console.log(`Creating enrollment for student ${student_id} in course ${enrollmentCourseId}`);
-      
-      // batch_id is required - if not provided, get the first available batch for this course
+
+      // batch_id is required - if not provided, get the first available batch FOR THE LOCKED COURSE
       let enrollmentBatchId = batch_id;
-      
+
+      // If a batch was passed in, verify it belongs to the locked course.
+      if (enrollmentBatchId) {
+        const { data: batchRow } = await supabaseAdmin
+          .from("batches")
+          .select("id, course_id")
+          .eq("id", enrollmentBatchId)
+          .maybeSingle();
+        if (!batchRow || batchRow.course_id !== enrollmentCourseId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: "Selected batch does not belong to the student's locked course.",
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
       if (!enrollmentBatchId) {
-        // Find an available batch for this course
+        // Find an available batch for the locked course
         const { data: availableBatch } = await supabaseAdmin
           .from("batches")
           .select("id")
@@ -185,15 +216,15 @@ Deno.serve(async (req) => {
           .order("start_date", { ascending: true })
           .limit(1)
           .maybeSingle();
-        
+
         if (availableBatch) {
           enrollmentBatchId = availableBatch.id;
           console.log(`Auto-selected batch ${enrollmentBatchId} for enrollment`);
         } else {
           console.error("No available batch found for course, cannot create enrollment");
-          return new Response(JSON.stringify({ 
+          return new Response(JSON.stringify({
             success: false,
-            error: "No available batch found for this course. Please create a batch with available seats for this course before approving the student." 
+            error: "No available batch found for this course. Please create a batch with available seats for this course before approving the student.",
           }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },

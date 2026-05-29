@@ -1,0 +1,1 @@
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS days_of_week text[] DEFAULT '{}'::text[];

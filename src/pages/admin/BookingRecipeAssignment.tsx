@@ -807,6 +807,34 @@ const BookingRecipeAssignment = () => {
                           disabled={booking.status === 'cancelled'}
                         />
                       </TableCell>
+                      <TableCell className="text-right">
+                        {(() => {
+                          const pending =
+                            confirmAssignmentMutation.isPending &&
+                            (confirmAssignmentMutation.variables as any)?.bookingId === booking.id;
+                          const canConfirm =
+                            booking.status !== 'cancelled' &&
+                            getBookingRecipeIds(booking).length > 0 &&
+                            getBookingChefIds(booking).length > 0;
+                          return (
+                            <Button
+                              size="sm"
+                              className="gap-2"
+                              disabled={!canConfirm || pending}
+                              onClick={() =>
+                                confirmAssignmentMutation.mutate({ bookingId: booking.id })
+                              }
+                            >
+                              {pending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="h-4 w-4" />
+                              )}
+                              Confirm
+                            </Button>
+                          );
+                        })()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

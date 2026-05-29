@@ -32,8 +32,10 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
   // Use provided props or fall back to eligibility check
   const { data: eligibility, isLoading: eligibilityLoading } = useBookingEligibility();
   
-  // Determine which course to use — recipe is no longer specified
-  const effectiveCourseId = courseId || eligibility?.course_id || null;
+  // Determine which course to use — recipe is no longer specified.
+  // Course is locked to the student's active enrollment; we ignore any passed-in
+  // courseId that doesn't match to keep booking strictly course-scoped.
+  const effectiveCourseId = eligibility?.course_id || courseId || null;
 
   const { data: availableSlots, isLoading: slotsLoading } = useAvailableRecipeSlots(
     effectiveCourseId,
@@ -42,6 +44,10 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
   const bookMutation = useBookRecipeSlot();
 
   const tomorrow = addDays(new Date(), 1);
+
+  // Set of date strings (yyyy-MM-dd) the student's course actually runs on
+  const allowedDateSet = new Set((availableSlots || []).map(s => s.batch_date));
+
 
   // Filter slots for selected date
   const slotsForDate = selectedDate

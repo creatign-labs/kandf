@@ -437,11 +437,18 @@ const AdminDashboard = () => {
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/inventory?add=1">
+                    <Package className="h-4 w-4 mr-2" />
+                    Add Inventory Item
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/inventory-checklist">
                     <ClipboardList className="h-4 w-4 mr-2" />
                     Inventory Checklist
                   </Link>
                 </Button>
+
                 <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/staff">
                     <Shield className="h-4 w-4 mr-2" />

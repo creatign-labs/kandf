@@ -44,15 +44,28 @@ const Courses = () => {
     duration: "",
     level: "Beginner",
     base_fee: "",
+    days_of_week: [] as string[],
   });
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
+
+  const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const toggleDay = (day: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      days_of_week: prev.days_of_week.includes(day)
+        ? prev.days_of_week.filter((d) => d !== day)
+        : [...prev.days_of_week, day],
+    }));
+  };
 
   const toggleRecipe = (id: string) => {
     setSelectedRecipeIds((prev) =>
       prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
     );
   };
+
 
   // Fetch all recipes for selection
   const { data: allRecipes } = useQuery({
@@ -155,7 +168,8 @@ const Courses = () => {
         duration: data.duration,
         level: data.level,
         base_fee: parseFloat(data.base_fee),
-      }).select().single();
+        days_of_week: data.days_of_week,
+      } as any).select().single();
 
       if (error) throw error;
 
@@ -188,7 +202,8 @@ const Courses = () => {
           duration: data.duration,
           level: data.level,
           base_fee: parseFloat(data.base_fee),
-        })
+          days_of_week: data.days_of_week,
+        } as any)
         .eq("id", id);
       if (error) throw error;
 
@@ -227,6 +242,7 @@ const Courses = () => {
       duration: "",
       level: "Beginner",
       base_fee: "",
+      days_of_week: [],
     });
     setSelectedRecipeIds([]);
     setRecipeSearchQuery("");
@@ -241,10 +257,12 @@ const Courses = () => {
       duration: course.duration,
       level: course.level,
       base_fee: course.base_fee.toString(),
+      days_of_week: Array.isArray(course.days_of_week) ? course.days_of_week : [],
     });
     setSelectedRecipeIds((course.recipes || []).map((r: any) => r.id));
     setRecipeSearchQuery("");
   };
+
 
   const validateForm = (): string | null => {
     const title = formData.title.trim();
@@ -362,6 +380,30 @@ const Courses = () => {
           </SelectContent>
         </Select>
       </div>
+
+      <div className="space-y-2">
+        <Label>Days of the Week</Label>
+        <p className="text-xs text-muted-foreground">Select the days this course runs.</p>
+        <div className="flex flex-wrap gap-2">
+          {DAYS_OF_WEEK.map((day) => {
+            const active = formData.days_of_week.includes(day);
+            return (
+              <Button
+                key={day}
+                type="button"
+                variant={active ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleDay(day)}
+                className="min-w-[60px]"
+              >
+                {day}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+
 
       <div className="space-y-2">
         <Label>Select Recipes for this Course</Label>

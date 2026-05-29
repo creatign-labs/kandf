@@ -532,6 +532,7 @@ export type Database = {
           base_fee: number
           course_code: string | null
           created_at: string
+          days_of_week: string[] | null
           description: string | null
           duration: string
           id: string
@@ -545,6 +546,7 @@ export type Database = {
           base_fee: number
           course_code?: string | null
           created_at?: string
+          days_of_week?: string[] | null
           description?: string | null
           duration: string
           id?: string
@@ -558,6 +560,7 @@ export type Database = {
           base_fee?: number
           course_code?: string | null
           created_at?: string
+          days_of_week?: string[] | null
           description?: string | null
           duration?: string
           id?: string

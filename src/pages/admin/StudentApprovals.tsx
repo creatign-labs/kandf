@@ -93,16 +93,32 @@ const StudentApprovals = () => {
 
       if (error) throw error;
 
-      // Get profile info for each student
       const studentIds = approvals?.map(a => a.student_id) || [];
+
+      // Get profile info for each student
       const { data: profiles } = await supabase
         .from("profiles")
         .select("*")
         .in("id", studentIds);
 
+      // Fallback: fetch latest advance_payment per student (in case approval
+      // row was created before the payment row and advance_payment_id is null)
+      const { data: allPayments } = await supabase
+        .from("advance_payments")
+        .select("*, courses(title)")
+        .in("student_id", studentIds)
+        .order("created_at", { ascending: false });
+
+      const latestPaymentByStudent: Record<string, any> = {};
+      allPayments?.forEach((p: any) => {
+        if (!latestPaymentByStudent[p.student_id]) latestPaymentByStudent[p.student_id] = p;
+      });
+
       return approvals?.map(approval => ({
         ...approval,
         profile: profiles?.find(p => p.id === approval.student_id),
+        advance_payments:
+          approval.advance_payments || latestPaymentByStudent[approval.student_id] || null,
       }));
     },
   });

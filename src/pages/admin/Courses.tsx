@@ -44,15 +44,28 @@ const Courses = () => {
     duration: "",
     level: "Beginner",
     base_fee: "",
+    days_of_week: [] as string[],
   });
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
+
+  const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const toggleDay = (day: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      days_of_week: prev.days_of_week.includes(day)
+        ? prev.days_of_week.filter((d) => d !== day)
+        : [...prev.days_of_week, day],
+    }));
+  };
 
   const toggleRecipe = (id: string) => {
     setSelectedRecipeIds((prev) =>
       prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
     );
   };
+
 
   // Fetch all recipes for selection
   const { data: allRecipes } = useQuery({

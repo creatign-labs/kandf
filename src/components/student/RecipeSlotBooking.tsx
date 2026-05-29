@@ -126,7 +126,14 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
                 setSelectedDate(date);
                 setSelectedSlot(null);
               }}
-              disabled={(date) => date < tomorrow}
+              disabled={(date) => {
+                if (date < tomorrow) return true;
+                // Only allow dates within the course's running schedule
+                if (allowedDateSet.size === 0) return false;
+                const ds = format(date, 'yyyy-MM-dd');
+                return !allowedDateSet.has(ds);
+              }}
+
               className="rounded-md border"
             />
           </div>

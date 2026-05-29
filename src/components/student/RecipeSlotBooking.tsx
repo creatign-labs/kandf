@@ -154,7 +154,7 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
               {slotsForDate && slotsForDate.length > 0 ? (
                 slotsForDate.every(s => s.available_spots <= 0) ? (
                   <p className="text-center text-muted-foreground py-8">
-                    All slots booked for this batch for the selected date
+                    Slots for this batch are full. Please contact admin.
                   </p>
                 ) : (
                   slotsForDate.map((slot, index) => {
@@ -180,11 +180,12 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-semibold">{slot.time_slot}</span>
                           <Badge variant={isFull ? "secondary" : "default"}>
-                            {isFull ? "All slots booked" : `${slot.available_spots} spots`}
+                            {isFull ? "Slots full — contact admin" : `${slot.available_spots} spots`}
                           </Badge>
                         </div>
                       </button>
                     );
+
                   })
                 )
               ) : (

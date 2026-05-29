@@ -743,6 +743,7 @@ const BookingRecipeAssignment = () => {
                     <TableHead>Assigned Recipe</TableHead>
                     <TableHead>Assigned Chef</TableHead>
                     <TableHead>Table No.</TableHead>
+                    <TableHead className="text-right">Confirm</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

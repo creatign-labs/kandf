@@ -131,10 +131,45 @@ Deno.serve(async (req) => {
       { onConflict: "user_id,role" }
     );
 
-    // Create student_access_approvals record
+    // Determine course_id from lead or lead_payment_plans
+    let courseId = lead.course_id;
+    if (!courseId) {
+      const { data: plan } = await supabaseAdmin
+        .from("lead_payment_plans")
+        .select("course_id")
+        .eq("lead_id", leadId)
+        .maybeSingle();
+      courseId = plan?.course_id || null;
+    }
+
+    // Create advance_payments record FIRST so we can link it to the approval
+    let advancePaymentId: string | null = null;
+    if (courseId) {
+      const { data: apRow, error: apError } = await supabaseAdmin
+        .from("advance_payments")
+        .insert({
+          student_id: studentId,
+          course_id: courseId,
+          amount: 2000,
+          status: "completed",
+          payment_method: "lead_conversion",
+          paid_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (apError) {
+        console.error("Failed to create advance_payment record:", apError);
+      } else {
+        advancePaymentId = apRow?.id || null;
+        console.log("Created advance_payment record for course:", courseId);
+      }
+    }
+
+    // Create student_access_approvals record (linked to advance payment so the
+    // approvals UI can display the correct course)
     const { error: approvalError } = await supabaseAdmin.from("student_access_approvals").upsert({
       student_id: studentId,
-      advance_payment_id: null,
+      advance_payment_id: advancePaymentId,
       status: "pending",
     }, { onConflict: "student_id" });
     if (approvalError) {
@@ -153,34 +188,6 @@ Deno.serve(async (req) => {
         type: "info",
       }));
       await supabaseAdmin.from("notifications").insert(notifications);
-    }
-
-    // Determine course_id from lead or lead_payment_plans
-    let courseId = lead.course_id;
-    if (!courseId) {
-      const { data: plan } = await supabaseAdmin
-        .from("lead_payment_plans")
-        .select("course_id")
-        .eq("lead_id", leadId)
-        .maybeSingle();
-      courseId = plan?.course_id || null;
-    }
-
-    // Create advance_payments record so approve-student-with-password can find the course
-    if (courseId) {
-      const { error: apError } = await supabaseAdmin.from("advance_payments").insert({
-        student_id: studentId,
-        course_id: courseId,
-        amount: 2000,
-        status: "completed",
-        payment_method: "lead_conversion",
-        paid_at: new Date().toISOString(),
-      });
-      if (apError) {
-        console.error("Failed to create advance_payment record:", apError);
-      } else {
-        console.log("Created advance_payment record for course:", courseId);
-      }
     }
 
     // Log enrollment status change

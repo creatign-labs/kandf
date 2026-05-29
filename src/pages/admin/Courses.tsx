@@ -382,6 +382,30 @@ const Courses = () => {
       </div>
 
       <div className="space-y-2">
+        <Label>Days of the Week</Label>
+        <p className="text-xs text-muted-foreground">Select the days this course runs.</p>
+        <div className="flex flex-wrap gap-2">
+          {DAYS_OF_WEEK.map((day) => {
+            const active = formData.days_of_week.includes(day);
+            return (
+              <Button
+                key={day}
+                type="button"
+                variant={active ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleDay(day)}
+                className="min-w-[60px]"
+              >
+                {day}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+
+
+      <div className="space-y-2">
         <Label>Select Recipes for this Course</Label>
         <p className="text-xs text-muted-foreground">
           Choose recipes to link. A recipe can be linked to multiple courses.

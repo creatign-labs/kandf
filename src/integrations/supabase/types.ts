@@ -2879,6 +2879,10 @@ export type Database = {
         Args: { p_date: string; p_days: string }
         Returns: boolean
       }
+      date_matches_course_days: {
+        Args: { p_date: string; p_days: string[] }
+        Returns: boolean
+      }
       decrement_batch_seats: { Args: { batch_id: string }; Returns: undefined }
       generate_certificate_number: {
         Args: { p_course_id: string }

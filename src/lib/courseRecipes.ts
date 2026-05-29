@@ -5,19 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
  * Returns recipes ordered by created_at (oldest first).
  */
 export async function fetchRecipesForCourse(courseId: string) {
+  // Order by when each recipe was added to THIS course so the list reflects
+  // the course's curriculum sequence (not the global recipe creation order).
   const { data, error } = await supabase
     .from("course_recipes")
-    .select("recipe:recipes(*)")
-    .eq("course_id", courseId);
+    .select("created_at, recipe:recipes(*)")
+    .eq("course_id", courseId)
+    .order("created_at", { ascending: true });
   if (error) throw error;
-  const recipes = (data ?? [])
+  return (data ?? [])
     .map((row: any) => row.recipe)
     .filter(Boolean);
-  // Sort by created_at ascending (oldest first) for stable ordering
-  recipes.sort((a: any, b: any) =>
-    (a.created_at || "").localeCompare(b.created_at || "")
-  );
-  return recipes;
 }
 
 /** Count of recipes linked to a course. */

@@ -36,8 +36,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const Inventory = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      setIsAddDialogOpen(true);
+      searchParams.delete("add");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const [newItem, setNewItem] = useState({
     name: "",
     unit: "g",

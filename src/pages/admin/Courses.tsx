@@ -168,7 +168,8 @@ const Courses = () => {
         duration: data.duration,
         level: data.level,
         base_fee: parseFloat(data.base_fee),
-      }).select().single();
+        days_of_week: data.days_of_week,
+      } as any).select().single();
 
       if (error) throw error;
 
@@ -201,7 +202,8 @@ const Courses = () => {
           duration: data.duration,
           level: data.level,
           base_fee: parseFloat(data.base_fee),
-        })
+          days_of_week: data.days_of_week,
+        } as any)
         .eq("id", id);
       if (error) throw error;
 
@@ -240,6 +242,7 @@ const Courses = () => {
       duration: "",
       level: "Beginner",
       base_fee: "",
+      days_of_week: [],
     });
     setSelectedRecipeIds([]);
     setRecipeSearchQuery("");
@@ -254,10 +257,12 @@ const Courses = () => {
       duration: course.duration,
       level: course.level,
       base_fee: course.base_fee.toString(),
+      days_of_week: Array.isArray(course.days_of_week) ? course.days_of_week : [],
     });
     setSelectedRecipeIds((course.recipes || []).map((r: any) => r.id));
     setRecipeSearchQuery("");
   };
+
 
   const validateForm = (): string | null => {
     const title = formData.title.trim();

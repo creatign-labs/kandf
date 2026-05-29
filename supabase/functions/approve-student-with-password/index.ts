@@ -192,9 +192,10 @@ Deno.serve(async (req) => {
         } else {
           console.error("No available batch found for course, cannot create enrollment");
           return new Response(JSON.stringify({ 
-            error: "No available batch found for this course. Please create a batch first or select one with available seats." 
+            success: false,
+            error: "No available batch found for this course. Please create a batch with available seats for this course before approving the student." 
           }), {
-            status: 400,
+            status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }

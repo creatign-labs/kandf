@@ -14,7 +14,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Send, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon, Users, ChefHat, Loader2, Send, ChevronDown, CheckCircle2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -348,6 +348,145 @@ const BookingRecipeAssignment = () => {
     }
   });
 
+  // Confirm assignment for a single booking — sends emails to student + assigned chefs
+  const confirmAssignmentMutation = useMutation({
+    mutationFn: async ({ bookingId }: { bookingId: string }) => {
+      const booking: any = (bookings || []).find((b: any) => b.id === bookingId);
+      if (!booking) throw new Error("Booking not found");
+
+      const recipeIds = getBookingRecipeIds(booking);
+      const chefIds = getBookingChefIds(booking);
+      const tableNumbers = getBookingTableNumbers(booking);
+
+      if (recipeIds.length === 0) throw new Error("Please assign at least one recipe before confirming");
+      if (chefIds.length === 0) throw new Error("Please assign at least one chef before confirming");
+
+      const recipeTitles = recipeIds.map((rid) => recipesById.get(rid)?.title || "Recipe");
+      const chefNames = chefIds
+        .map((cid) => {
+          const c: any = (chefsWithSpecializations || []).find((x: any) => x.id === cid);
+          return c ? `${c.first_name} ${c.last_name}` : "Chef";
+        });
+
+      // Fetch student email
+      const { data: studentProfile } = await supabase
+        .from("profiles")
+        .select("email, first_name, last_name")
+        .eq("id", booking.student_id)
+        .single();
+
+      // Fetch chef emails
+      const { data: chefProfiles } = await supabase
+        .from("profiles")
+        .select("id, email, first_name, last_name")
+        .in("id", chefIds);
+
+      const dateStr = format(selectedDate, "MMMM d, yyyy");
+      const timeSlot = booking.time_slot;
+      const recipesList = recipeTitles.join(", ");
+      const chefsList = chefNames.join(", ");
+      const tablesList = tableNumbers.length ? tableNumbers.map((t) => `Table ${t}`).join(", ") : "TBD";
+
+      const baseStyles = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #e8d5c4; border-radius:8px; overflow:hidden;">
+          <div style="background:#d4a574; color:#fff; padding:24px; text-align:center;">
+            <h1 style="margin:0; font-size:22px;">🧁 Knead & Frost</h1>
+            <p style="margin:4px 0 0; font-size:13px; opacity:0.9;">Slot Assignment Confirmation</p>
+          </div>
+      `;
+      const detailRows = `
+        <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+          <tr><td style="padding:8px; border-bottom:1px solid #f0e6d8; color:#71717a;">Date</td><td style="padding:8px; border-bottom:1px solid #f0e6d8; font-weight:600;">${dateStr}</td></tr>
+          <tr><td style="padding:8px; border-bottom:1px solid #f0e6d8; color:#71717a;">Time Slot</td><td style="padding:8px; border-bottom:1px solid #f0e6d8; font-weight:600;">${timeSlot}</td></tr>
+          <tr><td style="padding:8px; border-bottom:1px solid #f0e6d8; color:#71717a;">Recipe(s)</td><td style="padding:8px; border-bottom:1px solid #f0e6d8; font-weight:600;">${recipesList}</td></tr>
+          <tr><td style="padding:8px; border-bottom:1px solid #f0e6d8; color:#71717a;">Chef(s)</td><td style="padding:8px; border-bottom:1px solid #f0e6d8; font-weight:600;">${chefsList}</td></tr>
+          <tr><td style="padding:8px; color:#71717a;">Table</td><td style="padding:8px; font-weight:600;">${tablesList}</td></tr>
+        </table>
+      `;
+
+      const sends: Promise<any>[] = [];
+
+      // Student email
+      if (studentProfile?.email) {
+        const studentHtml = `${baseStyles}
+          <div style="padding:24px;">
+            <h2 style="color:#1a1a1a; margin-top:0;">Hi ${studentProfile.first_name || "there"},</h2>
+            <p style="color:#3f3f46;">Your slot has been confirmed. Here are the details:</p>
+            ${detailRows}
+            <p style="color:#71717a; font-size:13px;">Please arrive on time and reach out to the academy if you have any questions.</p>
+          </div>
+          <div style="padding:16px; text-align:center; color:#a1a1aa; font-size:12px; border-top:1px solid #f0e6d8;">Knead & Frost — Global Baking Academy</div>
+        </div>`;
+        sends.push(
+          supabase.functions.invoke("send-email", {
+            body: {
+              to: studentProfile.email,
+              subject: `Slot Confirmed — ${recipesList} on ${dateStr}`,
+              html: studentHtml,
+            },
+          })
+        );
+      }
+
+      // Chef emails
+      (chefProfiles || []).forEach((chef: any) => {
+        if (!chef.email) return;
+        const chefHtml = `${baseStyles}
+          <div style="padding:24px;">
+            <h2 style="color:#1a1a1a; margin-top:0;">Hi Chef ${chef.first_name || ""},</h2>
+            <p style="color:#3f3f46;">You have been assigned to the following session:</p>
+            ${detailRows.replace(
+              `<tr><td style="padding:8px; color:#71717a;">Table</td>`,
+              `<tr><td style="padding:8px; border-bottom:1px solid #f0e6d8; color:#71717a;">Student</td><td style="padding:8px; border-bottom:1px solid #f0e6d8; font-weight:600;">${studentProfile?.first_name || ""} ${studentProfile?.last_name || ""}</td></tr><tr><td style="padding:8px; color:#71717a;">Table</td>`
+            )}
+            <p style="color:#71717a; font-size:13px;">Please prepare accordingly.</p>
+          </div>
+          <div style="padding:16px; text-align:center; color:#a1a1aa; font-size:12px; border-top:1px solid #f0e6d8;">Knead & Frost — Global Baking Academy</div>
+        </div>`;
+        sends.push(
+          supabase.functions.invoke("send-email", {
+            body: {
+              to: chef.email,
+              subject: `New Assignment — ${recipesList} on ${dateStr}`,
+              html: chefHtml,
+            },
+          })
+        );
+      });
+
+      // In-app notifications
+      const notifRows = [
+        {
+          user_id: booking.student_id,
+          title: `Slot Confirmed — ${dateStr}`,
+          message: `Your slot for ${recipesList} at ${timeSlot} has been confirmed. Chef: ${chefsList}. ${tablesList}.`,
+          type: "info",
+          read: false,
+        },
+        ...chefIds.map((cid) => ({
+          user_id: cid,
+          title: `New Assignment — ${dateStr}`,
+          message: `Assigned: ${recipesList} at ${timeSlot}. ${tablesList}.`,
+          type: "info",
+          read: false,
+        })),
+      ];
+      sends.push(supabase.from("notifications").insert(notifRows) as any);
+
+      const results = await Promise.allSettled(sends);
+      const failed = results.filter((r) => r.status === "rejected" || (r as any).value?.error);
+      if (failed.length === results.length) {
+        throw new Error("Failed to send notifications");
+      }
+    },
+    onSuccess: () => {
+      toast({ title: "Assignment confirmed", description: "Student and chef(s) have been notified by email." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not confirm assignment", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Notify only assigned chefs about their bookings
   const notifyChefs = async () => {
     if (!bookings || bookings.length === 0) {
@@ -604,6 +743,7 @@ const BookingRecipeAssignment = () => {
                     <TableHead>Assigned Recipe</TableHead>
                     <TableHead>Assigned Chef</TableHead>
                     <TableHead>Table No.</TableHead>
+                    <TableHead className="text-right">Confirm</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -666,6 +806,34 @@ const BookingRecipeAssignment = () => {
                           width="w-[140px]"
                           disabled={booking.status === 'cancelled'}
                         />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(() => {
+                          const pending =
+                            confirmAssignmentMutation.isPending &&
+                            (confirmAssignmentMutation.variables as any)?.bookingId === booking.id;
+                          const canConfirm =
+                            booking.status !== 'cancelled' &&
+                            getBookingRecipeIds(booking).length > 0 &&
+                            getBookingChefIds(booking).length > 0;
+                          return (
+                            <Button
+                              size="sm"
+                              className="gap-2"
+                              disabled={!canConfirm || pending}
+                              onClick={() =>
+                                confirmAssignmentMutation.mutate({ bookingId: booking.id })
+                              }
+                            >
+                              {pending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="h-4 w-4" />
+                              )}
+                              Confirm
+                            </Button>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))}

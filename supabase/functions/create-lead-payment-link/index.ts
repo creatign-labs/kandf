@@ -104,6 +104,18 @@ serve(async (req) => {
     const lead = installment.leads;
     const supabaseFunctionsUrl = `${supabaseUrl}/functions/v1/lead-payment-webhook`;
 
+    // Sanitize phone for Razorpay (contact must be 8-14 chars)
+    let contact: string | undefined = undefined;
+    if (lead?.phone) {
+      const raw = String(lead.phone).trim();
+      const digits = raw.replace(/[^\d]/g, '');
+      if (digits.length >= 8 && digits.length <= 14) {
+        contact = raw.startsWith('+') ? `+${digits}` : digits;
+      } else {
+        console.warn(`Skipping invalid phone for Razorpay: "${raw}" (${digits.length} digits)`);
+      }
+    }
+
     // Create Razorpay Payment Link with the final amount
     const linkResponse = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
@@ -118,10 +130,10 @@ serve(async (req) => {
         customer: {
           name: lead?.name || undefined,
           email: lead?.email || undefined,
-          contact: lead?.phone || undefined,
+          contact,
         },
         notify: {
-          sms: !!lead?.phone,
+          sms: !!contact,
           email: !!lead?.email,
         },
         reminder_enable: true,

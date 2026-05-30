@@ -267,8 +267,12 @@ const LeadPaymentSetup = () => {
 
     setIsSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) {
+        toast({ title: "Session expired", description: "Please log in again to continue.", variant: "destructive" });
+        throw new Error("Not authenticated");
+      }
 
       // Upsert the plan
       const planPayload = {

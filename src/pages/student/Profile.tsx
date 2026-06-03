@@ -413,6 +413,43 @@ const Profile = () => {
                 </div>
 
                 <div className="space-y-2">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dob">Date of Birth</Label>
+                    <Input id="dob" type="date" value={profile.date_of_birth} onChange={e => setProfile({ ...profile, date_of_birth: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="doj">Date of Joining</Label>
+                    <Input id="doj" type="date" value={profile.date_of_joining} onChange={e => setProfile({ ...profile, date_of_joining: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Textarea id="address" value={profile.address} onChange={e => setProfile({ ...profile, address: e.target.value })} placeholder="Your address" rows={2} maxLength={500} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Heard about Knead & Frost through</Label>
+                  <Select value={profile.heard_about} onValueChange={(v) => setProfile({ ...profile, heard_about: v, heard_about_other: v === 'Other' ? profile.heard_about_other : '' })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HEARD_OPTIONS.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {profile.heard_about === 'Other' && (
+                    <Input
+                      placeholder="Please specify"
+                      value={profile.heard_about_other}
+                      onChange={e => setProfile({ ...profile, heard_about_other: e.target.value })}
+                      maxLength={100}
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="bio">Bio</Label>
                   <Textarea id="bio" value={profile.bio} onChange={e => setProfile({
                   ...profile,

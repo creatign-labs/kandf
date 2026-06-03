@@ -27,8 +27,14 @@ const Profile = () => {
     email: '',
     bio: '',
     avatar_url: '',
-    student_code: ''
+    student_code: '',
+    date_of_birth: '',
+    date_of_joining: '',
+    address: '',
+    heard_about: '',
+    heard_about_other: ''
   });
+  const HEARD_OPTIONS = ['Instagram', 'Facebook', 'Google', 'Walk in', 'Referred by a friend', 'Other'];
   const [kycDocuments, setKycDocuments] = useState<KYCDocument[]>([]);
   const [previewDoc, setPreviewDoc] = useState<KYCDocument | null>(null);
   const {

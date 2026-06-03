@@ -305,6 +305,15 @@ const AdminRecipes = () => {
                         <Plus className="h-3 w-3" /> Add Ingredient
                       </Button>
                     </div>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search ingredient by name…"
+                        className="pl-10"
+                        value={ingredientSearch}
+                        onChange={(e) => setIngredientSearch(e.target.value)}
+                      />
+                    </div>
                     {selectedIngredients.length > 0 ? (
                       <div className="space-y-2 border rounded-md p-3">
                         {selectedIngredients.map((ing, idx) => (
@@ -317,11 +326,16 @@ const AdminRecipes = () => {
                                 <SelectValue placeholder="Select ingredient" />
                               </SelectTrigger>
                               <SelectContent>
-                                {inventoryItems?.map((item) => (
-                                  <SelectItem key={item.id} value={item.id}>
-                                    {item.name} ({item.unit})
-                                  </SelectItem>
-                                ))}
+                                {inventoryItems
+                                  ?.filter((item) =>
+                                    !ingredientSearch ||
+                                    item.name.toLowerCase().includes(ingredientSearch.toLowerCase())
+                                  )
+                                  .map((item) => (
+                                    <SelectItem key={item.id} value={item.id}>
+                                      {item.name} ({item.unit})
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                             <Input

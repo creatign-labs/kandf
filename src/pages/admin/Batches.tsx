@@ -471,7 +471,31 @@ const Batches = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Days of the Week *</Label>
+                    <p className="text-xs text-muted-foreground">Select the days this batch runs. Booking will only be allowed on these days.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {DAYS_OF_WEEK.map((day) => {
+                        const active = formData.days_of_week.includes(day);
+                        return (
+                          <Button
+                            key={day}
+                            type="button"
+                            variant={active ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => toggleDay(day)}
+                            className="min-w-[60px]"
+                          >
+                            {day}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+
                     </div>
                   </div>
 

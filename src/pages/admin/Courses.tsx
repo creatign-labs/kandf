@@ -243,9 +243,10 @@ const Courses = () => {
       course_code: "",
       description: "",
       duration: "",
+      duration_months: 0,
+      duration_days: 0,
       level: "Beginner",
       base_fee: "",
-      days_of_week: [],
     });
     setSelectedRecipeIds([]);
     setRecipeSearchQuery("");
@@ -253,14 +254,16 @@ const Courses = () => {
 
   const handleEdit = (course: any) => {
     setEditingCourse(course);
+    const parsed = parseDuration(course.duration);
     setFormData({
       title: course.title,
       course_code: course.course_code || "",
       description: course.description,
       duration: course.duration,
+      duration_months: parsed.months,
+      duration_days: parsed.days,
       level: course.level,
       base_fee: course.base_fee.toString(),
-      days_of_week: Array.isArray(course.days_of_week) ? course.days_of_week : [],
     });
     setSelectedRecipeIds((course.recipes || []).map((r: any) => r.id));
     setRecipeSearchQuery("");

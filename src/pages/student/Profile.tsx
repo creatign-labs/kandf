@@ -72,7 +72,12 @@ const Profile = () => {
         email: user.email || '',
         bio: data.bio || '',
         avatar_url: data.avatar_url || '',
-        student_code: enrollmentData?.student_code || ''
+        student_code: enrollmentData?.student_code || '',
+        date_of_birth: (data as any).date_of_birth || '',
+        date_of_joining: (data as any).date_of_joining || '',
+        address: (data as any).address || '',
+        heard_about: (data as any).heard_about || '',
+        heard_about_other: (data as any).heard_about_other || ''
       });
     } catch (error) {
       console.error('Error loading profile:', error);

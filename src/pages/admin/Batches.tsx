@@ -258,6 +258,7 @@ const Batches = () => {
       total_seats: 30,
       start_date: "",
       end_date: "",
+      days_of_week: [],
     });
     setEditingBatch(null);
     setStartTime("");
@@ -273,6 +274,7 @@ const Batches = () => {
       total_seats: batch.total_seats,
       start_date: batch.start_date || "",
       end_date: batch.end_date || "",
+      days_of_week: Array.isArray((batch as any).days_of_week) ? (batch as any).days_of_week : [],
     });
     const timeParts = batch.time_slot?.split(" - ") || [];
     setStartTime(timeParts[0] || "");

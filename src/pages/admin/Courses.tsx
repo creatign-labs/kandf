@@ -42,22 +42,26 @@ const Courses = () => {
     course_code: "",
     description: "",
     duration: "",
+    duration_months: 0,
+    duration_days: 0,
     level: "Beginner",
     base_fee: "",
-    days_of_week: [] as string[],
   });
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
 
-  const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const formatDuration = (months: number, days: number) => {
+    const parts: string[] = [];
+    if (months > 0) parts.push(`${months} month${months > 1 ? "s" : ""}`);
+    if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
+    return parts.join(" ") || "0 days";
+  };
 
-  const toggleDay = (day: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      days_of_week: prev.days_of_week.includes(day)
-        ? prev.days_of_week.filter((d) => d !== day)
-        : [...prev.days_of_week, day],
-    }));
+  const parseDuration = (val: string | null | undefined): { months: number; days: number } => {
+    if (!val) return { months: 0, days: 0 };
+    const m = /(\d+)\s*month/i.exec(val);
+    const d = /(\d+)\s*day/i.exec(val);
+    return { months: m ? parseInt(m[1]) : 0, days: d ? parseInt(d[1]) : 0 };
   };
 
   const toggleRecipe = (id: string) => {
@@ -65,6 +69,7 @@ const Courses = () => {
       prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
     );
   };
+
 
 
   // Fetch all recipes for selection

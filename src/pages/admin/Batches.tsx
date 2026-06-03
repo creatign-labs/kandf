@@ -41,6 +41,8 @@ const TIME_OPTIONS = [
   "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM",
 ];
 
+const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 const Batches = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any>(null);
@@ -53,8 +55,18 @@ const Batches = () => {
     total_seats: 30,
     start_date: "",
     end_date: "",
+    days_of_week: [] as string[],
   });
   const queryClient = useQueryClient();
+
+  const toggleDay = (day: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      days_of_week: prev.days_of_week.includes(day)
+        ? prev.days_of_week.filter((d) => d !== day)
+        : [...prev.days_of_week, day],
+    }));
+  };
 
   // Fetch batches with course info and enrollment counts
   const { data: batches, isLoading } = useQuery({

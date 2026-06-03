@@ -412,7 +412,6 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="dob">Date of Birth</Label>

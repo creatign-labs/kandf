@@ -124,7 +124,19 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
           for (const batch of (data || [])) {
             if (batch.start_date && dateStr < batch.start_date) continue;
             if (batch.end_date && dateStr > batch.end_date) continue;
-            if (!isDayInBatchDays(dayName, batch.days)) continue;
+
+            // Strictly enforce batch days_of_week (array) if set
+            const batchDaysArr = (((batch as any).days_of_week as string[] | null) || [])
+              .map(d => String(d).toLowerCase().trim())
+              .filter(Boolean);
+            if (batchDaysArr.length > 0) {
+              const day = dayName.toLowerCase();
+              const short = day.slice(0, 3);
+              const ok = batchDaysArr.some(d => d === day || d.startsWith(short) || day.startsWith(d));
+              if (!ok) continue;
+            } else if (!isDayInBatchDays(dayName, batch.days)) {
+              continue;
+            }
 
             slots.push({
               batch_date: dateStr,

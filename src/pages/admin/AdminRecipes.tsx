@@ -53,6 +53,7 @@ const AdminRecipes = () => {
     video_url: "",
     cost: "",
   });
+  const [ingredientSearch, setIngredientSearch] = useState("");
   const [selectedIngredients, setSelectedIngredients] = useState<
     { inventory_id: string; quantity_per_student: number; unit: string }[]
   >([]);

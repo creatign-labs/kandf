@@ -370,7 +370,7 @@ const AdminRecipes = () => {
                                   <CommandList>
                                     <CommandEmpty>No ingredient found.</CommandEmpty>
                                     <CommandGroup>
-                                      {inventoryItems?.map((item) => (
+                                      {sortedInventoryItems?.map((item) => (
                                         <CommandItem
                                           key={item.id}
                                           value={item.id}

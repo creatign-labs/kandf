@@ -546,6 +546,7 @@ const Batches = () => {
                       !formData.batch_name ||
                       !formData.course_id ||
                       (!startTime || !endTime) ||
+                      formData.days_of_week.length === 0 ||
                       saveMutation.isPending
                     }
                   >

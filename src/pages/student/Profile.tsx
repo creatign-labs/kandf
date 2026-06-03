@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { User, Mail, Phone, Upload, FileText, Trash2, Loader2, Camera, IdCard, Eye } from 'lucide-react';
@@ -27,8 +28,14 @@ const Profile = () => {
     email: '',
     bio: '',
     avatar_url: '',
-    student_code: ''
+    student_code: '',
+    date_of_birth: '',
+    date_of_joining: '',
+    address: '',
+    heard_about: '',
+    heard_about_other: ''
   });
+  const HEARD_OPTIONS = ['Instagram', 'Facebook', 'Google', 'Walk in', 'Referred by a friend', 'Other'];
   const [kycDocuments, setKycDocuments] = useState<KYCDocument[]>([]);
   const [previewDoc, setPreviewDoc] = useState<KYCDocument | null>(null);
   const {
@@ -66,7 +73,12 @@ const Profile = () => {
         email: user.email || '',
         bio: data.bio || '',
         avatar_url: data.avatar_url || '',
-        student_code: enrollmentData?.student_code || ''
+        student_code: enrollmentData?.student_code || '',
+        date_of_birth: (data as any).date_of_birth || '',
+        date_of_joining: (data as any).date_of_joining || '',
+        address: (data as any).address || '',
+        heard_about: (data as any).heard_about || '',
+        heard_about_other: (data as any).heard_about_other || ''
       });
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -197,8 +209,13 @@ const Profile = () => {
         first_name: profile.first_name,
         last_name: profile.last_name,
         phone: profile.phone,
-        bio: profile.bio
-      }).eq('id', user.id);
+        bio: profile.bio,
+        date_of_birth: profile.date_of_birth || null,
+        date_of_joining: profile.date_of_joining || null,
+        address: profile.address || null,
+        heard_about: profile.heard_about || null,
+        heard_about_other: profile.heard_about === 'Other' ? profile.heard_about_other : null,
+      } as any).eq('id', user.id);
       if (error) throw error;
       toast({
         title: 'Success',
@@ -393,6 +410,42 @@ const Profile = () => {
                     phone: e.target.value
                   })} className="pl-10" placeholder="+91 1234567890" />
                   </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dob">Date of Birth</Label>
+                    <Input id="dob" type="date" value={profile.date_of_birth} onChange={e => setProfile({ ...profile, date_of_birth: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="doj">Date of Joining</Label>
+                    <Input id="doj" type="date" value={profile.date_of_joining} onChange={e => setProfile({ ...profile, date_of_joining: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Textarea id="address" value={profile.address} onChange={e => setProfile({ ...profile, address: e.target.value })} placeholder="Your address" rows={2} maxLength={500} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Heard about Knead & Frost through</Label>
+                  <Select value={profile.heard_about} onValueChange={(v) => setProfile({ ...profile, heard_about: v, heard_about_other: v === 'Other' ? profile.heard_about_other : '' })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HEARD_OPTIONS.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {profile.heard_about === 'Other' && (
+                    <Input
+                      placeholder="Please specify"
+                      value={profile.heard_about_other}
+                      onChange={e => setProfile({ ...profile, heard_about_other: e.target.value })}
+                      maxLength={100}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-2">

@@ -41,6 +41,8 @@ const TIME_OPTIONS = [
   "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM",
 ];
 
+const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 const Batches = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any>(null);
@@ -53,8 +55,18 @@ const Batches = () => {
     total_seats: 30,
     start_date: "",
     end_date: "",
+    days_of_week: [] as string[],
   });
   const queryClient = useQueryClient();
+
+  const toggleDay = (day: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      days_of_week: prev.days_of_week.includes(day)
+        ? prev.days_of_week.filter((d) => d !== day)
+        : [...prev.days_of_week, day],
+    }));
+  };
 
   // Fetch batches with course info and enrollment counts
   const { data: batches, isLoading } = useQuery({
@@ -112,6 +124,7 @@ const Batches = () => {
             course_id: formData.course_id,
             time_slot: timeSlot,
             days: null,
+            days_of_week: formData.days_of_week,
             total_seats: formData.total_seats,
             available_seats: formData.total_seats - (editingBatch.enrolled_count || 0),
             start_date: formData.start_date || null,
@@ -126,6 +139,7 @@ const Batches = () => {
           course_id: formData.course_id,
           time_slot: timeSlot,
           days: null,
+          days_of_week: formData.days_of_week,
           total_seats: formData.total_seats,
           available_seats: formData.total_seats,
           start_date: formData.start_date || null,
@@ -246,6 +260,7 @@ const Batches = () => {
       total_seats: 30,
       start_date: "",
       end_date: "",
+      days_of_week: [],
     });
     setEditingBatch(null);
     setStartTime("");
@@ -261,6 +276,7 @@ const Batches = () => {
       total_seats: batch.total_seats,
       start_date: batch.start_date || "",
       end_date: batch.end_date || "",
+      days_of_week: Array.isArray((batch as any).days_of_week) ? (batch as any).days_of_week : [],
     });
     const timeParts = batch.time_slot?.split(" - ") || [];
     setStartTime(timeParts[0] || "");
@@ -455,7 +471,31 @@ const Batches = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Days of the Week *</Label>
+                    <p className="text-xs text-muted-foreground">Select the days this batch runs. Booking will only be allowed on these days.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {DAYS_OF_WEEK.map((day) => {
+                        const active = formData.days_of_week.includes(day);
+                        return (
+                          <Button
+                            key={day}
+                            type="button"
+                            variant={active ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => toggleDay(day)}
+                            className="min-w-[60px]"
+                          >
+                            {day}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+
                     </div>
                   </div>
 
@@ -506,6 +546,7 @@ const Batches = () => {
                       !formData.batch_name ||
                       !formData.course_id ||
                       (!startTime || !endTime) ||
+                      formData.days_of_week.length === 0 ||
                       saveMutation.isPending
                     }
                   >

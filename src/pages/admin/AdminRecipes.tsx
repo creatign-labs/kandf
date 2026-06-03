@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,29 @@ const AdminRecipes = () => {
       return data;
     },
   });
+
+  const { data: ingredientUsage } = useQuery({
+    queryKey: ["ingredient-usage-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("recipe_ingredients").select("inventory_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((r: any) => {
+        if (r.inventory_id) counts[r.inventory_id] = (counts[r.inventory_id] || 0) + 1;
+      });
+      return counts;
+    },
+  });
+
+  const sortedInventoryItems = useMemo(() => {
+    if (!inventoryItems) return [];
+    const counts = ingredientUsage || {};
+    return [...inventoryItems].sort((a, b) => {
+      const diff = (counts[b.id] || 0) - (counts[a.id] || 0);
+      if (diff !== 0) return diff;
+      return a.name.localeCompare(b.name);
+    });
+  }, [inventoryItems, ingredientUsage]);
 
   const { data: ingredientCounts } = useQuery({
     queryKey: ["recipe-ingredient-counts"],
@@ -347,7 +370,7 @@ const AdminRecipes = () => {
                                   <CommandList>
                                     <CommandEmpty>No ingredient found.</CommandEmpty>
                                     <CommandGroup>
-                                      {inventoryItems?.map((item) => (
+                                      {sortedInventoryItems?.map((item) => (
                                         <CommandItem
                                           key={item.id}
                                           value={item.id}

@@ -208,8 +208,13 @@ const Profile = () => {
         first_name: profile.first_name,
         last_name: profile.last_name,
         phone: profile.phone,
-        bio: profile.bio
-      }).eq('id', user.id);
+        bio: profile.bio,
+        date_of_birth: profile.date_of_birth || null,
+        date_of_joining: profile.date_of_joining || null,
+        address: profile.address || null,
+        heard_about: profile.heard_about || null,
+        heard_about_other: profile.heard_about === 'Other' ? profile.heard_about_other : null,
+      } as any).eq('id', user.id);
       if (error) throw error;
       toast({
         title: 'Success',

@@ -154,7 +154,7 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
               {slotsForDate && slotsForDate.length > 0 ? (
                 slotsForDate.every(s => s.available_spots <= 0) ? (
                   <p className="text-center text-muted-foreground py-8">
-                    Slots for this batch are full. Please contact admin.
+                    All slots are booked for this date. Please contact admin.
                   </p>
                 ) : (
                   slotsForDate.map((slot, index) => {

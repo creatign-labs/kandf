@@ -311,39 +311,59 @@ const AdminRecipes = () => {
                         <Plus className="h-3 w-3" /> Add Ingredient
                       </Button>
                     </div>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search ingredient by name…"
-                        className="pl-10"
-                        value={ingredientSearch}
-                        onChange={(e) => setIngredientSearch(e.target.value)}
-                      />
-                    </div>
                     {selectedIngredients.length > 0 ? (
                       <div className="space-y-2 border rounded-md p-3">
                         {selectedIngredients.map((ing, idx) => (
                           <div key={idx} className="flex items-center gap-2">
-                            <Select
-                              value={ing.inventory_id}
-                              onValueChange={(v) => updateIngredient(idx, "inventory_id", v)}
+                            <Popover
+                              open={openIngredientPopover === idx}
+                              onOpenChange={(open) => setOpenIngredientPopover(open ? idx : null)}
                             >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Select ingredient" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {inventoryItems
-                                  ?.filter((item) =>
-                                    !ingredientSearch ||
-                                    item.name.toLowerCase().includes(ingredientSearch.toLowerCase())
-                                  )
-                                  .map((item) => (
-                                    <SelectItem key={item.id} value={item.id}>
-                                      {item.name} ({item.unit})
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  className="flex-1 justify-between font-normal"
+                                >
+                                  {ing.inventory_id
+                                    ? (() => {
+                                        const item = inventoryItems?.find((i) => i.id === ing.inventory_id);
+                                        return item ? `${item.name} (${item.unit})` : "Select ingredient";
+                                      })()
+                                    : "Select ingredient"}
+                                  <Search className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[300px] p-0">
+                                <Command
+                                  filter={(value, search) => {
+                                    const item = inventoryItems?.find((i) => i.id === value);
+                                    if (!item) return 0;
+                                    const text = `${item.name} ${item.unit}`.toLowerCase();
+                                    return text.includes(search.toLowerCase()) ? 1 : 0;
+                                  }}
+                                >
+                                  <CommandInput placeholder="Search ingredient..." />
+                                  <CommandList>
+                                    <CommandEmpty>No ingredient found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {inventoryItems?.map((item) => (
+                                        <CommandItem
+                                          key={item.id}
+                                          value={item.id}
+                                          onSelect={(currentValue) => {
+                                            updateIngredient(idx, "inventory_id", currentValue);
+                                            setOpenIngredientPopover(null);
+                                          }}
+                                        >
+                                          {item.name} ({item.unit})
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                             <Input
                               type="number"
                               placeholder="Qty/student"

@@ -275,6 +275,7 @@ export type Database = {
           course_id: string
           created_at: string
           days: string | null
+          days_of_week: string[]
           end_date: string | null
           id: string
           start_date: string | null
@@ -289,6 +290,7 @@ export type Database = {
           course_id: string
           created_at?: string
           days?: string | null
+          days_of_week?: string[]
           end_date?: string | null
           id?: string
           start_date?: string | null
@@ -303,6 +305,7 @@ export type Database = {
           course_id?: string
           created_at?: string
           days?: string | null
+          days_of_week?: string[]
           end_date?: string | null
           id?: string
           start_date?: string | null
@@ -1704,14 +1707,19 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
           address_proof_url: string | null
           avatar_url: string | null
           bio: string | null
           created_at: string
+          date_of_birth: string | null
+          date_of_joining: string | null
           documents_verified: boolean | null
           email: string | null
           enrollment_status: string
           first_name: string
+          heard_about: string | null
+          heard_about_other: string | null
           id: string
           last_name: string
           marksheet_url: string | null
@@ -1721,14 +1729,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           address_proof_url?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          date_of_joining?: string | null
           documents_verified?: boolean | null
           email?: string | null
           enrollment_status?: string
           first_name: string
+          heard_about?: string | null
+          heard_about_other?: string | null
           id: string
           last_name: string
           marksheet_url?: string | null
@@ -1738,14 +1751,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           address_proof_url?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          date_of_joining?: string | null
           documents_verified?: boolean | null
           email?: string | null
           enrollment_status?: string
           first_name?: string
+          heard_about?: string | null
+          heard_about_other?: string | null
           id?: string
           last_name?: string
           marksheet_url?: string | null

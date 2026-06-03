@@ -347,19 +347,54 @@ const Courses = () => {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="course-duration">Duration</Label>
-          <Select value={formData.duration} onValueChange={(v) => setFormData(prev => ({ ...prev, duration: v }))}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select duration" />
-            </SelectTrigger>
-            <SelectContent className="bg-popover">
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <SelectItem key={m} value={`${m} month${m > 1 ? 's' : ''}`}>
-                  {m} month{m > 1 ? 's' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Duration</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <Select
+              value={String(formData.duration_months)}
+              onValueChange={(v) => {
+                const months = parseInt(v);
+                setFormData(prev => ({
+                  ...prev,
+                  duration_months: months,
+                  duration: formatDuration(months, prev.duration_days),
+                }));
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Months" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover">
+                {Array.from({ length: 13 }, (_, i) => i).map((m) => (
+                  <SelectItem key={`m-${m}`} value={String(m)}>
+                    {m} month{m === 1 ? "" : "s"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={String(formData.duration_days)}
+              onValueChange={(v) => {
+                const days = parseInt(v);
+                setFormData(prev => ({
+                  ...prev,
+                  duration_days: days,
+                  duration: formatDuration(prev.duration_months, days),
+                }));
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Days" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover">
+                {Array.from({ length: 31 }, (_, i) => i).map((d) => (
+                  <SelectItem key={`d-${d}`} value={String(d)}>
+                    {d} day{d === 1 ? "" : "s"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground">Total: {formatDuration(formData.duration_months, formData.duration_days)}</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="course-base-fee">Base Fee (₹)</Label>
@@ -387,27 +422,8 @@ const Courses = () => {
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label>Days of the Week</Label>
-        <p className="text-xs text-muted-foreground">Select the days this course runs.</p>
-        <div className="flex flex-wrap gap-2">
-          {DAYS_OF_WEEK.map((day) => {
-            const active = formData.days_of_week.includes(day);
-            return (
-              <Button
-                key={day}
-                type="button"
-                variant={active ? "default" : "outline"}
-                size="sm"
-                onClick={() => toggleDay(day)}
-                className="min-w-[60px]"
-              >
-                {day}
-              </Button>
-            );
-          })}
-        </div>
-      </div>
+
+
 
 
 

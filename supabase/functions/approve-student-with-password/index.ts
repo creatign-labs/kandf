@@ -162,10 +162,20 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!availableBatch) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: "No available batch found for this course. Please create a batch with available seats for this course before approving the student.",
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        // Distinguish "no batches at all" vs "all batches full"
+        const { count: anyCount } = await supabaseAdmin
+          .from("batches")
+          .select("id", { count: "exact", head: true })
+          .eq("course_id", lockedCourseId);
+
+        const msg = !anyCount
+          ? "No batch exists for this course yet. Please create a batch with available seats before approving the student."
+          : "All batches for this course are full. Please add seats or create a new batch before approving the student.";
+
+        return new Response(JSON.stringify({ success: false, error: msg }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       enrollmentBatchId = availableBatch.id;
     } else {

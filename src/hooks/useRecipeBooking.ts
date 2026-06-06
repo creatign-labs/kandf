@@ -46,6 +46,8 @@ interface AvailableSlot {
   capacity: number;
   current_count: number;
   available_spots: number;
+  batch_id?: string | null;
+  batch_name?: string | null;
 }
 
 interface BookingResult {
@@ -145,14 +147,16 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
               capacity: batch.total_seats,
               current_count: 0,
               available_spots: batch.total_seats,
+              batch_id: batch.id,
+              batch_name: batch.batch_name,
             });
           }
         }
 
 
         // Fetch confirmed bookings for this course in the date window so we can
-        // compute real available_spots per (date, time_slot). Cancelled bookings
-        // are excluded, so they automatically free up seats.
+        // compute real available_spots per (date, time_slot, batch). Cancelled
+        // bookings are excluded, so they automatically free up seats.
         if (dateStrs.length > 0) {
           const { data: confirmed, error: bErr } = await supabase
             .from('bookings')
@@ -162,6 +166,8 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
             .in('booking_date', dateStrs);
           if (bErr) throw bErr;
 
+          // Counts per (date, time_slot) — bookings don't carry batch_id, so
+          // seat usage is shared across batches with the same time slot.
           const counts = new Map<string, number>();
           for (const b of confirmed || []) {
             const k = `${b.booking_date}|${b.time_slot}`;
@@ -175,20 +181,8 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
           }
         }
 
-        // Dedupe by date + time_slot, summing capacity, used, and available
-        const merged = new Map<string, AvailableSlot>();
-        for (const s of slots) {
-          const key = `${s.batch_date}|${s.time_slot}`;
-          const existing = merged.get(key);
-          if (existing) {
-            existing.capacity += s.capacity;
-            existing.current_count += s.current_count;
-            existing.available_spots = Math.max(0, existing.capacity - existing.current_count);
-          } else {
-            merged.set(key, { ...s });
-          }
-        }
-        return Array.from(merged.values());
+        // Return one entry per batch so students can pick any matching batch.
+        return slots;
       }
 
       const { data, error } = await supabase

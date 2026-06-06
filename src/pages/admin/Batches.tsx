@@ -490,16 +490,23 @@ const Batches = () => {
 
                   <div className="space-y-2">
                     <Label>Days of the Week *</Label>
-                    <p className="text-xs text-muted-foreground">Select the days this batch runs. Booking will only be allowed on these days.</p>
+                    <p className="text-xs text-muted-foreground">
+                      {courseAllowedDays.length > 0
+                        ? `Restricted to the course schedule: ${courseAllowedDays.join(", ")}.`
+                        : "Select the days this batch runs. Booking will only be allowed on these days."}
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {DAYS_OF_WEEK.map((day) => {
                         const active = formData.days_of_week.includes(day);
+                        const disabled =
+                          courseAllowedDays.length > 0 && !courseAllowedDays.includes(day);
                         return (
                           <Button
                             key={day}
                             type="button"
                             variant={active ? "default" : "outline"}
                             size="sm"
+                            disabled={disabled}
                             onClick={() => toggleDay(day)}
                             className="min-w-[60px]"
                           >

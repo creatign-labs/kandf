@@ -277,6 +277,7 @@ const Courses = () => {
       duration_days: parsed.days,
       level: course.level,
       base_fee: course.base_fee.toString(),
+      days_of_week: Array.isArray(course.days_of_week) ? course.days_of_week : [],
     });
     setSelectedRecipeIds((course.recipes || []).map((r: any) => r.id));
     setRecipeSearchQuery("");

@@ -257,13 +257,44 @@ const StudentApprovals = () => {
   };
 
   const handleApproveStudent = (approval: any) => {
-    // Get course from advance payment
-    const courseId = approval.advance_payments?.course_id;
-    approveMutation.mutate({
-      studentId: approval.student_id,
-      courseId: courseId || undefined,
-    });
+    // Open batch picker before approving so the admin explicitly chooses the batch
+    setChosenBatchId("");
+    setBatchPickerFor(approval);
   };
+
+  // Load batches for the course currently being approved
+  const pickerCourseId = batchPickerFor?.advance_payments?.course_id || null;
+  const { data: pickerBatches, isLoading: pickerBatchesLoading } = useQuery({
+    queryKey: ["batches-for-course", pickerCourseId],
+    queryFn: async () => {
+      if (!pickerCourseId) return [];
+      const { data, error } = await supabase
+        .from("batches")
+        .select("id, batch_name, time_slot, available_seats, total_seats, start_date, end_date")
+        .eq("course_id", pickerCourseId)
+        .order("start_date", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!pickerCourseId,
+  });
+
+  const confirmApproveWithBatch = () => {
+    if (!batchPickerFor) return;
+    if (!chosenBatchId) {
+      toast({ title: "Pick a batch", description: "Please select a batch to enroll the student into.", variant: "destructive" });
+      return;
+    }
+    approveMutation.mutate(
+      {
+        studentId: batchPickerFor.student_id,
+        courseId: batchPickerFor.advance_payments?.course_id || undefined,
+        batchId: chosenBatchId,
+      },
+      { onSuccess: () => setBatchPickerFor(null) }
+    );
+  };
+
 
   // Reject student mutation
   const rejectMutation = useMutation({

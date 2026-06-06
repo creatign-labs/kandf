@@ -152,42 +152,39 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
           ) : selectedDate ? (
             <div className="space-y-3">
               {slotsForDate && slotsForDate.length > 0 ? (
-                slotsForDate.every(s => s.available_spots <= 0) ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    Slots Full — Try different slot
-                  </p>
-                ) : (
-                  slotsForDate.map((slot, index) => {
-                    const isFull = slot.available_spots <= 0;
-                    const isSelected = selectedSlot?.timeSlot === slot.time_slot;
+                slotsForDate.map((slot, index) => {
+                  const isSelected =
+                    selectedSlot?.timeSlot === slot.time_slot &&
+                    (selectedSlot as any)?.batchId === ((slot as any).batch_id || null);
+                  const isFull = slot.available_spots <= 0;
 
-                    return (
-                      <button
-                        key={`${slot.time_slot}-${index}`}
-                        onClick={() => !isFull && setSelectedSlot({
-                          timeSlot: slot.time_slot,
-                          batchId: slot.recipe_batch_id
-                        })}
-                        disabled={isFull}
-                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                          isSelected
-                            ? "border-primary bg-primary/5"
-                            : isFull
-                            ? "border-border bg-muted/50 cursor-not-allowed opacity-60"
-                            : "border-border hover:border-primary/50 hover:bg-accent/50"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold">{slot.time_slot}</span>
-                          <Badge variant={isFull ? "secondary" : "default"}>
-                            {isFull ? "Slots Full — Try different slot" : `${slot.available_spots} spots`}
-                          </Badge>
+                  return (
+                    <button
+                      key={`${(slot as any).batch_id || 'b'}-${slot.time_slot}-${index}`}
+                      onClick={() => setSelectedSlot({
+                        timeSlot: slot.time_slot,
+                        batchId: (slot as any).batch_id || null,
+                      })}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50 hover:bg-accent/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-semibold">{slot.time_slot}</span>
+                        <Badge variant={isFull ? "secondary" : "default"}>
+                          {isFull ? "Slots Full — Try different slot" : `${slot.available_spots} spots`}
+                        </Badge>
+                      </div>
+                      {(slot as any).batch_name && (
+                        <div className="text-xs text-muted-foreground">
+                          Batch: {(slot as any).batch_name}
                         </div>
-                      </button>
-                    );
-
-                  })
-                )
+                      )}
+                    </button>
+                  );
+                })
               ) : (
                 <p className="text-center text-muted-foreground py-8">
                   No available slots for this date

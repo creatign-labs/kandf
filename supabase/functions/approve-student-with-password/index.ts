@@ -15,66 +15,44 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const authHeader = req.headers.get("Authorization");
 
-    console.log("Received approval request");
-
     if (!authHeader) {
-      console.error("No authorization header provided");
       return new Response(JSON.stringify({ error: "No authorization header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Create client with user's token to verify they're a super_admin
     const supabaseUser = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
 
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) {
-      console.error("Failed to get user:", userError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("User authenticated:", user.id);
-
-    // Check if caller is super_admin
     const { data: isSuperAdmin } = await supabaseUser.rpc("is_super_admin", { _user_id: user.id });
     if (!isSuperAdmin) {
-      console.error("User is not super admin:", user.id);
       return new Response(JSON.stringify({ error: "Only super admins can approve students" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("Super admin verified");
-
-    const { student_id, course_id, batch_id, payment_schedule } = await req.json();
-    console.log("Request params:", { student_id, course_id, batch_id, payment_schedule });
-
+    const { student_id, course_id, payment_schedule } = await req.json();
     if (!student_id) {
-      console.error("No student_id provided");
       return new Response(JSON.stringify({ error: "student_id is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // course_id can be passed to override the advance payment course
-    // batch_id is optional for batch assignment
-
-    // Create admin client for privileged operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // ============================================================
-    // STEP 1: VALIDATE EVERYTHING BEFORE ANY MUTATION
-    // ============================================================
-
-    // 1a. Verify profile exists and is in 'enrolled' state
+    // STEP 1: VALIDATE
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("enrollment_status")
@@ -95,7 +73,7 @@ Deno.serve(async (req) => {
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 1b. Resolve the locked course (the one the student paid for, immutable)
+    // Lock to the course the student paid for (immutable)
     const { data: advancePayment } = await supabaseAdmin
       .from("advance_payments")
       .select("course_id")
@@ -129,66 +107,7 @@ Deno.serve(async (req) => {
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 1c. Resolve and validate batch
-    let enrollmentBatchId = batch_id;
-
-    if (enrollmentBatchId) {
-      const { data: batchRow } = await supabaseAdmin
-        .from("batches")
-        .select("id, course_id, available_seats")
-        .eq("id", enrollmentBatchId)
-        .maybeSingle();
-      if (!batchRow || batchRow.course_id !== lockedCourseId) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: "Selected batch does not belong to the student's locked course.",
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      if ((batchRow.available_seats ?? 0) <= 0 && !existingActive) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: "Selected batch has no available seats.",
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-    } else if (!existingActive) {
-      // Auto-pick an available batch only if no existing enrollment
-      const { data: availableBatch } = await supabaseAdmin
-        .from("batches")
-        .select("id")
-        .eq("course_id", lockedCourseId)
-        .gt("available_seats", 0)
-        .order("start_date", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (!availableBatch) {
-        // Distinguish "no batches at all" vs "all batches full"
-        const { count: anyCount } = await supabaseAdmin
-          .from("batches")
-          .select("id", { count: "exact", head: true })
-          .eq("course_id", lockedCourseId);
-
-        const msg = !anyCount
-          ? "No batch exists for this course yet. Please create a batch with available seats before approving the student."
-          : "All batches for this course are full. Please add seats or create a new batch before approving the student.";
-
-        return new Response(JSON.stringify({ success: false, error: msg }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      enrollmentBatchId = availableBatch.id;
-    } else {
-      enrollmentBatchId = existingActive.batch_id;
-    }
-
-    console.log(`Validation passed. Course: ${lockedCourseId}, Batch: ${enrollmentBatchId}`);
-
-    // ============================================================
-    // STEP 2: MUTATIONS (only after all validation passed)
-    // ============================================================
-
-    // 2a. Generate password and update auth
+    // STEP 2: MUTATIONS
     const generatePassword = () => {
       const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
       let password = "";
@@ -205,14 +124,14 @@ Deno.serve(async (req) => {
     });
 
     if (updateAuthError) {
-      console.error("Failed to update auth password:", updateAuthError);
       return new Response(JSON.stringify({
         success: false,
         error: "Failed to update password: " + updateAuthError.message,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 2b. Create or reuse enrollment FIRST (so profile activation only happens if enrollment succeeds)
+    // Create enrollment locked to course only — NO batch assignment.
+    // Students will pick slots from any batch tied to this course later.
     let finalStudentCode: string | null = existingActive?.student_code || null;
     let enrollmentId: string | null = existingActive?.id || null;
 
@@ -225,9 +144,9 @@ Deno.serve(async (req) => {
       const { data: newEnrollment, error: enrollmentError } = await supabaseAdmin
         .from("enrollments")
         .insert({
-          student_id: student_id,
+          student_id,
           course_id: lockedCourseId,
-          batch_id: enrollmentBatchId,
+          batch_id: null,
           status: "active",
           progress: 0,
           student_code: finalStudentCode || null,
@@ -237,7 +156,6 @@ Deno.serve(async (req) => {
         .single();
 
       if (enrollmentError) {
-        console.error("Failed to create enrollment:", enrollmentError);
         return new Response(JSON.stringify({
           success: false,
           error: "Failed to create enrollment: " + enrollmentError.message,
@@ -245,13 +163,7 @@ Deno.serve(async (req) => {
       }
 
       enrollmentId = newEnrollment.id;
-      console.log(`Enrollment ${enrollmentId} created for course ${lockedCourseId} / batch ${enrollmentBatchId}`);
 
-      // Decrement seats (best-effort)
-      const { error: seatErr } = await supabaseAdmin.rpc("decrement_batch_seats", { batch_id: enrollmentBatchId });
-      if (seatErr) console.error("Failed to decrement batch seats:", seatErr);
-
-      // Create payment schedule
       const { data: courseData } = await supabaseAdmin
         .from("courses")
         .select("base_fee")
@@ -298,7 +210,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2c. Activate profile (only after enrollment confirmed)
     const { error: updateProfileError } = await supabaseAdmin
       .from("profiles")
       .update({
@@ -309,14 +220,12 @@ Deno.serve(async (req) => {
       .eq("id", student_id);
 
     if (updateProfileError) {
-      console.error("Failed to update profile:", updateProfileError);
       return new Response(JSON.stringify({
         success: false,
         error: "Enrollment created but profile activation failed: " + updateProfileError.message,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 2d. Update approval record
     await supabaseAdmin
       .from("student_access_approvals")
       .update({
@@ -329,22 +238,18 @@ Deno.serve(async (req) => {
       })
       .eq("student_id", student_id);
 
-    // 2e. Notify student
     await supabaseAdmin.from("notifications").insert({
       user_id: student_id,
       title: "Access Approved!",
-      message: "Your account has been approved. You can now access your dashboard and your enrolled course.",
+      message: "Your account has been approved. You can now access your dashboard and book slots from any available batch.",
       type: "success",
     });
 
-    console.log(`Student ${student_id} approved. Code: ${finalStudentCode}`);
-
-
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       password: newPassword,
       studentCode: finalStudentCode,
-      message: "Student approved and password updated"
+      message: "Student approved and password updated",
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

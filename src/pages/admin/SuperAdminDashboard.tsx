@@ -267,7 +267,7 @@ const SuperAdminDashboard = () => {
             </h3>
             <p className="text-sm text-muted-foreground mb-4">View student KYC docs, profiles, and enrollment info</p>
             <Button asChild className="w-full">
-              <Link to="/admin/students">Open Students</Link>
+              <Link to="/admin/student-details">Open Student Details</Link>
             </Button>
           </Card>
         </div>

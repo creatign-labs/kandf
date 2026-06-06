@@ -39,6 +39,7 @@ import AccountOnHold from "./pages/student/AccountOnHold";
 import AccountRejected from "./pages/student/AccountRejected";
 import Leads from "./pages/admin/Leads";
 import Students from "./pages/admin/Students";
+import StudentDetailsPage from "./pages/admin/StudentDetails";
 import AdminCourses from "./pages/admin/Courses";
 import Inventory from "./pages/admin/Inventory";
 import IngredientsInventory from "./pages/admin/IngredientsInventory";
@@ -145,6 +146,8 @@ const App = () => (
           <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/leads" element={<ProtectedRoute requiredRole="admin"><Leads /></ProtectedRoute>} />
           <Route path="/admin/students" element={<ProtectedRoute requiredRole="admin"><Students /></ProtectedRoute>} />
+          <Route path="/admin/student-details" element={<ProtectedRoute requiredRole="admin"><StudentDetailsPage /></ProtectedRoute>} />
+          <Route path="/admin/student-details/:id" element={<ProtectedRoute requiredRole="admin"><StudentDetailsPage /></ProtectedRoute>} />
           <Route path="/admin/courses" element={<ProtectedRoute requiredRole="admin"><AdminCourses /></ProtectedRoute>} />
           <Route path="/admin/inventory" element={<ProtectedRoute requiredRole="admin"><Inventory /></ProtectedRoute>} />
           <Route path="/admin/ingredients-inventory" element={<ProtectedRoute requiredRole="admin"><IngredientsInventory /></ProtectedRoute>} />

@@ -750,60 +750,6 @@ const StudentApprovals = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Batch selection dialog for Approve & Enroll */}
-        <Dialog open={!!batchPickerFor} onOpenChange={(o) => !o && setBatchPickerFor(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Select Batch to Enroll</DialogTitle>
-              <DialogDescription>
-                Choose which batch this student should be enrolled into for{" "}
-                <strong>{batchPickerFor?.advance_payments?.courses?.title || "their course"}</strong>.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="py-4 space-y-3">
-              {pickerBatchesLoading ? (
-                <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
-              ) : (pickerBatches || []).length === 0 ? (
-                <div className="text-sm text-muted-foreground border rounded-lg p-4 bg-muted/30">
-                  No batches exist for this course yet. Create one first, then come back to approve.
-                </div>
-              ) : (
-                <Select value={chosenBatchId} onValueChange={setChosenBatchId}>
-                  <SelectTrigger><SelectValue placeholder="Choose a batch" /></SelectTrigger>
-                  <SelectContent>
-                    {(pickerBatches || []).map((b: any) => {
-                      const noSeats = (b.available_seats ?? 0) <= 0;
-                      return (
-                        <SelectItem key={b.id} value={b.id} disabled={noSeats}>
-                          {b.batch_name} — {b.time_slot} ({b.available_seats}/{b.total_seats} seats)
-                          {noSeats ? " — Full" : ""}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              )}
-
-              <div className="flex justify-end">
-                <Button variant="outline" size="sm" asChild>
-                  <a href="/admin/batches" target="_blank" rel="noreferrer">+ Create new batch</a>
-                </Button>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setBatchPickerFor(null)}>Cancel</Button>
-              <Button
-                onClick={confirmApproveWithBatch}
-                disabled={!chosenBatchId || approveMutation.isPending}
-              >
-                {approveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Approve & Enroll
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </main>
     </div>
   );

@@ -219,6 +219,7 @@ const Courses = () => {
           duration: data.duration,
           level: data.level,
           base_fee: parseFloat(data.base_fee),
+          days_of_week: data.days_of_week,
         } as any)
         .eq("id", id);
       if (error) throw error;

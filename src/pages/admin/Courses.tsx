@@ -438,6 +438,31 @@ const Courses = () => {
         </Select>
       </div>
 
+      <div className="space-y-2">
+        <Label>Course Days of the Week</Label>
+        <p className="text-xs text-muted-foreground">
+          Select the days this course runs. Batches and bookings will be restricted to these days.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {DAYS_OF_WEEK.map((day) => {
+            const active = formData.days_of_week.includes(day);
+            return (
+              <Button
+                key={day}
+                type="button"
+                variant={active ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleCourseDay(day)}
+                className="min-w-[60px]"
+              >
+                {day}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+
 
 
 

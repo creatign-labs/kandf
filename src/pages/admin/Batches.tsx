@@ -102,13 +102,18 @@ const Batches = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("courses")
-        .select("id, title, duration")
+        .select("id, title, duration, days_of_week")
         .order("title");
 
       if (error) throw error;
       return data;
     },
   });
+
+  const selectedCourse = courses?.find((c: any) => c.id === formData.course_id);
+  const courseAllowedDays: string[] = Array.isArray((selectedCourse as any)?.days_of_week)
+    ? ((selectedCourse as any).days_of_week as string[])
+    : [];
 
   
 

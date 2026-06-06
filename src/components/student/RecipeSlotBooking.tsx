@@ -180,7 +180,7 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-semibold">{slot.time_slot}</span>
                           <Badge variant={isFull ? "secondary" : "default"}>
-                            {isFull ? "Slots full — contact admin" : `${slot.available_spots} spots`}
+                            {isFull ? "Slots Full — Try different slot" : `${slot.available_spots} spots`}
                           </Badge>
                         </div>
                       </button>

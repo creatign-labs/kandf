@@ -127,7 +127,7 @@ const StudentApprovals = () => {
 
   // Fetch all courses for dropdown
   const approveMutation = useMutation({
-    mutationFn: async ({ studentId, courseId }: { studentId: string; courseId?: string }) => {
+    mutationFn: async ({ studentId, courseId, batchId }: { studentId: string; courseId?: string; batchId?: string }) => {
       try {
         const { data, error } = await supabase.functions.invoke('approve-student-with-password', {
           body: { 

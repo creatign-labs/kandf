@@ -102,13 +102,18 @@ const Batches = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("courses")
-        .select("id, title, duration")
+        .select("id, title, duration, days_of_week")
         .order("title");
 
       if (error) throw error;
       return data;
     },
   });
+
+  const selectedCourse = courses?.find((c: any) => c.id === formData.course_id);
+  const courseAllowedDays: string[] = Array.isArray((selectedCourse as any)?.days_of_week)
+    ? ((selectedCourse as any).days_of_week as string[])
+    : [];
 
   
 
@@ -414,9 +419,19 @@ const Batches = () => {
                     <Label>Course</Label>
                     <Select
                       value={formData.course_id}
-                      onValueChange={(value) =>
-                        setFormData(prev => ({ ...prev, course_id: value }))
-                      }
+                      onValueChange={(value) => {
+                        const course = courses?.find((c: any) => c.id === value);
+                        const allowed: string[] = Array.isArray((course as any)?.days_of_week)
+                          ? ((course as any).days_of_week as string[])
+                          : [];
+                        setFormData(prev => ({
+                          ...prev,
+                          course_id: value,
+                          days_of_week: allowed.length
+                            ? prev.days_of_week.filter(d => allowed.includes(d))
+                            : prev.days_of_week,
+                        }));
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select course" />
@@ -475,16 +490,23 @@ const Batches = () => {
 
                   <div className="space-y-2">
                     <Label>Days of the Week *</Label>
-                    <p className="text-xs text-muted-foreground">Select the days this batch runs. Booking will only be allowed on these days.</p>
+                    <p className="text-xs text-muted-foreground">
+                      {courseAllowedDays.length > 0
+                        ? `Restricted to the course schedule: ${courseAllowedDays.join(", ")}.`
+                        : "Select the days this batch runs. Booking will only be allowed on these days."}
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {DAYS_OF_WEEK.map((day) => {
                         const active = formData.days_of_week.includes(day);
+                        const disabled =
+                          courseAllowedDays.length > 0 && !courseAllowedDays.includes(day);
                         return (
                           <Button
                             key={day}
                             type="button"
                             variant={active ? "default" : "outline"}
                             size="sm"
+                            disabled={disabled}
                             onClick={() => toggleDay(day)}
                             className="min-w-[60px]"
                           >

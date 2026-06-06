@@ -39,6 +39,7 @@ import AccountOnHold from "./pages/student/AccountOnHold";
 import AccountRejected from "./pages/student/AccountRejected";
 import Leads from "./pages/admin/Leads";
 import Students from "./pages/admin/Students";
+import StudentDetailsPage from "./pages/admin/StudentDetails";
 import AdminCourses from "./pages/admin/Courses";
 import Inventory from "./pages/admin/Inventory";
 import IngredientsInventory from "./pages/admin/IngredientsInventory";

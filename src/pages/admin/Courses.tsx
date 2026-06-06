@@ -259,6 +259,7 @@ const Courses = () => {
       duration_days: 0,
       level: "Beginner",
       base_fee: "",
+      days_of_week: [],
     });
     setSelectedRecipeIds([]);
     setRecipeSearchQuery("");

@@ -56,6 +56,8 @@ const StudentApprovals = () => {
   const [editStatus, setEditStatus] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [batchPickerFor, setBatchPickerFor] = useState<any>(null);
+  const [chosenBatchId, setChosenBatchId] = useState<string>("");
   const queryClient = useQueryClient();
 
   // Check if current user is super_admin

@@ -419,9 +419,19 @@ const Batches = () => {
                     <Label>Course</Label>
                     <Select
                       value={formData.course_id}
-                      onValueChange={(value) =>
-                        setFormData(prev => ({ ...prev, course_id: value }))
-                      }
+                      onValueChange={(value) => {
+                        const course = courses?.find((c: any) => c.id === value);
+                        const allowed: string[] = Array.isArray((course as any)?.days_of_week)
+                          ? ((course as any).days_of_week as string[])
+                          : [];
+                        setFormData(prev => ({
+                          ...prev,
+                          course_id: value,
+                          days_of_week: allowed.length
+                            ? prev.days_of_week.filter(d => allowed.includes(d))
+                            : prev.days_of_week,
+                        }));
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select course" />

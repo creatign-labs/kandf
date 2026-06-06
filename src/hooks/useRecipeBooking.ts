@@ -46,6 +46,8 @@ interface AvailableSlot {
   capacity: number;
   current_count: number;
   available_spots: number;
+  batch_id?: string | null;
+  batch_name?: string | null;
 }
 
 interface BookingResult {

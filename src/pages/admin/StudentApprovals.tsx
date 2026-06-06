@@ -133,6 +133,7 @@ const StudentApprovals = () => {
           body: { 
             student_id: studentId,
             course_id: courseId || undefined,
+            batch_id: batchId || undefined,
           }
         });
 

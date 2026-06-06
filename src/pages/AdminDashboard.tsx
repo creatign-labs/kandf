@@ -425,7 +425,7 @@ const AdminDashboard = () => {
                   </Button>
                 )}
                 <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/admin/students">
+                  <Link to="/admin/student-details">
                     <UserCheck className="h-4 w-4 mr-2" />
                     Student Details
                   </Link>

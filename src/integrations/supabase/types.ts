@@ -762,7 +762,7 @@ export type Database = {
         Row: {
           attendance_completed: boolean | null
           attended_classes: number | null
-          batch_id: string
+          batch_id: string | null
           course_id: string
           created_at: string
           created_by: string | null
@@ -783,7 +783,7 @@ export type Database = {
         Insert: {
           attendance_completed?: boolean | null
           attended_classes?: number | null
-          batch_id: string
+          batch_id?: string | null
           course_id: string
           created_at?: string
           created_by?: string | null
@@ -804,7 +804,7 @@ export type Database = {
         Update: {
           attendance_completed?: boolean | null
           attended_classes?: number | null
-          batch_id?: string
+          batch_id?: string | null
           course_id?: string
           created_at?: string
           created_by?: string | null

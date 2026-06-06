@@ -1,0 +1,1 @@
+ALTER TABLE public.enrollments ALTER COLUMN batch_id DROP NOT NULL;

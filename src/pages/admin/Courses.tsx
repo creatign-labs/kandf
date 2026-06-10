@@ -239,15 +239,47 @@ const Courses = () => {
   });
   const deleteCourseMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Pre-check dependent records so we can show a friendly message
+      const sb = supabase as any;
+      const [payments, enrollments, batches, leads, certs, advance] = await Promise.all([
+        sb.from("payments").select("id", { count: "exact", head: true }).eq("course_id", id),
+        sb.from("enrollments").select("id", { count: "exact", head: true }).eq("course_id", id),
+        sb.from("batches").select("id", { count: "exact", head: true }).eq("course_id", id),
+        sb.from("leads").select("id", { count: "exact", head: true }).eq("course_id", id),
+        sb.from("certificates").select("id", { count: "exact", head: true }).eq("course_id", id),
+        sb.from("advance_payments").select("id", { count: "exact", head: true }).eq("course_id", id),
+      ]);
+
+      const blockers: string[] = [];
+      if ((advance.count || 0) > 0) blockers.push(`${advance.count} registration payment(s)`);
+      if ((payments.count || 0) > 0) blockers.push(`${payments.count} payment record(s)`);
+      if ((enrollments.count || 0) > 0) blockers.push(`${enrollments.count} enrollment(s)`);
+      if ((certs.count || 0) > 0) blockers.push(`${certs.count} certificate(s)`);
+      if ((batches.count || 0) > 0) blockers.push(`${batches.count} batch(es)`);
+      if ((leads.count || 0) > 0) blockers.push(`${leads.count} lead(s)`);
+
+      if (blockers.length > 0) {
+        throw new Error(
+          `This course has ${blockers.join(", ")} linked to it. To preserve historical records, deletion is blocked. Please archive or reassign these first, then try again.`
+        );
+      }
+
       const { error } = await supabase.from("courses").delete().eq("id", id);
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === "23503") {
+          throw new Error(
+            "This course is still referenced by other records (payments, enrollments, batches, leads, or certificates) and cannot be deleted. Please archive or reassign those records first."
+          );
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
       toast({ title: "Course deleted successfully" });
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Cannot delete course", description: error.message, variant: "destructive" });
     },
   });
 

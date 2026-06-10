@@ -240,14 +240,14 @@ const Courses = () => {
   const deleteCourseMutation = useMutation({
     mutationFn: async (id: string) => {
       // Pre-check dependent records so we can show a friendly message
-      const [payments, enrollments, batches, leads, certs, advance] = await Promise.all([
+      const [payments, enrollments, batches, leads, certs, advance] = (await Promise.all([
         supabase.from("payments").select("id", { count: "exact", head: true }).eq("course_id", id),
         supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("course_id", id),
         supabase.from("batches").select("id", { count: "exact", head: true }).eq("course_id", id),
         supabase.from("leads").select("id", { count: "exact", head: true }).eq("course_id", id),
         supabase.from("certificates").select("id", { count: "exact", head: true }).eq("course_id", id),
         supabase.from("advance_payments").select("id", { count: "exact", head: true }).eq("course_id", id),
-      ]);
+      ])) as any[];
 
       const blockers: string[] = [];
       if ((advance.count || 0) > 0) blockers.push(`${advance.count} registration payment(s)`);

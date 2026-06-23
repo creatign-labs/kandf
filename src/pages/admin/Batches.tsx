@@ -607,7 +607,7 @@ const Batches = () => {
                   <TableHead>Batch Name</TableHead>
                   <TableHead>Course</TableHead>
                   <TableHead>Time</TableHead>
-                  <TableHead>Capacity</TableHead>
+                  <TableHead>Today (Booked/Seats)</TableHead>
                   <TableHead>Start Date</TableHead>
                   <TableHead>End Date</TableHead>
                   <TableHead>Booking</TableHead>

@@ -187,6 +187,16 @@ async function handleDelete(
     }
   }
 
+  // Null out references that don't have ON DELETE CASCADE / SET NULL
+  // to prevent FK violations from auth.admin.deleteUser
+  await supabaseAdmin.from("recipe_batch_audit_log").update({ actor_id: null }).eq("actor_id", userId);
+  await supabaseAdmin.from("recipe_batch_memberships").update({ assigned_by: null }).eq("assigned_by", userId);
+  await supabaseAdmin.from("bookings").update({ assigned_chef_id: null }).eq("assigned_chef_id", userId);
+  await supabaseAdmin.from("student_online_access").update({ enabled_by: null }).eq("enabled_by", userId);
+  await supabaseAdmin.from("student_online_recipes").update({ enabled_by: null }).eq("enabled_by", userId);
+  await supabaseAdmin.from("financial_ledger").update({ student_id: null }).eq("student_id", userId);
+  await supabaseAdmin.from("recipe_batch_audit_log").update({ student_id: null }).eq("student_id", userId);
+
   // Delete user roles first
   await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
 
@@ -195,6 +205,14 @@ async function handleDelete(
 
   // Delete the auth user (this cascades to profile via FK)
   const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+  if (deleteError) {
+    return new Response(JSON.stringify({ error: deleteError.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
 
   if (deleteError) {
     return new Response(JSON.stringify({ error: deleteError.message }), {

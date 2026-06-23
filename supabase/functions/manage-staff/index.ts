@@ -119,26 +119,44 @@ async function handleCreate(supabaseAdmin: ReturnType<typeof createClient>, body
 
   const userId = authData.user.id;
 
-  // Update profile
-  await supabaseAdmin.from("profiles").upsert({
+  // Update profile (handle_new_user trigger already inserted a row)
+  const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
     id: userId,
     first_name: firstName,
     last_name: lastName,
     email,
     phone: phone || null,
     enrollment_status: "active",
+    ...(staffNumber ? { bio: `Staff #${staffNumber}` } : {}),
   }, { onConflict: "id" });
 
-  // Assign role
-  await supabaseAdmin.from("user_roles").upsert({
+  if (profileError) {
+    console.error("profile upsert failed:", profileError);
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    return new Response(JSON.stringify({ error: `Profile update failed: ${profileError.message}` }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Remove default 'student' role auto-assigned by handle_new_user trigger
+  await supabaseAdmin.from("user_roles").delete().eq("user_id", userId).eq("role", "student");
+
+  // Assign requested role
+  const { error: roleError } = await supabaseAdmin.from("user_roles").upsert({
     user_id: userId,
     role,
   }, { onConflict: "user_id,role" });
 
-  // Store staff number in profile bio field temporarily (or we could add a column)
-  if (staffNumber) {
-    await supabaseAdmin.from("profiles").update({ bio: `Staff #${staffNumber}` }).eq("id", userId);
+  if (roleError) {
+    console.error("role assignment failed:", roleError);
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    return new Response(JSON.stringify({ error: `Role assignment failed: ${roleError.message}` }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
+
 
   return new Response(JSON.stringify({
     success: true,

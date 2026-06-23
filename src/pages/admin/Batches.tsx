@@ -48,6 +48,9 @@ const Batches = () => {
   const [editingBatch, setEditingBatch] = useState<any>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [rangeFrom, setRangeFrom] = useState<string>(todayStr);
+  const [rangeTo, setRangeTo] = useState<string>(todayStr);
   const [formData, setFormData] = useState({
     batch_name: "",
     course_id: "",
@@ -68,9 +71,9 @@ const Batches = () => {
     }));
   };
 
-  // Fetch batches with course info and enrollment counts
+  // Fetch batches with course info, enrollment counts, and bookings in range
   const { data: batches, isLoading } = useQuery({
-    queryKey: ["admin-batches"],
+    queryKey: ["admin-batches", rangeFrom, rangeTo],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("batches")
@@ -79,11 +82,12 @@ const Batches = () => {
 
       if (error) throw error;
 
-      // Get enrollment counts AND today's confirmed booking count for each batch
-      const today = new Date().toISOString().split('T')[0];
+      const fromDate = rangeFrom || todayStr;
+      const toDate = rangeTo || rangeFrom || todayStr;
+
       const batchesWithCounts = await Promise.all(
         (data || []).map(async (batch) => {
-          const [{ count: enrolledCount }, { count: todayBookings }] = await Promise.all([
+          const [{ count: enrolledCount }, bookingsRes] = await Promise.all([
             supabase
               .from("enrollments")
               .select("*", { count: "exact", head: true })
@@ -91,16 +95,19 @@ const Batches = () => {
               .eq("status", "active"),
             (supabase as any)
               .from("bookings")
-              .select("*", { count: "exact", head: true })
+              .select("id, booking_date, student_id, profiles:student_id(first_name, last_name, email)")
               .eq("batch_id", batch.id)
-              .eq("booking_date", today)
-              .eq("status", "confirmed"),
+              .gte("booking_date", fromDate)
+              .lte("booking_date", toDate)
+              .eq("status", "confirmed")
+              .order("booking_date", { ascending: true }),
           ]);
 
           return {
             ...batch,
             enrolled_count: enrolledCount || 0,
-            today_bookings: todayBookings || 0,
+            range_bookings: (bookingsRes.data || []) as any[],
+            range_count: (bookingsRes.data || []).length,
           };
         })
       );

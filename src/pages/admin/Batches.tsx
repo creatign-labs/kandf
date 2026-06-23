@@ -97,7 +97,7 @@ const Batches = () => {
               .eq("status", "active"),
             (supabase as any)
               .from("bookings")
-              .select("id, booking_date, student_id, profiles:student_id(first_name, last_name, email)")
+              .select("id, booking_date, student_id")
               .eq("batch_id", batch.id)
               .gte("booking_date", fromDate)
               .lte("booking_date", toDate)
@@ -105,11 +105,38 @@ const Batches = () => {
               .order("booking_date", { ascending: true }),
           ]);
 
+          if (bookingsRes.error) throw bookingsRes.error;
+
+          const bookingRows = (bookingsRes.data || []) as any[];
+          const studentIds = Array.from(new Set(bookingRows.map((b) => b.student_id).filter(Boolean)));
+          const profilesById = new Map<string, any>();
+
+          if (studentIds.length > 0) {
+            const { data: profiles, error: profilesError } = await supabase
+              .from("profiles")
+              .select("id, first_name, last_name, email")
+              .in("id", studentIds);
+
+            if (profilesError) throw profilesError;
+            (profiles || []).forEach((profile: any) => profilesById.set(profile.id, profile));
+          }
+
+          const rangeBookings = bookingRows.map((booking) => ({
+            ...booking,
+            profiles: booking.student_id ? profilesById.get(booking.student_id) || null : null,
+          }));
+
+          const bookingsByDate = rangeBookings.reduce((counts: Record<string, number>, booking: any) => {
+            counts[booking.booking_date] = (counts[booking.booking_date] || 0) + 1;
+            return counts;
+          }, {});
+          const peakBookedSeats = Math.max(0, ...Object.values(bookingsByDate) as number[]);
+
           return {
             ...batch,
             enrolled_count: enrolledCount || 0,
-            range_bookings: (bookingsRes.data || []) as any[],
-            range_count: (bookingsRes.data || []).length,
+            range_bookings: rangeBookings,
+            range_count: peakBookedSeats,
           };
         })
       );

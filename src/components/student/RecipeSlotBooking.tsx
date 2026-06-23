@@ -43,10 +43,13 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
   );
   const bookMutation = useBookRecipeSlot();
 
-  const tomorrow = addDays(new Date(), 1);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = addDays(today, 1);
 
-  // Set of date strings (yyyy-MM-dd) the student's course actually runs on
+  // Set of date strings (yyyy-MM-dd) the batch actually runs on
   const allowedDateSet = new Set((availableSlots || []).map(s => s.batch_date));
+
 
 
   // Filter slots for selected date

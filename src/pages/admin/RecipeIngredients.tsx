@@ -222,39 +222,101 @@ const RecipeIngredients = () => {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label>Recipe</Label>
-                    <Select
-                      value={newIngredient.recipe_id}
-                      onValueChange={(value) => setNewIngredient({ ...newIngredient, recipe_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select recipe" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {recipes?.map((recipe) => (
-                          <SelectItem key={recipe.id} value={recipe.id}>
-                            {recipe.title} ({recipe.courses?.title})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={recipePopoverOpen} onOpenChange={setRecipePopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between font-normal"
+                        >
+                          {newIngredient.recipe_id
+                            ? (() => {
+                                const r = recipes?.find((x) => x.id === newIngredient.recipe_id);
+                                return r ? `${r.title}${r.courses?.title ? ` (${r.courses.title})` : ""}` : "Select recipe";
+                              })()
+                            : "Select recipe"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command
+                          filter={(value, search) => {
+                            const r = recipes?.find((x) => x.id === value);
+                            if (!r) return 0;
+                            const text = `${r.title} ${r.courses?.title || ""}`.toLowerCase();
+                            return text.includes(search.toLowerCase()) ? 1 : 0;
+                          }}
+                        >
+                          <CommandInput placeholder="Search recipe..." />
+                          <CommandList>
+                            <CommandEmpty>No recipe found.</CommandEmpty>
+                            <CommandGroup>
+                              {recipes?.map((recipe) => (
+                                <CommandItem
+                                  key={recipe.id}
+                                  value={recipe.id}
+                                  onSelect={(v) => {
+                                    setNewIngredient({ ...newIngredient, recipe_id: v });
+                                    setRecipePopoverOpen(false);
+                                  }}
+                                >
+                                  {recipe.title} {recipe.courses?.title ? `(${recipe.courses.title})` : ""}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label>Ingredient</Label>
-                    <Select
-                      value={newIngredient.inventory_id}
-                      onValueChange={(value) => setNewIngredient({ ...newIngredient, inventory_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select ingredient" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {inventory?.map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {item.name} ({item.unit})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={ingredientPopoverOpen} onOpenChange={setIngredientPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between font-normal"
+                        >
+                          {newIngredient.inventory_id
+                            ? (() => {
+                                const i = inventory?.find((x) => x.id === newIngredient.inventory_id);
+                                return i ? `${i.name} (${i.unit})` : "Select ingredient";
+                              })()
+                            : "Select ingredient"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command
+                          filter={(value, search) => {
+                            const i = inventory?.find((x) => x.id === value);
+                            if (!i) return 0;
+                            const text = `${i.name} ${i.unit}`.toLowerCase();
+                            return text.includes(search.toLowerCase()) ? 1 : 0;
+                          }}
+                        >
+                          <CommandInput placeholder="Search ingredient..." />
+                          <CommandList>
+                            <CommandEmpty>No ingredient found.</CommandEmpty>
+                            <CommandGroup>
+                              {inventory?.map((item) => (
+                                <CommandItem
+                                  key={item.id}
+                                  value={item.id}
+                                  onSelect={(v) => {
+                                    setNewIngredient({ ...newIngredient, inventory_id: v });
+                                    setIngredientPopoverOpen(false);
+                                  }}
+                                >
+                                  {item.name} ({item.unit})
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label>Quantity per Student</Label>

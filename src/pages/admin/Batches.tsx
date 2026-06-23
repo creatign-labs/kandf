@@ -28,7 +28,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Users, Calendar, Loader2, CalendarCheck } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Calendar, Loader2, CalendarCheck, Eye } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -48,6 +49,9 @@ const Batches = () => {
   const [editingBatch, setEditingBatch] = useState<any>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [rangeFrom, setRangeFrom] = useState<string>(todayStr);
+  const [rangeTo, setRangeTo] = useState<string>(todayStr);
   const [formData, setFormData] = useState({
     batch_name: "",
     course_id: "",
@@ -68,9 +72,9 @@ const Batches = () => {
     }));
   };
 
-  // Fetch batches with course info and enrollment counts
+  // Fetch batches with course info, enrollment counts, and bookings in range
   const { data: batches, isLoading } = useQuery({
-    queryKey: ["admin-batches"],
+    queryKey: ["admin-batches", rangeFrom, rangeTo],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("batches")
@@ -79,11 +83,12 @@ const Batches = () => {
 
       if (error) throw error;
 
-      // Get enrollment counts AND today's confirmed booking count for each batch
-      const today = new Date().toISOString().split('T')[0];
+      const fromDate = rangeFrom || todayStr;
+      const toDate = rangeTo || rangeFrom || todayStr;
+
       const batchesWithCounts = await Promise.all(
         (data || []).map(async (batch) => {
-          const [{ count: enrolledCount }, { count: todayBookings }] = await Promise.all([
+          const [{ count: enrolledCount }, bookingsRes] = await Promise.all([
             supabase
               .from("enrollments")
               .select("*", { count: "exact", head: true })
@@ -91,16 +96,19 @@ const Batches = () => {
               .eq("status", "active"),
             (supabase as any)
               .from("bookings")
-              .select("*", { count: "exact", head: true })
+              .select("id, booking_date, student_id, profiles:student_id(first_name, last_name, email)")
               .eq("batch_id", batch.id)
-              .eq("booking_date", today)
-              .eq("status", "confirmed"),
+              .gte("booking_date", fromDate)
+              .lte("booking_date", toDate)
+              .eq("status", "confirmed")
+              .order("booking_date", { ascending: true }),
           ]);
 
           return {
             ...batch,
             enrolled_count: enrolledCount || 0,
-            today_bookings: todayBookings || 0,
+            range_bookings: (bookingsRes.data || []) as any[],
+            range_count: (bookingsRes.data || []).length,
           };
         })
       );
@@ -600,6 +608,40 @@ const Batches = () => {
             </Dialog>
           </div>
 
+          {/* Date Range Filter */}
+          <div className="flex flex-wrap items-end gap-3 mb-4 p-3 rounded-md border bg-muted/30">
+            <div className="space-y-1">
+              <Label htmlFor="range-from" className="text-xs">From</Label>
+              <Input
+                id="range-from"
+                type="date"
+                value={rangeFrom}
+                onChange={(e) => setRangeFrom(e.target.value)}
+                className="w-44"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="range-to" className="text-xs">To</Label>
+              <Input
+                id="range-to"
+                type="date"
+                value={rangeTo}
+                onChange={(e) => setRangeTo(e.target.value)}
+                className="w-44"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setRangeFrom(todayStr); setRangeTo(todayStr); }}
+            >
+              Today
+            </Button>
+            <p className="text-xs text-muted-foreground ml-2">
+              Booked column reflects confirmed bookings within this range.
+            </p>
+          </div>
+
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -607,7 +649,7 @@ const Batches = () => {
                   <TableHead>Batch Name</TableHead>
                   <TableHead>Course</TableHead>
                   <TableHead>Time</TableHead>
-                  <TableHead>Today (Booked/Seats)</TableHead>
+                  <TableHead>Booked / Seats</TableHead>
                   <TableHead>Start Date</TableHead>
                   <TableHead>End Date</TableHead>
                   <TableHead>Booking</TableHead>
@@ -625,16 +667,55 @@ const Batches = () => {
                       <div className="text-sm">{batch.time_slot}</div>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          (batch.today_bookings || 0) >= batch.total_seats
-                            ? "destructive"
-                            : "secondary"
-                        }
-                        title="Today's confirmed bookings vs total seats"
-                      >
-                        {batch.today_bookings || 0}/{batch.total_seats}
-                      </Badge>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-2 hover:opacity-80"
+                            title="Click to view booked students"
+                          >
+                            <Badge
+                              variant={
+                                (batch.range_count || 0) >= batch.total_seats
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                            >
+                              {batch.range_count || 0}/{batch.total_seats}
+                            </Badge>
+                            <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0" align="start">
+                          <div className="p-3 border-b">
+                            <div className="font-medium text-sm">Bookings ({rangeFrom} → {rangeTo})</div>
+                            <div className="text-xs text-muted-foreground">{batch.batch_name}</div>
+                          </div>
+                          <div className="max-h-72 overflow-y-auto">
+                            {(batch.range_bookings || []).length === 0 ? (
+                              <div className="p-4 text-sm text-muted-foreground text-center">
+                                No bookings in this range
+                              </div>
+                            ) : (
+                              <ul className="divide-y">
+                                {(batch.range_bookings || []).map((b: any) => {
+                                  const p = b.profiles;
+                                  const name = p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() : "Unknown";
+                                  return (
+                                    <li key={b.id} className="p-3 text-sm">
+                                      <div className="font-medium">{name || p?.email || "Unknown"}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {format(new Date(b.booking_date), "MMM d, yyyy")}
+                                        {p?.email ? ` • ${p.email}` : ""}
+                                      </div>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </TableCell>
                     <TableCell>
                       {batch.start_date

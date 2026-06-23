@@ -130,7 +130,7 @@ const Batches = () => {
             counts[booking.booking_date] = (counts[booking.booking_date] || 0) + 1;
             return counts;
           }, {});
-          const peakBookedSeats = Math.max(0, ...Object.values(bookingsByDate));
+          const peakBookedSeats = Math.max(0, ...Object.values(bookingsByDate) as number[]);
 
           return {
             ...batch,

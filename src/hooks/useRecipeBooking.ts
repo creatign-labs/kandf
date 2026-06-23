@@ -287,6 +287,10 @@ export function useBookRecipeSlot() {
       queryClient.invalidateQueries({ queryKey: ['available-recipe-slots'] });
       queryClient.invalidateQueries({ queryKey: ['my-recipe-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['my-booking-statuses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      queryClient.invalidateQueries({ queryKey: ['batch-roster'] });
     },
     onError: (error: Error) => {
       toast({

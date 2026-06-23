@@ -52,6 +52,8 @@ const RecipeIngredients = () => {
     notes: "",
   });
   const queryClient = useQueryClient();
+  const [recipePopoverOpen, setRecipePopoverOpen] = useState(false);
+  const [ingredientPopoverOpen, setIngredientPopoverOpen] = useState(false);
 
   // Fetch recipes
   const { data: recipes } = useQuery({

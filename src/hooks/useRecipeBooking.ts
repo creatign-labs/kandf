@@ -104,10 +104,28 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
       today.setHours(0, 0, 0, 0);
       const dateStrs: string[] = [];
 
-      for (let i = 1; i <= 30; i++) {
+      // Local YYYY-MM-DD (avoid toISOString timezone shift)
+      const fmt = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      // Enumerate from today through the furthest batch end_date (capped 120d)
+      let horizonDays = 30;
+      for (const b of (batches || [])) {
+        if ((b as any).end_date) {
+          const end = new Date((b as any).end_date + 'T00:00:00');
+          const diff = Math.ceil((end.getTime() - today.getTime()) / 86400000);
+          if (diff > horizonDays) horizonDays = Math.min(diff, 120);
+        }
+      }
+
+      for (let i = 0; i <= horizonDays; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = fmt(date);
         const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
         dateStrs.push(dateStr);
 

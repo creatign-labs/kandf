@@ -79,124 +79,100 @@ export function useAvailableRecipeSlots(courseId: string | null, recipeId: strin
     queryFn: async (): Promise<AvailableSlot[]> => {
       if (!courseId) return [];
 
-      // If recipeId is null, fetch generic slots (all batches for the course)
-      if (!recipeId) {
-        const [{ data, error }, { data: course, error: courseErr }] = await Promise.all([
-          supabase
-            .from('batches')
-            .select('*')
-            .eq('course_id', courseId)
-            .eq('booking_enabled', true),
-          supabase
-            .from('courses')
-            .select('days_of_week')
-            .eq('id', courseId)
-            .single(),
-        ]);
-
+      // Recipe-specific path (legacy) — unchanged
+      if (recipeId) {
+        const { data, error } = await supabase
+          .rpc('get_available_recipe_slots', {
+            p_course_id: courseId,
+            p_recipe_id: recipeId,
+          });
         if (error) throw error;
-        if (courseErr) throw courseErr;
+        return data || [];
+      }
 
-        const courseDays = ((course?.days_of_week as string[] | null) || [])
-          .map(d => String(d).toLowerCase().trim())
-          .filter(Boolean);
-        const dayMatchesCourse = (dayName: string) => {
-          if (courseDays.length === 0) return true;
-          const day = dayName.toLowerCase();
-          const short = day.slice(0, 3);
-          return courseDays.some(d => d === day || d.startsWith(short) || day.startsWith(d));
-        };
+      // Generic per-batch path: enumerate the next 30 days strictly using
+      // each batch's own start_date, end_date, days_of_week and total_seats.
+      const { data: batches, error } = await supabase
+        .from('batches')
+        .select('*')
+        .eq('course_id', courseId)
+        .eq('booking_enabled', true);
+      if (error) throw error;
 
-        // Build the next 30 days of candidate slots
-        const slots: AvailableSlot[] = [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const dateStrs: string[] = [];
-        for (let i = 1; i <= 30; i++) {
-          const date = new Date(today);
-          date.setDate(date.getDate() + i);
-          const dateStr = date.toISOString().split('T')[0];
-          const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const slots: AvailableSlot[] = [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dateStrs: string[] = [];
 
-          // Enforce course-level day-of-week schedule
-          if (!dayMatchesCourse(dayName)) continue;
+      for (let i = 1; i <= 30; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+        dateStrs.push(dateStr);
 
-          dateStrs.push(dateStr);
+        for (const batch of (batches || [])) {
+          if (batch.start_date && dateStr < batch.start_date) continue;
+          if (batch.end_date && dateStr > batch.end_date) continue;
 
-          for (const batch of (data || [])) {
-            if (batch.start_date && dateStr < batch.start_date) continue;
-            if (batch.end_date && dateStr > batch.end_date) continue;
-
-            // Strictly enforce batch days_of_week (array) if set
-            const batchDaysArr = (((batch as any).days_of_week as string[] | null) || [])
-              .map(d => String(d).toLowerCase().trim())
-              .filter(Boolean);
-            if (batchDaysArr.length > 0) {
-              const day = dayName.toLowerCase();
-              const short = day.slice(0, 3);
-              const ok = batchDaysArr.some(d => d === day || d.startsWith(short) || day.startsWith(d));
-              if (!ok) continue;
-            } else if (!isDayInBatchDays(dayName, batch.days)) {
-              continue;
-            }
-
-            slots.push({
-              batch_date: dateStr,
-              time_slot: batch.time_slot,
-              recipe_batch_id: null,
-              capacity: batch.total_seats,
-              current_count: 0,
-              available_spots: batch.total_seats,
-              batch_id: batch.id,
-              batch_name: batch.batch_name,
-            });
+          const batchDaysArr = (((batch as any).days_of_week as string[] | null) || [])
+            .map(d => String(d).toLowerCase().trim())
+            .filter(Boolean);
+          if (batchDaysArr.length > 0) {
+            const day = dayName.toLowerCase();
+            const short = day.slice(0, 3);
+            const ok = batchDaysArr.some(d => d === day || d.startsWith(short) || day.startsWith(d));
+            if (!ok) continue;
+          } else if (!isDayInBatchDays(dayName, batch.days)) {
+            continue;
           }
+
+          slots.push({
+            batch_date: dateStr,
+            time_slot: batch.time_slot,
+            recipe_batch_id: null,
+            capacity: batch.total_seats,
+            current_count: 0,
+            available_spots: batch.total_seats,
+            batch_id: batch.id,
+            batch_name: batch.batch_name,
+          });
         }
+      }
 
-
-        // Fetch confirmed bookings for this course in the date window so we can
-        // compute real available_spots per (date, time_slot, batch). Cancelled
-        // bookings are excluded, so they automatically free up seats.
-        if (dateStrs.length > 0) {
+      // Count confirmed bookings strictly per (batch_id, date)
+      if (dateStrs.length > 0 && slots.length > 0) {
+        const batchIds = Array.from(new Set(slots.map(s => s.batch_id).filter(Boolean) as string[]));
+        if (batchIds.length > 0) {
           const { data: confirmed, error: bErr } = await supabase
             .from('bookings')
-            .select('booking_date, time_slot')
-            .eq('course_id', courseId)
-            .eq('status', 'confirmed')
-            .in('booking_date', dateStrs);
+            .select('booking_date, batch_id')
+            .in('batch_id', batchIds)
+            .in('booking_date', dateStrs)
+            .eq('status', 'confirmed');
           if (bErr) throw bErr;
 
-          // Counts per (date, time_slot) — bookings don't carry batch_id, so
-          // seat usage is shared across batches with the same time slot.
           const counts = new Map<string, number>();
-          for (const b of confirmed || []) {
-            const k = `${b.booking_date}|${b.time_slot}`;
+          for (const b of (confirmed || []) as any[]) {
+            if (!b.batch_id) continue;
+            const k = `${b.batch_id}|${b.booking_date}`;
             counts.set(k, (counts.get(k) || 0) + 1);
           }
           for (const s of slots) {
-            const key = `${s.batch_date}|${s.time_slot}`;
+            const key = `${s.batch_id}|${s.batch_date}`;
             const used = counts.get(key) || 0;
             s.current_count = used;
             s.available_spots = Math.max(0, s.capacity - used);
           }
         }
-
-        // Return one entry per batch so students can pick any matching batch.
-        return slots;
       }
 
-      const { data, error } = await supabase
-        .rpc('get_available_recipe_slots', {
-          p_course_id: courseId,
-          p_recipe_id: recipeId
-        });
-
-      if (error) throw error;
-      return data || [];
+      return slots;
     },
     enabled: !!courseId
   });
 }
+
 
 export function useBookRecipeSlot() {
   const queryClient = useQueryClient();
@@ -206,15 +182,31 @@ export function useBookRecipeSlot() {
       courseId,
       recipeId,
       batchDate,
-      timeSlot
+      timeSlot,
+      batchId,
     }: {
       courseId: string;
       recipeId: string | null;
       batchDate: string;
       timeSlot: string;
+      batchId?: string | null;
     }): Promise<BookingResult> => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
+
+      // Prefer strict per-batch RPC when a batch_id was selected
+      if (batchId) {
+        const { data, error } = await (supabase as any)
+          .rpc('book_batch_slot', {
+            p_student_id: user.id,
+            p_batch_id: batchId,
+            p_batch_date: batchDate,
+          });
+        if (error) throw error;
+        const row = data?.[0];
+        if (!row?.success) throw new Error(row?.message || 'Booking failed');
+        return { success: true, message: row.message, recipe_batch_id: null, booking_id: row.booking_id };
+      }
 
       const { data, error } = await supabase
         .rpc('book_recipe_slot', {
@@ -226,12 +218,12 @@ export function useBookRecipeSlot() {
         });
 
       if (error) throw error;
-      
+
       const result = data?.[0];
       if (!result?.success) {
         throw new Error(result?.message || 'Booking failed');
       }
-      
+
       return result;
     },
     onSuccess: async (result, variables) => {

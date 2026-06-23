@@ -348,6 +348,7 @@ export type Database = {
         Row: {
           assigned_chef_id: string | null
           assigned_chef_ids: string[]
+          batch_id: string | null
           booking_date: string
           course_id: string
           created_at: string
@@ -364,6 +365,7 @@ export type Database = {
         Insert: {
           assigned_chef_id?: string | null
           assigned_chef_ids?: string[]
+          batch_id?: string | null
           booking_date: string
           course_id: string
           created_at?: string
@@ -380,6 +382,7 @@ export type Database = {
         Update: {
           assigned_chef_id?: string | null
           assigned_chef_ids?: string[]
+          batch_id?: string | null
           booking_date?: string
           course_id?: string
           created_at?: string
@@ -399,6 +402,13 @@ export type Database = {
             columns: ["assigned_chef_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
             referencedColumns: ["id"]
           },
           {
@@ -2822,6 +2832,14 @@ export type Database = {
       approve_student_access: {
         Args: { p_student_id: string }
         Returns: undefined
+      }
+      book_batch_slot: {
+        Args: { p_batch_date: string; p_batch_id: string; p_student_id: string }
+        Returns: {
+          booking_id: string
+          message: string
+          success: boolean
+        }[]
       }
       book_recipe_slot: {
         Args: {

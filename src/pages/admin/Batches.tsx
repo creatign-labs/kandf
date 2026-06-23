@@ -79,16 +79,29 @@ const Batches = () => {
 
       if (error) throw error;
 
-      // Get enrollment counts for each batch
+      // Get enrollment counts AND today's confirmed booking count for each batch
+      const today = new Date().toISOString().split('T')[0];
       const batchesWithCounts = await Promise.all(
         (data || []).map(async (batch) => {
-          const { count } = await supabase
-            .from("enrollments")
-            .select("*", { count: "exact", head: true })
-            .eq("batch_id", batch.id)
-            .eq("status", "active");
+          const [{ count: enrolledCount }, { count: todayBookings }] = await Promise.all([
+            supabase
+              .from("enrollments")
+              .select("*", { count: "exact", head: true })
+              .eq("batch_id", batch.id)
+              .eq("status", "active"),
+            (supabase as any)
+              .from("bookings")
+              .select("*", { count: "exact", head: true })
+              .eq("batch_id", batch.id)
+              .eq("booking_date", today)
+              .eq("status", "confirmed"),
+          ]);
 
-          return { ...batch, enrolled_count: count || 0 };
+          return {
+            ...batch,
+            enrolled_count: enrolledCount || 0,
+            today_bookings: todayBookings || 0,
+          };
         })
       );
 
@@ -486,6 +499,8 @@ const Batches = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -517,9 +532,6 @@ const Batches = () => {
                     </div>
                   </div>
 
-
-                    </div>
-                  </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -595,7 +607,7 @@ const Batches = () => {
                   <TableHead>Batch Name</TableHead>
                   <TableHead>Course</TableHead>
                   <TableHead>Time</TableHead>
-                  <TableHead>Capacity</TableHead>
+                  <TableHead>Today (Booked/Seats)</TableHead>
                   <TableHead>Start Date</TableHead>
                   <TableHead>End Date</TableHead>
                   <TableHead>Booking</TableHead>
@@ -615,10 +627,13 @@ const Batches = () => {
                     <TableCell>
                       <Badge
                         variant={
-                          batch.available_seats === 0 ? "destructive" : "secondary"
+                          (batch.today_bookings || 0) >= batch.total_seats
+                            ? "destructive"
+                            : "secondary"
                         }
+                        title="Today's confirmed bookings vs total seats"
                       >
-                        {batch.enrolled_count}/{batch.total_seats}
+                        {batch.today_bookings || 0}/{batch.total_seats}
                       </Badge>
                     </TableCell>
                     <TableCell>

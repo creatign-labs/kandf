@@ -627,10 +627,13 @@ const Batches = () => {
                     <TableCell>
                       <Badge
                         variant={
-                          batch.available_seats === 0 ? "destructive" : "secondary"
+                          (batch.today_bookings || 0) >= batch.total_seats
+                            ? "destructive"
+                            : "secondary"
                         }
+                        title="Today's confirmed bookings vs total seats"
                       >
-                        {batch.enrolled_count}/{batch.total_seats}
+                        {batch.today_bookings || 0}/{batch.total_seats}
                       </Badge>
                     </TableCell>
                     <TableCell>

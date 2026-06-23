@@ -50,8 +50,9 @@ const Batches = () => {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const todayStr = new Date().toISOString().split("T")[0];
+  const in30Str = new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
   const [rangeFrom, setRangeFrom] = useState<string>(todayStr);
-  const [rangeTo, setRangeTo] = useState<string>(todayStr);
+  const [rangeTo, setRangeTo] = useState<string>(in30Str);
   const [formData, setFormData] = useState({
     batch_name: "",
     course_id: "",

@@ -43,10 +43,13 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
   );
   const bookMutation = useBookRecipeSlot();
 
-  const tomorrow = addDays(new Date(), 1);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = addDays(today, 1);
 
-  // Set of date strings (yyyy-MM-dd) the student's course actually runs on
+  // Set of date strings (yyyy-MM-dd) the batch actually runs on
   const allowedDateSet = new Set((availableSlots || []).map(s => s.batch_date));
+
 
 
   // Filter slots for selected date
@@ -128,9 +131,11 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
                 setSelectedSlot(null);
               }}
               disabled={(date) => {
+                // 1-day-in-advance booking rule (RPC also enforces this)
                 if (date < tomorrow) return true;
-                // Only allow dates within the course's running schedule
-                if (allowedDateSet.size === 0) return false;
+                // Only enable dates that fall inside the batch window
+                // (start_date → end_date AND matching days_of_week)
+                if (allowedDateSet.size === 0) return true;
                 const ds = format(date, 'yyyy-MM-dd');
                 return !allowedDateSet.has(ds);
               }}

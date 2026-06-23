@@ -143,8 +143,10 @@ export function MyRecipeBookings() {
   }) || [];
 
   const canCancel = (batchDate: string) => {
+    // Allowed any time before 11:59 PM the day before the session.
+    // i.e. session date must be strictly after today.
     const date = parseISO(batchDate);
-    return isAfter(date, tomorrow);
+    return isAfter(date, today);
   };
 
   if (isLoading) {

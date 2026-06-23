@@ -61,7 +61,8 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
       courseId: effectiveCourseId,
       recipeId: null,
       batchDate: format(selectedDate, 'yyyy-MM-dd'),
-      timeSlot: selectedSlot.timeSlot
+      timeSlot: selectedSlot.timeSlot,
+      batchId: selectedSlot.batchId,
     }, {
       onSuccess: () => {
         onBooked?.();

@@ -182,15 +182,31 @@ export function useBookRecipeSlot() {
       courseId,
       recipeId,
       batchDate,
-      timeSlot
+      timeSlot,
+      batchId,
     }: {
       courseId: string;
       recipeId: string | null;
       batchDate: string;
       timeSlot: string;
+      batchId?: string | null;
     }): Promise<BookingResult> => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
+
+      // Prefer strict per-batch RPC when a batch_id was selected
+      if (batchId) {
+        const { data, error } = await (supabase as any)
+          .rpc('book_batch_slot', {
+            p_student_id: user.id,
+            p_batch_id: batchId,
+            p_batch_date: batchDate,
+          });
+        if (error) throw error;
+        const row = data?.[0];
+        if (!row?.success) throw new Error(row?.message || 'Booking failed');
+        return { success: true, message: row.message, recipe_batch_id: null, booking_id: row.booking_id };
+      }
 
       const { data, error } = await supabase
         .rpc('book_recipe_slot', {
@@ -202,12 +218,12 @@ export function useBookRecipeSlot() {
         });
 
       if (error) throw error;
-      
+
       const result = data?.[0];
       if (!result?.success) {
         throw new Error(result?.message || 'Booking failed');
       }
-      
+
       return result;
     },
     onSuccess: async (result, variables) => {

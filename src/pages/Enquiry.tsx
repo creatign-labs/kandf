@@ -14,7 +14,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Mail, Phone, MapPin, Clock, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const Enquiry = () => {
@@ -23,33 +23,23 @@ const Enquiry = () => {
     name: "",
     email: "",
     phone: "",
-    courseId: "",
+    level: "",
     message: "",
   });
 
-  const { data: courses } = useQuery({
-    queryKey: ["courses-public"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("courses")
-        .select("id, title")
-        .order("title");
 
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const submitEnquiryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      const levelLine = data.level ? `Interested Level: ${data.level}\n\n` : "";
       const { error } = await supabase
         .from("leads")
         .insert({
           name: data.name,
           email: data.email,
           phone: data.phone || null,
-          course_id: data.courseId && data.courseId !== "not-sure" ? data.courseId : null,
-          message: data.message,
+          course_id: null,
+          message: `${levelLine}${data.message}`,
           stage: "new",
           source: "website",
         });
@@ -66,7 +56,8 @@ const Enquiry = () => {
         title: "Enquiry Submitted!",
         description: "We'll get back to you within 24 hours. A confirmation has been sent to your email.",
       });
-      setFormData({ name: "", email: "", phone: "", courseId: "", message: "" });
+      setFormData({ name: "", email: "", phone: "", level: "", message: "" });
+
     },
     onError: (error: Error) => {
       toast({
@@ -136,24 +127,22 @@ const Enquiry = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="course">Interested Course</Label>
-                      <Select 
-                        value={formData.courseId} 
-                        onValueChange={(value) => setFormData({ ...formData, courseId: value })}
+                      <Label htmlFor="level">Course Level</Label>
+                      <Select
+                        value={formData.level}
+                        onValueChange={(value) => setFormData({ ...formData, level: value })}
                       >
-                        <SelectTrigger id="course">
-                          <SelectValue placeholder="Select a course" />
+                        <SelectTrigger id="level">
+                          <SelectValue placeholder="Select a level" />
                         </SelectTrigger>
                         <SelectContent>
-                          {courses?.map(course => (
-                            <SelectItem key={course.id} value={course.id}>
-                              {course.title}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="not-sure">Not Sure Yet</SelectItem>
+                          <SelectItem value="Beginner">Beginner</SelectItem>
+                          <SelectItem value="Intermediate">Intermediate</SelectItem>
+                          <SelectItem value="Advanced">Advanced</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+
                   </div>
 
                   <div>

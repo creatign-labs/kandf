@@ -196,9 +196,10 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
       <div className="container flex h-14 md:h-16 items-center justify-between px-4 md:px-6">
         {/* Logo */}
         <Link to={getLogoPath()} className="flex items-center gap-2">
-          <ChefHat className="h-6 w-6 md:h-8 md:w-8 text-primary" />
-          <span className="text-lg md:text-xl font-bold tracking-tight">Knead & Frost</span>
+          <img src={knfLogo.url} alt="Knead & Frost — International School of Baking" className="h-9 md:h-11 w-auto" />
+          <span className="sr-only">Knead & Frost</span>
         </Link>
+
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-6">

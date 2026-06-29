@@ -23,9 +23,11 @@ const Enquiry = () => {
     name: "",
     email: "",
     phone: "",
-    courseId: "",
+    level: "",
     message: "",
   });
+
+
 
   const { data: courses } = useQuery({
     queryKey: ["courses-public"],

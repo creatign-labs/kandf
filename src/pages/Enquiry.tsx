@@ -14,7 +14,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Mail, Phone, MapPin, Clock, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const Enquiry = () => {

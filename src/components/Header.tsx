@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
 import { NotificationBell } from "@/components/NotificationBell";
+import knfLogo from "@/assets/knf-logo.png.asset.json";
 
 interface HeaderProps {
   role?: "public" | "student" | "admin" | "chef" | "super_admin" | "vendor";

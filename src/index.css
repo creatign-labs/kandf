@@ -8,38 +8,38 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Warm, premium earth tones for baking academy */
-    --background: 32 40% 98%;
-    --foreground: 25 35% 15%;
+    /* Knead & Frost brand: warm red on cream */
+    --background: 30 30% 98%;
+    --foreground: 350 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 25 35% 15%;
+    --card-foreground: 350 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 25 35% 15%;
+    --popover-foreground: 350 25% 15%;
 
-    /* Warm amber/honey primary */
-    --primary: 32 85% 48%;
+    /* Brand red from logo */
+    --primary: 354 75% 48%;
     --primary-foreground: 0 0% 100%;
 
     /* Soft cream secondary */
-    --secondary: 35 30% 94%;
-    --secondary-foreground: 25 35% 15%;
+    --secondary: 354 40% 96%;
+    --secondary-foreground: 350 25% 15%;
 
-    /* Muted beige tones */
-    --muted: 35 25% 93%;
-    --muted-foreground: 25 15% 45%;
+    /* Muted */
+    --muted: 30 20% 94%;
+    --muted-foreground: 350 10% 42%;
 
-    /* Warm accent - terracotta/peach */
-    --accent: 18 70% 65%;
-    --accent-foreground: 25 35% 15%;
+    /* Accent - softer red tint */
+    --accent: 354 70% 92%;
+    --accent-foreground: 354 75% 35%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 75% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 88%;
-    --input: 30 20% 88%;
-    --ring: 32 85% 48%;
+    --border: 350 15% 88%;
+    --input: 350 15% 88%;
+    --ring: 354 75% 48%;
 
     --radius: 0.75rem;
     

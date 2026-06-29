@@ -251,8 +251,8 @@ const Signup = () => {
       <div className="container px-6 py-8 md:py-16">
         <div className="mx-auto max-w-lg">
           <div className="text-center mb-6">
-            <div className="inline-flex p-3 rounded-2xl bg-primary/10 mb-4">
-              <ChefHat className="h-8 w-8 text-primary" />
+            <div className="inline-flex mb-4">
+              <img src={knfLogo.url} alt="Knead & Frost" className="h-14 w-auto" />
             </div>
             <h1 className="text-2xl md:text-3xl font-bold mb-2">
               {step === 1 ? "Create Account" : "Tell Us About You"}

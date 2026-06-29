@@ -29,29 +29,17 @@ const Enquiry = () => {
 
 
 
-  const { data: courses } = useQuery({
-    queryKey: ["courses-public"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("courses")
-        .select("id, title")
-        .order("title");
-
-      if (error) throw error;
-      return data;
-    },
-  });
-
   const submitEnquiryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      const levelLine = data.level ? `Interested Level: ${data.level}\n\n` : "";
       const { error } = await supabase
         .from("leads")
         .insert({
           name: data.name,
           email: data.email,
           phone: data.phone || null,
-          course_id: data.courseId && data.courseId !== "not-sure" ? data.courseId : null,
-          message: data.message,
+          course_id: null,
+          message: `${levelLine}${data.message}`,
           stage: "new",
           source: "website",
         });
@@ -68,7 +56,8 @@ const Enquiry = () => {
         title: "Enquiry Submitted!",
         description: "We'll get back to you within 24 hours. A confirmation has been sent to your email.",
       });
-      setFormData({ name: "", email: "", phone: "", courseId: "", message: "" });
+      setFormData({ name: "", email: "", phone: "", level: "", message: "" });
+
     },
     onError: (error: Error) => {
       toast({

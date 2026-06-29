@@ -127,24 +127,22 @@ const Enquiry = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="course">Interested Course</Label>
-                      <Select 
-                        value={formData.courseId} 
-                        onValueChange={(value) => setFormData({ ...formData, courseId: value })}
+                      <Label htmlFor="level">Course Level</Label>
+                      <Select
+                        value={formData.level}
+                        onValueChange={(value) => setFormData({ ...formData, level: value })}
                       >
-                        <SelectTrigger id="course">
-                          <SelectValue placeholder="Select a course" />
+                        <SelectTrigger id="level">
+                          <SelectValue placeholder="Select a level" />
                         </SelectTrigger>
                         <SelectContent>
-                          {courses?.map(course => (
-                            <SelectItem key={course.id} value={course.id}>
-                              {course.title}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="not-sure">Not Sure Yet</SelectItem>
+                          <SelectItem value="Beginner">Beginner</SelectItem>
+                          <SelectItem value="Intermediate">Intermediate</SelectItem>
+                          <SelectItem value="Advanced">Advanced</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+
                   </div>
 
                   <div>

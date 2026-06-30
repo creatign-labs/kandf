@@ -155,12 +155,27 @@ const VendorApprovals = () => {
   // Update approval status mutation
   const updateMutation = useMutation({
     mutationFn: async ({ approvalId, status }: { approvalId: string; status: string }) => {
+      const approval = vendorApprovals?.find((item) => item.id === approvalId);
+
       const { error } = await supabase
         .from("vendor_access_approvals")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", approvalId);
 
       if (error) throw error;
+
+      if (approval?.user_id) {
+        const { error: profileError } = await supabase
+          .from("vendor_profiles")
+          .update({
+            approval_status: status,
+            is_active: status === "approved",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", approval.user_id);
+
+        if (profileError) throw profileError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-approvals"] });
@@ -460,15 +475,15 @@ const VendorApprovals = () => {
                 <label className="text-sm font-medium">Company Name</label>
                 <p className="text-lg">{selectedVendor?.vendor_profiles?.company_name}</p>
               </div>
-              {selectedVendor?.vendor_code && (
+              {(selectedVendor?.vendor_code || selectedVendor?.vendor_profiles?.vendor_code) && (
                 <div>
                   <label className="text-sm font-medium">Vendor ID</label>
                   <div className="flex items-center gap-2">
-                    <Input value={selectedVendor.vendor_code} readOnly />
+                  <Input value={selectedVendor.vendor_code || selectedVendor?.vendor_profiles?.vendor_code} readOnly />
                     <Button
                       size="icon"
                       variant="outline"
-                      onClick={() => copyToClipboard(selectedVendor.vendor_code)}
+                      onClick={() => copyToClipboard(selectedVendor.vendor_code || selectedVendor?.vendor_profiles?.vendor_code)}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -546,7 +561,7 @@ const VendorApprovals = () => {
                       const html = vendorCredentialsEmail({
                         vendorName: `${selectedVendor.profile?.first_name || ""} ${selectedVendor.profile?.last_name || ""}`.trim(),
                         companyName: selectedVendor.vendor_profiles?.company_name || "N/A",
-                        vendorCode: selectedVendor.vendor_code || "N/A",
+                        vendorCode: selectedVendor.vendor_code || selectedVendor.vendor_profiles?.vendor_code || "N/A",
                         email: vendorEmail,
                         password: selectedVendor.generated_password || "N/A",
                         loginUrl: `${window.location.origin}/login`,

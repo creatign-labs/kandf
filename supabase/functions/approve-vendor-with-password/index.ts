@@ -95,6 +95,50 @@ Deno.serve(async (req) => {
     // Generate vendor ID
     const { data: vendorCode } = await supabaseAdmin.rpc("generate_vendor_id");
 
+    // Vendor signup accounts are created through the normal auth trigger, which
+    // initially assigns the default student role. Approval is the authoritative
+    // point where the account becomes a vendor, so fix roles here atomically.
+    const { error: vendorRoleError } = await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: vendor_user_id, role: "vendor" }, { onConflict: "user_id,role" });
+
+    if (vendorRoleError) {
+      console.error("Failed to assign vendor role:", vendorRoleError);
+      return new Response(JSON.stringify({ error: "Failed to assign vendor role: " + vendorRoleError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { count: enrollmentCount, error: enrollmentCheckError } = await supabaseAdmin
+      .from("enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("student_id", vendor_user_id);
+
+    if (enrollmentCheckError) {
+      console.error("Failed to check student enrollments:", enrollmentCheckError);
+      return new Response(JSON.stringify({ error: "Failed to verify vendor roles: " + enrollmentCheckError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if ((enrollmentCount || 0) === 0) {
+      const { error: removeStudentRoleError } = await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", vendor_user_id)
+        .eq("role", "student");
+
+      if (removeStudentRoleError) {
+        console.error("Failed to remove default student role:", removeStudentRoleError);
+        return new Response(JSON.stringify({ error: "Failed to clean vendor roles: " + removeStudentRoleError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Update vendor profile
     const { error: profileError } = await supabaseAdmin
       .from("vendor_profiles")
@@ -139,7 +183,6 @@ Deno.serve(async (req) => {
       type: "success",
     });
 
-    console.log(`Vendor ${vendor_user_id} approved with new password and code ${vendorCode}`);
     console.log(`Vendor ${vendor_user_id} approved with new password and code ${vendorCode}`);
 
     return new Response(JSON.stringify({

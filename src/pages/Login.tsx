@@ -74,8 +74,15 @@ const Login = () => {
           .eq('id', data.user.id)
           .single();
 
+        const { data: vendorProfile } = await supabase
+          .from('vendor_profiles')
+          .select('approval_status, is_active')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
         // For students, check login eligibility (3 no-shows or expired course)
-        const isStudent = roles?.some(r => r.role === 'student') && !roles?.some(r => ['admin', 'super_admin', 'chef'].includes(r.role));
+        const hasVendorProfile = !!vendorProfile;
+        const isStudent = roles?.some(r => r.role === 'student') && !roles?.some(r => ['admin', 'super_admin', 'chef', 'vendor'].includes(r.role)) && !hasVendorProfile;
         
         if (isStudent) {
           // Call the database function to check eligibility
@@ -101,22 +108,15 @@ const Login = () => {
           description: "You have successfully logged in.",
         });
 
-        // Redirect based on role priority: super_admin > admin > chef > vendor > student
+        // Redirect based on role priority: super_admin > admin > chef > approved vendor > student
         if (roles?.some(r => r.role === 'super_admin')) {
           navigate('/admin');
         } else if (roles?.some(r => r.role === 'admin')) {
           navigate('/admin');
         } else if (roles?.some(r => r.role === 'chef')) {
           navigate('/chef');
-        } else if (roles?.some(r => r.role === 'vendor')) {
-          // Check vendor approval status
-          const { data: vendorProfile } = await supabase
-            .from('vendor_profiles')
-            .select('approval_status')
-            .eq('user_id', data.user.id)
-            .single();
-          
-          if (vendorProfile?.approval_status !== 'approved') {
+        } else if (roles?.some(r => r.role === 'vendor') || hasVendorProfile) {
+          if (vendorProfile?.approval_status !== 'approved' || vendorProfile?.is_active !== true) {
             navigate('/vendor/awaiting-approval');
           } else {
             navigate('/vendor');

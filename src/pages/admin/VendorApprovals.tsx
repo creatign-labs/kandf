@@ -155,12 +155,27 @@ const VendorApprovals = () => {
   // Update approval status mutation
   const updateMutation = useMutation({
     mutationFn: async ({ approvalId, status }: { approvalId: string; status: string }) => {
+      const approval = vendorApprovals?.find((item) => item.id === approvalId);
+
       const { error } = await supabase
         .from("vendor_access_approvals")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", approvalId);
 
       if (error) throw error;
+
+      if (approval?.user_id) {
+        const { error: profileError } = await supabase
+          .from("vendor_profiles")
+          .update({
+            approval_status: status,
+            is_active: status === "approved",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", approval.user_id);
+
+        if (profileError) throw profileError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendor-approvals"] });
@@ -179,7 +194,8 @@ const VendorApprovals = () => {
     const matchesSearch = 
       approval.vendor_profiles?.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       approval.profile?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      approval.profile?.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      approval.profile?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      approval.vendor_profiles?.gst_number?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || approval.status === statusFilter;
     
@@ -198,6 +214,14 @@ const VendorApprovals = () => {
 
   const handleSaveEdit = () => {
     if (editingApproval && editStatus !== editingApproval.status) {
+      if (editStatus === "approved") {
+        toast({
+          title: "Use Approve & Activate",
+          description: "Vendor approval must generate credentials and assign portal access.",
+          variant: "destructive",
+        });
+        return;
+      }
       updateMutation.mutate({ approvalId: editingApproval.id, status: editStatus });
     } else {
       setEditingApproval(null);
@@ -325,7 +349,8 @@ const VendorApprovals = () => {
                 <TableRow>
                   <TableHead>Company</TableHead>
                   <TableHead>Contact Person</TableHead>
-                  <TableHead>Email</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>GST Number</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -347,6 +372,9 @@ const VendorApprovals = () => {
                     </TableCell>
                     <TableCell>
                       {approval.vendor_profiles?.contact_email || approval.profile?.email}
+                    </TableCell>
+                    <TableCell>
+                      {approval.vendor_profiles?.gst_number || "N/A"}
                     </TableCell>
                     <TableCell>
                       <Badge 
@@ -434,7 +462,7 @@ const VendorApprovals = () => {
                 ))}
                 {(!filteredApprovals || filteredApprovals.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No vendor approvals found
                     </TableCell>
                   </TableRow>
@@ -455,15 +483,15 @@ const VendorApprovals = () => {
                 <label className="text-sm font-medium">Company Name</label>
                 <p className="text-lg">{selectedVendor?.vendor_profiles?.company_name}</p>
               </div>
-              {selectedVendor?.vendor_code && (
+              {(selectedVendor?.vendor_code || selectedVendor?.vendor_profiles?.vendor_code) && (
                 <div>
                   <label className="text-sm font-medium">Vendor ID</label>
                   <div className="flex items-center gap-2">
-                    <Input value={selectedVendor.vendor_code} readOnly />
+                  <Input value={selectedVendor.vendor_code || selectedVendor?.vendor_profiles?.vendor_code} readOnly />
                     <Button
                       size="icon"
                       variant="outline"
-                      onClick={() => copyToClipboard(selectedVendor.vendor_code)}
+                      onClick={() => copyToClipboard(selectedVendor.vendor_code || selectedVendor?.vendor_profiles?.vendor_code)}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -481,6 +509,21 @@ const VendorApprovals = () => {
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">GST Number</label>
+                <div className="flex items-center gap-2">
+                  <Input value={selectedVendor?.vendor_profiles?.gst_number || "N/A"} readOnly />
+                  {selectedVendor?.vendor_profiles?.gst_number && (
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => copyToClipboard(selectedVendor.vendor_profiles.gst_number)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
               {selectedVendor?.generated_password && (
@@ -526,7 +569,7 @@ const VendorApprovals = () => {
                       const html = vendorCredentialsEmail({
                         vendorName: `${selectedVendor.profile?.first_name || ""} ${selectedVendor.profile?.last_name || ""}`.trim(),
                         companyName: selectedVendor.vendor_profiles?.company_name || "N/A",
-                        vendorCode: selectedVendor.vendor_code || "N/A",
+                        vendorCode: selectedVendor.vendor_code || selectedVendor.vendor_profiles?.vendor_code || "N/A",
                         email: vendorEmail,
                         password: selectedVendor.generated_password || "N/A",
                         loginUrl: `${window.location.origin}/login`,
@@ -569,6 +612,10 @@ const VendorApprovals = () => {
                 <p className="text-muted-foreground">{editingApproval?.vendor_profiles?.contact_email || "N/A"}</p>
               </div>
               <div>
+                <Label className="text-sm font-medium">GST Number</Label>
+                <p className="text-muted-foreground">{editingApproval?.vendor_profiles?.gst_number || "N/A"}</p>
+              </div>
+              <div>
                 <Label className="text-sm font-medium">Status</Label>
                 <Select value={editStatus} onValueChange={setEditStatus}>
                   <SelectTrigger className="mt-1">
@@ -576,7 +623,7 @@ const VendorApprovals = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="approved" disabled>Approved</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                   </SelectContent>
                 </Select>

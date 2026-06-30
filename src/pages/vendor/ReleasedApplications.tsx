@@ -37,13 +37,42 @@ const ReleasedApplications = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const queryClient = useQueryClient();
 
-  const { data: applications, isLoading } = useQuery({
-    queryKey: ["all-released-applications"],
+  const { data: vendorProfile } = useQuery({
+    queryKey: ["vendor-profile"],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from("vendor_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: applications, isLoading } = useQuery({
+    queryKey: ["vendor-released-applications", vendorProfile?.id],
+    enabled: !!vendorProfile?.id,
+    queryFn: async () => {
+      const { data: vendorJobs, error: jobsError } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("vendor_id", vendorProfile!.id);
+
+      if (jobsError) throw jobsError;
+
+      const vendorJobIds = vendorJobs?.map((job) => job.id) || [];
+      if (vendorJobIds.length === 0) return [];
+
       const { data: apps, error } = await supabase
         .from("job_applications")
         .select("id, job_id, status, vendor_status, created_at, released_at, cover_letter, student_id, resume_url")
         .eq("released_to_vendor", true)
+        .in("job_id", vendorJobIds)
         .order("released_at", { ascending: false });
       
       if (error) throw error;
@@ -78,7 +107,7 @@ const ReleasedApplications = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-released-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor-released-applications"] });
       toast({ title: "Status updated" });
     },
     onError: (error: Error) => {

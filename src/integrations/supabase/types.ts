@@ -2737,6 +2737,7 @@ export type Database = {
           contact_email: string | null
           contact_phone: string | null
           created_at: string
+          gst_number: string | null
           id: string
           is_active: boolean
           logo_url: string | null
@@ -2752,6 +2753,7 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          gst_number?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
@@ -2767,6 +2769,7 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          gst_number?: string | null
           id?: string
           is_active?: boolean
           logo_url?: string | null
@@ -2952,6 +2955,7 @@ export type Database = {
           contact_email: string | null
           contact_phone: string | null
           created_at: string
+          gst_number: string | null
           id: string
           is_active: boolean
           logo_url: string | null

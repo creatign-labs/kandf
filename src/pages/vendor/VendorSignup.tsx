@@ -11,10 +11,14 @@ import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
 
 const vendorSignupSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  companyName: z.string().min(2, "Company name must be at least 2 characters"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  email: z.string().email("Invalid email address"),
+  fullName: z.string().trim().min(2, "Full name must be at least 2 characters"),
+  companyName: z.string().trim().min(2, "Company name must be at least 2 characters"),
+  phone: z.string().trim().min(10, "Phone number must be at least 10 digits"),
+  email: z.string().trim().email("Invalid email address"),
+  gstNumber: z.string().trim().toUpperCase().regex(
+    /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/,
+    "Enter a valid 15-character GST number"
+  ),
 });
 
 const VendorSignup = () => {
@@ -27,10 +31,12 @@ const VendorSignup = () => {
     companyName: "",
     phone: "",
     email: "",
+    gstNumber: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
+    const value = e.target.id === "gstNumber" ? e.target.value.toUpperCase() : e.target.value;
+    setFormData({ ...formData, [e.target.id]: value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,15 +96,6 @@ const VendorSignup = () => {
       }
 
       if (authData.user) {
-        // Assign vendor role
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({ user_id: authData.user.id, role: "vendor" });
-
-        if (roleError) {
-          console.error("Failed to assign vendor role:", roleError);
-        }
-
         // Create vendor profile with pending approval status
         const { data: vendorProfile, error: profileError } = await supabase
           .from("vendor_profiles")
@@ -107,9 +104,10 @@ const VendorSignup = () => {
             company_name: validated.companyName,
             contact_email: validated.email,
             contact_phone: validated.phone,
+            gst_number: validated.gstNumber,
             approval_status: "pending",
             is_active: false,
-          })
+          } as any)
           .select()
           .single();
 
@@ -131,6 +129,8 @@ const VendorSignup = () => {
             console.error("Failed to create approval record:", approvalError);
           }
         }
+
+        await supabase.auth.signOut();
 
         // Show success state
         setRegistrationComplete(true);
@@ -249,6 +249,18 @@ const VendorSignup = () => {
               placeholder="contact@company.com"
               value={formData.email}
               onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gstNumber">GST Number *</Label>
+            <Input
+              id="gstNumber"
+              placeholder="27ABCDE1234F1Z5"
+              value={formData.gstNumber}
+              onChange={handleChange}
+              maxLength={15}
               required
             />
           </div>

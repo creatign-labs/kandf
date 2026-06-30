@@ -75,7 +75,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
             .eq('user_id', session.user.id)
             .single();
 
-          if (vendorProfile && vendorProfile.approval_status !== 'approved') {
+          if (!vendorProfile || vendorProfile.approval_status !== 'approved' || vendorProfile.is_active !== true) {
             navigate('/vendor/awaiting-approval');
             return;
           }
@@ -96,6 +96,19 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
           .in('role', rolesToCheck);
         
         if (roleError || !roles || roles.length === 0) {
+          if (requiredRole === 'vendor') {
+            const { data: vendorProfile } = await supabase
+              .from('vendor_profiles')
+              .select('approval_status, is_active')
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+
+            if (vendorProfile?.approval_status === 'approved' && vendorProfile?.is_active === true) {
+              navigate('/vendor/awaiting-approval');
+              return;
+            }
+          }
+
           // Redirect based on what roles they DO have
           const { data: userRoles } = await supabase
             .from('user_roles')

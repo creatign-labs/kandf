@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Clock, Building2, Mail, Phone } from "lucide-react";
+import { Clock, Building2, Mail, Phone, XCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,16 +23,24 @@ const VendorAwaitingApproval = () => {
     },
   });
 
+  const isRejected = vendorProfile?.approval_status === "rejected";
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md p-8 text-center">
         <div className="mb-6">
           <div className="h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
-            <Clock className="h-8 w-8 text-amber-500" />
+            {isRejected ? (
+              <XCircle className="h-8 w-8 text-destructive" />
+            ) : (
+              <Clock className="h-8 w-8 text-amber-500" />
+            )}
           </div>
-          <h1 className="text-2xl font-bold mb-2">Awaiting Approval</h1>
+          <h1 className="text-2xl font-bold mb-2">{isRejected ? "Application Rejected" : "Awaiting Approval"}</h1>
           <p className="text-muted-foreground">
-            Your vendor account is pending approval from our team.
+            {isRejected
+              ? "Your vendor application was not approved. Please contact Admin for more details."
+              : "Your vendor account is pending approval from our team."}
           </p>
         </div>
 
@@ -67,7 +75,7 @@ const VendorAwaitingApproval = () => {
         )}
 
         <div className="space-y-4">
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+          {!isRejected && <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
             <h3 className="font-semibold text-sm mb-2">What happens next?</h3>
             <ul className="text-sm text-muted-foreground space-y-2 text-left">
               <li className="flex items-start gap-2">
@@ -83,10 +91,12 @@ const VendorAwaitingApproval = () => {
                 Start posting jobs and connecting with talent
               </li>
             </ul>
-          </div>
+          </div>}
 
           <p className="text-sm text-muted-foreground">
-            Once approved, you will receive your login credentials on your registered email.
+            {isRejected
+              ? "If you believe this is incorrect, please contact the Knead & Frost team."
+              : "Once approved, you will receive your login credentials on your registered email."}
           </p>
 
           <Button variant="outline" asChild className="w-full">

@@ -214,6 +214,14 @@ const VendorApprovals = () => {
 
   const handleSaveEdit = () => {
     if (editingApproval && editStatus !== editingApproval.status) {
+      if (editStatus === "approved") {
+        toast({
+          title: "Use Approve & Activate",
+          description: "Vendor approval must generate credentials and assign portal access.",
+          variant: "destructive",
+        });
+        return;
+      }
       updateMutation.mutate({ approvalId: editingApproval.id, status: editStatus });
     } else {
       setEditingApproval(null);
@@ -615,7 +623,7 @@ const VendorApprovals = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="approved" disabled>Approved</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                   </SelectContent>
                 </Select>

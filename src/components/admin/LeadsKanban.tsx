@@ -158,11 +158,18 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
                       <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{lead.name}</p>
-                        {lead.courses?.title && (
+                        {lead.courses?.title ? (
                           <p className="text-xs text-muted-foreground truncate mt-1">
                             {lead.courses.title}
                           </p>
-                        )}
+                        ) : (() => {
+                          const lvl = lead.message?.match(/Interested Level:\s*(Beginner|Intermediate|Advanced)/i)?.[1];
+                          return lvl ? (
+                            <p className="text-xs text-muted-foreground truncate mt-1">
+                              Interested Level: {lvl}
+                            </p>
+                          ) : null;
+                        })()}
                         <div className="flex flex-col gap-1 mt-2 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1 truncate">
                             <Mail className="h-3 w-3 flex-shrink-0" />

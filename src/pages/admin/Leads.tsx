@@ -269,7 +269,7 @@ const Leads = () => {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Contact</TableHead>
-                    <TableHead>Interested Course</TableHead>
+                    <TableHead>Interested Course / Level</TableHead>
                     <TableHead>Stage</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -293,7 +293,7 @@ const Leads = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{lead.courses?.title || "Not specified"}</TableCell>
+                      <TableCell>{lead.courses?.title || (lead.message?.match(/Interested Level:\s*(Beginner|Intermediate|Advanced)/i)?.[1] ? `Level: ${lead.message.match(/Interested Level:\s*(Beginner|Intermediate|Advanced)/i)?.[1]}` : "Not specified")}</TableCell>
                       <TableCell>
                         <Badge className={getStageColor(lead.stage)}>
                           {lead.stage.charAt(0).toUpperCase() + lead.stage.slice(1).replace("-", " ")}

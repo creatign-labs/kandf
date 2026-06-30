@@ -1,54 +1,58 @@
-## Issue
+## Why the vendor login showed the wrong/random portal
 
-Bookings now store arrays — `recipe_ids`, `assigned_chef_ids`, `table_numbers` — but several ingredient-calculation and chef-visibility code paths still read only the legacy singular columns (`recipe_id`, `assigned_chef_id`, `table_number`). Result: when a booking has 3 recipes / 2 chefs / 2 tables selected, only one recipe contributes to ingredient totals and only the chef in the singular slot sees the session.
+The Magnolia Bakery vendor record exists and is approved, but its account currently has only the `student` role, not the `vendor` role. The login page redirects by role priority, so after login it treated `mb@gmail.com` like a student and sent it into the student flow instead of the vendor portal.
 
-### Where the bug lives
+The root cause is the default new-user backend trigger: every newly created auth user gets a `student` role automatically. Vendor signup tries to add a `vendor` role from the browser, but that can fail because role assignment is protected. The approval function updated the vendor profile and password, but did not guarantee the `vendor` role existed or remove the accidental `student` role.
 
-1. **`src/pages/ChefDashboard.tsx`** — `ingredientSummary` query (lines ~153–196):
-   - Selects only `recipe_id` and counts each booking as 1 student × 1 recipe.
-   - Filter uses `.eq('assigned_chef_id', user.id)` so chefs assigned via `assigned_chef_ids` are missed.
-   - Same singular pattern in `todaysBatches` and `upcomingBookings` grouping (recipe key uses `b.recipe_id`).
+## Implementation plan
 
-2. **`src/pages/chef/DailyIngredients.tsx`** (lines ~52–146):
-   - Bookings query uses `.eq('assigned_chef_id', user.id)` and `.not('recipe_id', 'is', null)`, then increments student count per booking by 1 against `booking.recipe_id` only. Multi-recipe bookings under-count by `(N-1)/N`.
+### 1. Fix vendor registration form
+- Add a mandatory **GST Number** field to `/vendor/signup`.
+- Make every registration field mandatory at validation level and UI level:
+  - Full Name
+  - Company Name
+  - Phone Number
+  - Email
+  - GST Number
+  - Terms acceptance
+- Add GST format validation suitable for Indian GSTIN format.
+- Store GST Number on the vendor profile.
 
-3. **`src/pages/admin/InventoryChecklist.tsx`** (lines ~73–130):
-   - `studentCount = bookingsData.length` and ingredient relevance is filtered by course only. A booking that explicitly selected 3 specific recipes is still treated as "all recipes for that course × 1 student". Per-recipe demand is wrong in both directions.
+### 2. Add backend support for GST Number
+- Add `gst_number` to `vendor_profiles`.
+- Keep it available to vendor self-profile, admin/vendor approval views, and future job/vendor records.
+- Add safe length/format constraints where appropriate.
 
-4. **`supabase/functions/slot-reminders/index.ts`** (line 42 + 124) — singular `recipe_id` / `table_number` in the reminder payload.
+### 3. Fix vendor role provisioning permanently
+- Update the vendor approval backend function so approval is the authority for vendor activation.
+- On approval, it will:
+  - Ensure the user has the `vendor` role.
+  - Remove the accidental `student` role if the account is only meant to be a vendor.
+  - Keep the vendor profile approved and active.
+  - Generate/update credentials as it currently does.
+- Backfill/fix the existing Magnolia Bakery account (`mb@gmail.com`) so it has `vendor` role and no accidental `student-only` routing issue.
 
-5. **`supabase/functions/daily-ingredient-push/index.ts`** — already updated in the previous turn; honored as the reference pattern.
+### 4. Harden login redirect logic
+- Update login routing so approved vendors are detected by their vendor profile as well as role.
+- If a user has an approved active vendor profile, route them to `/vendor`.
+- If a vendor profile is pending/rejected, route to the vendor awaiting/rejected state instead of falling through to student.
+- Keep the existing student/admin/chef routing intact.
 
-## Fix plan
+### 5. Harden protected vendor routes
+- Update protected route checks so vendor access requires:
+  - vendor role, and
+  - approved active vendor profile.
+- If role/profile state is inconsistent, show the correct vendor pending/blocked page instead of redirecting to unrelated student/admin routes.
 
-Apply one consistent rule everywhere ingredients or chef-visibility are computed:
+### 6. Complete vendor portal consistency
+- Update vendor profile page to show/edit GST Number where appropriate.
+- Update Super Admin vendor approvals table/details to display GST Number.
+- Ensure dashboard stats only count the current vendor’s jobs/applications, not global released applicant totals.
+- Preserve the PII gate: vendors only see student identities after admin release.
 
-> The recipes scheduled for a booking = `recipe_ids` ∪ `recipe_id` (legacy fallback). The chefs assigned to a booking = `assigned_chef_ids` ∪ `assigned_chef_id`. Each booking contributes **1 student per resolved recipe** to ingredient totals.
-
-### File-by-file changes
-
-1. **`src/pages/ChefDashboard.tsx`**
-   - `ingredientSummary`: select `recipe_id, recipe_ids, assigned_chef_id, assigned_chef_ids`. Drop the singular `.eq` chef filter; fetch by date+status, then in JS keep bookings where `user.id` is in either field. For each kept booking, iterate the merged unique recipe list and increment that recipe's student count by 1.
-   - `todaysBatches` / `upcomingBookings`: same chef filter relaxation; expand each booking into one row per resolved recipe so multi-recipe sessions show every recipe.
-
-2. **`src/pages/chef/DailyIngredients.tsx`**
-   - Same chef filter change (membership-in-array), same recipe expansion in `getRecipeStudentCount` so each recipe in `recipe_ids` counts the student.
-   - Recipes title lookup: replace the single `recipes(id, title)` join with a follow-up `recipes` fetch keyed by the union of resolved recipe IDs.
-
-3. **`src/pages/admin/InventoryChecklist.tsx`**
-   - Replace the "all course recipes × total bookings" aggregation with explicit per-booking expansion:
-     - For each booking, resolve recipes (`recipe_ids` ∪ `recipe_id`); if empty, fall back to all `course_recipes` for the booking's `course_id`.
-     - For every (booking → recipe) pair, add `quantity_per_student × 1` to each ingredient on that recipe.
-   - Keeps the existing junction-aware query but removes the inflated/under-count behavior.
-
-4. **`supabase/functions/slot-reminders/index.ts`**
-   - Select and render the array fields; show all assigned recipe titles and all table numbers in the reminder payload (small change, no schema impact).
-
-5. **No DB schema changes.** Singular columns stay as legacy fallbacks.
-
-### Verification
-
-- Re-deploy `daily-ingredient-push` and `slot-reminders`.
-- Spot-check with a booking that has 2 recipes + 2 chefs + 2 tables: ChefDashboard ingredient summary should sum both recipes, both chefs should see the session, InventoryChecklist for that day should reflect both recipes' demand.
-
-Awaiting approval before I make these edits.
+### 7. Validate the flow
+- Test a new vendor registration through approval and login.
+- Test the existing Magnolia Bakery account fix.
+- Verify approved vendors land on `/vendor` and see vendor dashboard/profile/jobs.
+- Verify pending vendors land on awaiting approval.
+- Verify student portal connections remain unchanged: students can apply to jobs, admins release applications, vendors then see released candidates only.

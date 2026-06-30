@@ -130,6 +130,8 @@ const VendorSignup = () => {
           }
         }
 
+        await supabase.auth.signOut();
+
         // Show success state
         setRegistrationComplete(true);
       }

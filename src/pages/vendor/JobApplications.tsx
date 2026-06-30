@@ -19,14 +19,32 @@ import { formatDistanceToNow } from "date-fns";
 const JobApplications = () => {
   const { id: jobId } = useParams();
 
+  const { data: vendorProfile } = useQuery({
+    queryKey: ["vendor-profile"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data, error } = await supabase
+        .from("vendor_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: job } = useQuery({
-    queryKey: ["job", jobId],
-    enabled: !!jobId,
+    queryKey: ["vendor-job", jobId, vendorProfile?.id],
+    enabled: !!jobId && !!vendorProfile?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
         .select("*")
         .eq("id", jobId)
+        .eq("vendor_id", vendorProfile!.id)
         .single();
       
       if (error) throw error;
@@ -37,7 +55,7 @@ const JobApplications = () => {
   // Get total application count (vendor can always see this)
   const { data: totalCount } = useQuery({
     queryKey: ["job-application-count", jobId],
-    enabled: !!jobId,
+    enabled: !!jobId && !!job?.id,
     queryFn: async () => {
       const { count, error } = await supabase
         .from("job_applications")
@@ -53,7 +71,7 @@ const JobApplications = () => {
   // Using a direct query that bypasses RLS issues by fetching profiles separately
   const { data: releasedApplications, isLoading } = useQuery({
     queryKey: ["released-applications", jobId],
-    enabled: !!jobId,
+    enabled: !!jobId && !!job?.id,
     queryFn: async () => {
       // First get released applications
       const { data: applications, error } = await supabase

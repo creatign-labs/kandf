@@ -110,18 +110,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { error: removeStudentRoleError } = await supabaseAdmin
-      .from("user_roles")
-      .delete()
-      .eq("user_id", vendor_user_id)
-      .eq("role", "student");
+    const { count: enrollmentCount, error: enrollmentCheckError } = await supabaseAdmin
+      .from("enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("student_id", vendor_user_id);
 
-    if (removeStudentRoleError) {
-      console.error("Failed to remove default student role:", removeStudentRoleError);
-      return new Response(JSON.stringify({ error: "Failed to clean vendor roles: " + removeStudentRoleError.message }), {
+    if (enrollmentCheckError) {
+      console.error("Failed to check student enrollments:", enrollmentCheckError);
+      return new Response(JSON.stringify({ error: "Failed to verify vendor roles: " + enrollmentCheckError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if ((enrollmentCount || 0) === 0) {
+      const { error: removeStudentRoleError } = await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", vendor_user_id)
+        .eq("role", "student");
+
+      if (removeStudentRoleError) {
+        console.error("Failed to remove default student role:", removeStudentRoleError);
+        return new Response(JSON.stringify({ error: "Failed to clean vendor roles: " + removeStudentRoleError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Update vendor profile

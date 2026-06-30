@@ -179,7 +179,8 @@ const VendorApprovals = () => {
     const matchesSearch = 
       approval.vendor_profiles?.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       approval.profile?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      approval.profile?.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      approval.profile?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      approval.vendor_profiles?.gst_number?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || approval.status === statusFilter;
     
@@ -325,7 +326,8 @@ const VendorApprovals = () => {
                 <TableRow>
                   <TableHead>Company</TableHead>
                   <TableHead>Contact Person</TableHead>
-                  <TableHead>Email</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>GST Number</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -347,6 +349,9 @@ const VendorApprovals = () => {
                     </TableCell>
                     <TableCell>
                       {approval.vendor_profiles?.contact_email || approval.profile?.email}
+                    </TableCell>
+                    <TableCell>
+                      {approval.vendor_profiles?.gst_number || "N/A"}
                     </TableCell>
                     <TableCell>
                       <Badge 
@@ -434,7 +439,7 @@ const VendorApprovals = () => {
                 ))}
                 {(!filteredApprovals || filteredApprovals.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No vendor approvals found
                     </TableCell>
                   </TableRow>
@@ -481,6 +486,21 @@ const VendorApprovals = () => {
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">GST Number</label>
+                <div className="flex items-center gap-2">
+                  <Input value={selectedVendor?.vendor_profiles?.gst_number || "N/A"} readOnly />
+                  {selectedVendor?.vendor_profiles?.gst_number && (
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => copyToClipboard(selectedVendor.vendor_profiles.gst_number)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
               {selectedVendor?.generated_password && (
@@ -567,6 +587,10 @@ const VendorApprovals = () => {
               <div>
                 <Label className="text-sm font-medium">Email</Label>
                 <p className="text-muted-foreground">{editingApproval?.vendor_profiles?.contact_email || "N/A"}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">GST Number</Label>
+                <p className="text-muted-foreground">{editingApproval?.vendor_profiles?.gst_number || "N/A"}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Status</Label>

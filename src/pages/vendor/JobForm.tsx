@@ -61,12 +61,13 @@ const JobForm = () => {
 
   const { data: existingJob, isLoading: loadingJob } = useQuery({
     queryKey: ["job", id],
-    enabled: isEditing,
+    enabled: isEditing && !!vendorProfile?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
         .select("*")
         .eq("id", id)
+        .eq("vendor_id", vendorProfile!.id)
         .single();
       
       if (error) throw error;
@@ -95,7 +96,8 @@ const JobForm = () => {
             ...data,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", id);
+          .eq("id", id)
+          .eq("vendor_id", vendorProfile!.id);
         
         if (error) throw error;
       } else {

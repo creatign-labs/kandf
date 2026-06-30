@@ -17,6 +17,7 @@ interface Lead {
   phone: string | null;
   stage: string;
   created_at: string;
+  message?: string | null;
   courses?: { title: string } | null;
 }
 

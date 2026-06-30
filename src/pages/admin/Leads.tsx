@@ -269,7 +269,7 @@ const Leads = () => {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Contact</TableHead>
-                    <TableHead>Interested Course</TableHead>
+                    <TableHead>Interested Course / Level</TableHead>
                     <TableHead>Stage</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>

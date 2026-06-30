@@ -9,6 +9,19 @@ import { Loader2, Building2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const vendorProfileSchema = z.object({
+  company_name: z.string().trim().min(2, "Company name is required"),
+  company_description: z.string().trim().max(1000, "Description is too long").optional(),
+  contact_email: z.string().trim().email("Valid contact email is required"),
+  contact_phone: z.string().trim().min(10, "Contact phone is required"),
+  website: z.string().trim().max(100, "Website is too long").optional(),
+  gst_number: z.string().trim().toUpperCase().regex(
+    /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/,
+    "Enter a valid 15-character GST number"
+  ),
+});
 
 const VendorProfile = () => {
   const queryClient = useQueryClient();
@@ -18,6 +31,7 @@ const VendorProfile = () => {
     contact_email: "",
     contact_phone: "",
     website: "",
+    gst_number: "",
   });
 
   const { data: vendorProfile, isLoading } = useQuery({
@@ -45,6 +59,7 @@ const VendorProfile = () => {
         contact_email: vendorProfile.contact_email || "",
         contact_phone: vendorProfile.contact_phone || "",
         website: vendorProfile.website || "",
+        gst_number: (vendorProfile as any).gst_number || "",
       });
     }
   }, [vendorProfile]);
@@ -58,7 +73,7 @@ const VendorProfile = () => {
         const { error } = await supabase
           .from("vendor_profiles")
           .update({
-            ...data,
+            ...(data as any),
             updated_at: new Date().toISOString(),
           })
           .eq("id", vendorProfile.id);
@@ -68,7 +83,7 @@ const VendorProfile = () => {
         const { error } = await supabase
           .from("vendor_profiles")
           .insert({
-            ...data,
+            ...(data as any),
             user_id: user.id,
           });
         
@@ -93,15 +108,16 @@ const VendorProfile = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.company_name.trim()) {
+    const parsed = vendorProfileSchema.safeParse(formData);
+    if (!parsed.success) {
       toast({
-        title: "Company name required",
-        description: "Please enter your company name.",
+        title: "Check profile details",
+        description: parsed.error.errors[0].message,
         variant: "destructive",
       });
       return;
     }
-    updateMutation.mutate(formData);
+    updateMutation.mutate(parsed.data as typeof formData);
   };
 
   if (isLoading) {
@@ -163,25 +179,39 @@ const VendorProfile = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="contact_email">Contact Email</Label>
+                  <Label htmlFor="contact_email">Contact Email *</Label>
                   <Input
                     id="contact_email"
                     type="email"
                     placeholder="hr@company.com"
                     value={formData.contact_email}
                     onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                    required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="contact_phone">Contact Phone</Label>
+                  <Label htmlFor="contact_phone">Contact Phone *</Label>
                   <Input
                     id="contact_phone"
                     placeholder="+91 98765 43210"
                     value={formData.contact_phone}
                     onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                    required
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gst_number">GST Number *</Label>
+                <Input
+                  id="gst_number"
+                  placeholder="27ABCDE1234F1Z5"
+                  value={formData.gst_number}
+                  onChange={(e) => setFormData({ ...formData, gst_number: e.target.value.toUpperCase() })}
+                  maxLength={15}
+                  required
+                />
               </div>
 
               <div className="space-y-2">

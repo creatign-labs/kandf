@@ -65,20 +65,33 @@ const VendorDashboard = () => {
     },
   });
 
-  // Get released applications and hires count
+  // Get released applications and hires count for this vendor only
   const { data: applicationStats } = useQuery({
-    queryKey: ["vendor-application-stats"],
+    queryKey: ["vendor-application-stats", vendorProfile?.id],
+    enabled: !!vendorProfile?.id,
     queryFn: async () => {
+      const { data: vendorJobs, error: jobsError } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("vendor_id", vendorProfile!.id);
+
+      if (jobsError) throw jobsError;
+
+      const jobIds = vendorJobs?.map((job) => job.id) || [];
+      if (jobIds.length === 0) return { released: 0, hired: 0 };
+
       const { count: released } = await supabase
         .from("job_applications")
         .select("*", { count: "exact", head: true })
-        .eq("released_to_vendor", true);
+        .eq("released_to_vendor", true)
+        .in("job_id", jobIds);
       
       const { count: hired } = await supabase
         .from("job_applications")
         .select("*", { count: "exact", head: true })
         .eq("released_to_vendor", true)
-        .eq("vendor_status", "hired");
+        .eq("vendor_status", "hired")
+        .in("job_id", jobIds);
       
       return { released: released || 0, hired: hired || 0 };
     },

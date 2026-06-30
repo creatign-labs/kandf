@@ -96,15 +96,6 @@ const VendorSignup = () => {
       }
 
       if (authData.user) {
-        // Assign vendor role
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({ user_id: authData.user.id, role: "vendor" });
-
-        if (roleError) {
-          console.error("Failed to assign vendor role:", roleError);
-        }
-
         // Create vendor profile with pending approval status
         const { data: vendorProfile, error: profileError } = await supabase
           .from("vendor_profiles")

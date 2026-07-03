@@ -492,6 +492,7 @@ const Students = () => {
                     <TableRow>
                       <TableHead>Student</TableHead>
                       <TableHead>Phone</TableHead>
+                      <TableHead>City</TableHead>
                       <TableHead>Course</TableHead>
                       <TableHead>Progress</TableHead>
                       <TableHead>Status</TableHead>

@@ -178,7 +178,6 @@ const Leads = () => {
       <Header role="admin" userName="Admin" />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold text-foreground mb-2">Lead Management</h1>

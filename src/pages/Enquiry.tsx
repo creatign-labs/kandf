@@ -74,6 +74,10 @@ const Enquiry = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.city) {
+      toast({ title: "City required", description: "Please select your city.", variant: "destructive" });
+      return;
+    }
     submitEnquiryMutation.mutate(formData);
   };
 

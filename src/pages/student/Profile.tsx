@@ -32,6 +32,7 @@ const Profile = () => {
     date_of_birth: '',
     date_of_joining: '',
     address: '',
+    city: '',
     heard_about: '',
     heard_about_other: ''
   });

@@ -451,7 +451,16 @@ const Batches = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">All Batches</h2>
             <div className="flex items-center gap-2">
-              <BatchesImportSlot />
+              {isAdmin && (
+                <ImportButton
+                  table="batches"
+                  label="Import Batches"
+                  templateColumns={batchesImport.templateColumns}
+                  requiredColumns={batchesImport.requiredColumns}
+                  buildPayload={batchesImport.buildPayload}
+                  invalidateKeys={[["batches"]]}
+                />
+              )}
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 setIsDialogOpen(open);
                 if (!open) resetForm();

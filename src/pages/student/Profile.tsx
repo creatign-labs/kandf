@@ -215,6 +215,7 @@ const Profile = () => {
         date_of_birth: profile.date_of_birth || null,
         date_of_joining: profile.date_of_joining || null,
         address: profile.address || null,
+        city: profile.city || null,
         heard_about: profile.heard_about || null,
         heard_about_other: profile.heard_about === 'Other' ? profile.heard_about_other : null,
       } as any).eq('id', user.id);

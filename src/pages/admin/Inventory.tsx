@@ -34,8 +34,13 @@ import { Search, AlertTriangle, Plus, Package, Loader2, Utensils } from "lucide-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { ExportButton } from "@/components/ExportButton";
+import { ImportButton } from "@/components/ImportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { inventoryImport } from "@/lib/importConfigs";
 
 const Inventory = () => {
+  const { data: roles } = useUserRoles();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);

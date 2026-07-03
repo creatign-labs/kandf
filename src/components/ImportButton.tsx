@@ -58,7 +58,7 @@ export const ImportButton = ({
   table,
   templateColumns,
   requiredColumns = [],
-  transformRow,
+  buildPayload,
   invalidateKeys = [],
   label = "Import CSV",
   className,
@@ -89,20 +89,22 @@ export const ImportButton = ({
         return;
       }
 
-      const payload: Record<string, unknown>[] = [];
-      for (let i = 0; i < rows.length; i++) {
-        const raw = rows[i];
+      // Validate required columns
+      rows.forEach((raw, i) => {
         for (const req of requiredColumns) {
           if (!raw[req]) throw new Error(`Row ${i + 2}: missing required "${req}"`);
         }
-        const transformed = transformRow ? await transformRow(raw, i) : raw;
-        if (transformed) payload.push(transformed);
-      }
+      });
+
+      const payload: Record<string, unknown>[] = buildPayload
+        ? await buildPayload(rows)
+        : rows;
 
       if (!payload.length) {
         toast({ title: "Nothing to import" });
         setBusy(false); return;
       }
+
 
       // Insert in chunks
       const chunkSize = 100;

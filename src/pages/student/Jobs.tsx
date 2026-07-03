@@ -14,50 +14,9 @@ const Jobs = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const queryClient = useQueryClient();
 
-  // Check job eligibility: progress=100%, no outstanding payments, status=active/completed
-  const { data: eligibility, isLoading: eligibilityLoading } = useQuery({
-    queryKey: ["job-eligibility"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { eligible: false, reason: 'Not authenticated' };
-
-      // Check profile status
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('enrollment_status')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile) return { eligible: false, reason: 'Profile not found' };
-      
-      const status = profile.enrollment_status;
-      if (status?.startsWith('locked')) {
-        return { eligible: false, reason: 'Your account is currently restricted. Job applications are blocked.' };
-      }
-      if (status !== 'active' && status !== 'completed') {
-        return { eligible: false, reason: 'Job applications require an active or completed enrollment.' };
-      }
-
-      // Check course progress
-      const { data: enrollment } = await supabase
-        .from('enrollments')
-        .select('id, progress, course_id')
-        .eq('student_id', user.id)
-        .in('status', ['active', 'completed'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!enrollment || (enrollment.progress || 0) < 100) {
-        return { eligible: false, reason: 'Complete all course sessions before applying for jobs.' };
-      }
-
-      // Job applications are gated on course completion only — not on payment status.
-
-
-      return { eligible: true, reason: '' };
-    },
-  });
+  // Job applications are open to all students. Admin reviews before releasing to vendor.
+  const eligibility = { eligible: true, reason: '' };
+  const eligibilityLoading = false;
 
   const { data: jobs, isLoading } = useQuery({
     queryKey: ["jobs"],

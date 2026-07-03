@@ -1455,6 +1455,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          city: string | null
           course_id: string | null
           created_at: string
           email: string
@@ -1467,6 +1468,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          city?: string | null
           course_id?: string | null
           created_at?: string
           email: string
@@ -1479,6 +1481,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          city?: string | null
           course_id?: string | null
           created_at?: string
           email?: string
@@ -1721,6 +1724,7 @@ export type Database = {
           address_proof_url: string | null
           avatar_url: string | null
           bio: string | null
+          city: string | null
           created_at: string
           date_of_birth: string | null
           date_of_joining: string | null
@@ -1743,6 +1747,7 @@ export type Database = {
           address_proof_url?: string | null
           avatar_url?: string | null
           bio?: string | null
+          city?: string | null
           created_at?: string
           date_of_birth?: string | null
           date_of_joining?: string | null
@@ -1765,6 +1770,7 @@ export type Database = {
           address_proof_url?: string | null
           avatar_url?: string | null
           bio?: string | null
+          city?: string | null
           created_at?: string
           date_of_birth?: string | null
           date_of_joining?: string | null

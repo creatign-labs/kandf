@@ -600,7 +600,30 @@ const Courses = () => {
             <p className="text-muted-foreground">Create and manage course curriculum, modules, and pricing</p>
           </div>
           <div className="flex items-center gap-2">
-            <CoursesToolbar courses={courses} />
+            {roles?.isSuperAdmin && (
+              <ExportButton
+                filename="courses"
+                data={(courses || []).map((c: any) => ({
+                  title: c.title,
+                  course_code: c.course_code ?? "",
+                  duration: c.duration,
+                  level: c.level,
+                  base_fee: c.base_fee,
+                  days_of_week: (c.days_of_week || []).join("|"),
+                  description: c.description ?? "",
+                }))}
+              />
+            )}
+            {roles?.isAdmin && (
+              <ImportButton
+                table="courses"
+                label="Import Courses"
+                templateColumns={coursesImport.templateColumns}
+                requiredColumns={coursesImport.requiredColumns}
+                buildPayload={coursesImport.buildPayload}
+                invalidateKeys={[["courses"]]}
+              />
+            )}
             <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetForm(); }}>
               <DialogTrigger asChild>
                 <Button className="gap-2" onClick={resetForm}>

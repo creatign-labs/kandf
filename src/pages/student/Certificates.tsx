@@ -53,7 +53,7 @@ const Certificates = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
-      const { data, error } = await supabase
+      const { data: enrs, error } = await supabase
         .from("enrollments")
         .select(`
           *,
@@ -63,7 +63,30 @@ const Certificates = () => {
         .in("status", ["active", "completed"]);
 
       if (error) throw error;
-      return data;
+      if (!enrs || enrs.length === 0) return [];
+
+      // For each enrollment, compute live progress from student_recipe_progress vs recipes in that course
+      const courseIds = Array.from(new Set(enrs.map((e: any) => e.course_id)));
+      const { data: recipes } = await supabase
+        .from("recipes")
+        .select("id, course_id")
+        .in("course_id", courseIds);
+
+      const { data: progressRows } = await supabase
+        .from("student_recipe_progress")
+        .select("recipe_id, status")
+        .eq("student_id", user.id)
+        .eq("status", "completed");
+
+      const completedIds = new Set((progressRows || []).map((p: any) => p.recipe_id));
+
+      return enrs.map((e: any) => {
+        const courseRecipes = (recipes || []).filter((r: any) => r.course_id === e.course_id);
+        const total = courseRecipes.length;
+        const done = courseRecipes.filter((r: any) => completedIds.has(r.id)).length;
+        const liveProgress = total > 0 ? Math.round((done / total) * 100) : 0;
+        return { ...e, live_progress: liveProgress };
+      });
     },
   });
 
@@ -231,14 +254,15 @@ const Certificates = () => {
     ...(enrollments || [])
       .filter(enr => !certificates?.some(c => c.course_id === enr.course_id))
       .map(enr => {
-        const paymentCompleted = (enr as any).payment_completed || !hasPendingPayments(enr.id);
+        const liveProgress = (enr as any).live_progress ?? 0;
+        const paymentCompleted = !hasPendingPayments(enr.id);
         const attendanceCompleted = (enr as any).attendance_completed || false;
         return {
           id: enr.id,
           title: `${enr.courses?.title || "Course"} Certificate`,
           issueDate: null,
-          status: (enr.progress || 0) > 0 ? "in-progress" : "locked" as const,
-          progress: enr.progress || 0,
+          status: liveProgress > 0 ? "in-progress" : "locked" as const,
+          progress: liveProgress,
           certificateNumber: null,
           courses: enr.courses,
           paymentCompleted,

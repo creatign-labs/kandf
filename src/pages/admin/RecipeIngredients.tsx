@@ -186,11 +186,39 @@ const RecipeIngredients = () => {
           <p className="text-muted-foreground">
             Link inventory items to recipes with per-student quantities
           </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Recipe Ingredients</h1>
+            <p className="text-muted-foreground">
+              Link inventory items to recipes with per-student quantities
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {roles?.isSuperAdmin && (
+              <ExportButton
+                filename="recipe_ingredients"
+                data={(recipeIngredients || []).map((ri: any) => ({
+                  recipe_title: ri.recipes?.title ?? "",
+                  ingredient_name: ri.inventory?.name ?? "",
+                  quantity_per_student: ri.quantity_per_student,
+                  unit: ri.unit ?? ri.inventory?.unit ?? "",
+                  notes: ri.notes ?? "",
+                }))}
+              />
+            )}
+            {roles?.isAdmin && (
+              <ImportButton
+                table="recipe_ingredients"
+                label="Import Ingredients"
+                templateColumns={recipeIngredientsImport.templateColumns}
+                requiredColumns={recipeIngredientsImport.requiredColumns}
+                buildPayload={recipeIngredientsImport.buildPayload}
+                invalidateKeys={[["recipe-ingredients"]]}
+              />
+            )}
+          </div>
         </div>
 
-        {/* Filters & Actions */}
-        <Card className="p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input

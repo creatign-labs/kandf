@@ -395,6 +395,7 @@ const Students = () => {
                 last_name: e.profile?.last_name ?? "",
                 email: e.profile?.email ?? "",
                 phone: e.profile?.phone ?? "",
+                city: (e.profile as any)?.city ?? "",
                 course: e.courses?.title ?? "",
                 status: e.status,
                 progress: e.progress ?? 0,

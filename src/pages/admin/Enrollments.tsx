@@ -43,6 +43,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Search, UserPlus, Phone, Calendar, CheckCircle, Copy } from "lucide-react";
 import { format } from "date-fns";
+import { ExportButton } from "@/components/ExportButton";
 
 const AdminEnrollments = () => {
   const { toast } = useToast();
@@ -371,6 +372,23 @@ const AdminEnrollments = () => {
             <p className="text-muted-foreground">
               Create student accounts and manage enrollment flow
             </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && (
+              <ExportButton
+                filename="pending_enrollments"
+                data={(pendingEnrollments || []).map((p: any) => ({
+                  name: `${p.profiles?.first_name ?? ""} ${p.profiles?.last_name ?? ""}`.trim(),
+                  email: p.profiles?.email ?? "",
+                  phone: p.profiles?.phone ?? "",
+                  course: p.courses?.title ?? "",
+                  amount: p.amount,
+                  status: p.status,
+                  paid_at: p.paid_at ?? p.created_at,
+                }))}
+              />
+            )}
           </div>
 
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

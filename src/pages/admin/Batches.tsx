@@ -34,6 +34,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { ImportButton } from "@/components/ImportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { batchesImport } from "@/lib/importConfigs";
 
 const TIME_OPTIONS = [
   "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM",
@@ -45,6 +48,8 @@ const TIME_OPTIONS = [
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const Batches = () => {
+  const { data: roles } = useUserRoles();
+  const isAdmin = !!roles?.isAdmin;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any>(null);
   const [startTime, setStartTime] = useState("");
@@ -447,19 +452,30 @@ const Batches = () => {
         <Card className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">All Batches</h2>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) resetForm();
-            }}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Batch
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <ImportButton
+                  table="batches"
+                  label="Import Batches"
+                  templateColumns={batchesImport.templateColumns}
+                  requiredColumns={batchesImport.requiredColumns}
+                  buildPayload={batchesImport.buildPayload}
+                  invalidateKeys={[["batches"]]}
+                />
+              )}
+              <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) resetForm();
+              }}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Batch
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
                     {editingBatch ? "Edit Batch" : "Create New Batch"}
                   </DialogTitle>
                 </DialogHeader>
@@ -633,7 +649,8 @@ const Batches = () => {
                   </Button>
                 </div>
               </DialogContent>
-            </Dialog>
+              </Dialog>
+            </div>
           </div>
 
           {/* Date Range Filter */}

@@ -27,6 +27,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, addDays, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { ExportButton } from "@/components/ExportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface IngredientRequirement {
   inventory_id: string;
@@ -196,6 +198,7 @@ function UpdateStockDialog({
 }
 
 const RequiredDailyIngredients = () => {
+  const { data: roles } = useUserRoles();
   const [fromDate, setFromDate] = useState<Date>(addDays(new Date(), 1));
   const [toDate, setToDate] = useState<Date>(addDays(new Date(), 1));
   const fromStr = format(fromDate, "yyyy-MM-dd");
@@ -348,7 +351,23 @@ const RequiredDailyIngredients = () => {
               </p>
             )}
           </div>
-          <Button
+          <div className="flex items-center gap-2">
+            {roles?.isSuperAdmin && (
+              <ExportButton
+                filename={`daily_required_ingredients_${fromStr}_to_${toStr}`}
+                data={(cumulative || []).map((c: any) => ({
+                  ingredient: c.ingredient_name,
+                  unit: c.unit,
+                  quantity_per_student: c.quantity_per_student,
+                  student_count: c.student_count,
+                  total_required: c.total_required,
+                  current_stock: c.current_stock,
+                  sufficient: c.sufficient ? "Yes" : "No",
+                  recipe: c.recipe_title ?? "",
+                }))}
+              />
+            )}
+            <Button
             variant="outline"
             size="sm"
             className="gap-2"
@@ -358,7 +377,9 @@ const RequiredDailyIngredients = () => {
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
             {isFetching ? "Updating…" : "Refresh"}
           </Button>
+          </div>
         </div>
+
 
         <Card className="p-4 mb-6">
           <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">

@@ -39,6 +39,8 @@ import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { LeadsKanban } from "@/components/admin/LeadsKanban";
 import { useNavigate } from "react-router-dom";
+import { ExportButton } from "@/components/ExportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const Leads = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,6 +49,8 @@ const Leads = () => {
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { data: roles } = useUserRoles();
+
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ["leads"],
@@ -174,10 +178,27 @@ const Leads = () => {
       <Header role="admin" userName="Admin" />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Lead Management</h1>
-          <p className="text-muted-foreground">Track and manage potential students through the enrollment pipeline</p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Lead Management</h1>
+            <p className="text-muted-foreground">Track and manage potential students through the enrollment pipeline</p>
+          </div>
+          {roles?.isSuperAdmin && (
+            <ExportButton
+              filename="leads"
+              data={(leads || []).map((l: any) => ({
+                name: l.name,
+                email: l.email,
+                phone: l.phone,
+                stage: l.stage,
+                interested_course: l.courses?.title ?? "",
+                message: l.message ?? "",
+                created_at: l.created_at,
+              }))}
+            />
+          )}
         </div>
+
 
         {/* Stage Stats */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">

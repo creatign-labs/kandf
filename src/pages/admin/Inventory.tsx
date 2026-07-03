@@ -34,8 +34,13 @@ import { Search, AlertTriangle, Plus, Package, Loader2, Utensils } from "lucide-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { ExportButton } from "@/components/ExportButton";
+import { ImportButton } from "@/components/ImportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { inventoryImport } from "@/lib/importConfigs";
 
 const Inventory = () => {
+  const { data: roles } = useUserRoles();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -250,6 +255,29 @@ const Inventory = () => {
                   Required Daily Ingredients
                 </Link>
               </Button>
+              {roles?.isSuperAdmin && (
+                <ExportButton
+                  filename="inventory"
+                  data={(inventory || []).map((it: any) => ({
+                    name: it.name,
+                    category: it.category ?? "",
+                    unit: it.unit,
+                    current_stock: it.current_stock,
+                    reorder_level: it.reorder_level,
+                    cost_per_unit: it.cost_per_unit ?? "",
+                  }))}
+                />
+              )}
+              {roles?.isAdmin && (
+                <ImportButton
+                  table="inventory"
+                  label="Import Inventory"
+                  templateColumns={inventoryImport.templateColumns}
+                  requiredColumns={inventoryImport.requiredColumns}
+                  buildPayload={inventoryImport.buildPayload}
+                  invalidateKeys={[["inventory"]]}
+                />
+              )}
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input 

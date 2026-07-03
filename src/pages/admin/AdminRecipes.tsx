@@ -28,9 +28,14 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ExportButton } from "@/components/ExportButton";
+import { ImportButton } from "@/components/ImportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { recipesImport } from "@/lib/importConfigs";
 
 const AdminRecipes = () => {
   const queryClient = useQueryClient();
+  const { data: roles } = useUserRoles();
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   useEffect(() => {
@@ -272,6 +277,30 @@ const AdminRecipes = () => {
             <p className="text-muted-foreground">Manage all recipes and their ingredients</p>
           </div>
           <div className="flex gap-2">
+            {roles?.isSuperAdmin && (
+              <ExportButton
+                filename="recipes"
+                data={(recipes || []).map((r: any) => ({
+                  title: r.title,
+                  recipe_code: r.recipe_code ?? "",
+                  course: r.courses?.title ?? "",
+                  difficulty: r.difficulty ?? "",
+                  prep_time: r.prep_time ?? "",
+                  cook_time: r.cook_time ?? "",
+                  description: r.description ?? "",
+                }))}
+              />
+            )}
+            {roles?.isAdmin && (
+              <ImportButton
+                table="recipes"
+                label="Import Recipes"
+                templateColumns={recipesImport.templateColumns}
+                requiredColumns={recipesImport.requiredColumns}
+                buildPayload={recipesImport.buildPayload}
+                invalidateKeys={[["recipes"]]}
+              />
+            )}
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2" onClick={resetForm}>

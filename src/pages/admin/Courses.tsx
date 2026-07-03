@@ -32,11 +32,16 @@ import { Plus, Edit, Clock, Users, IndianRupee, Loader2, Trash2, ChefHat, Search
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { ExportButton } from "@/components/ExportButton";
+import { ImportButton } from "@/components/ImportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { coursesImport } from "@/lib/importConfigs";
 
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const Courses = () => {
   const queryClient = useQueryClient();
+  const { data: roles } = useUserRoles();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -592,27 +597,53 @@ const Courses = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Course Management</h1>
             <p className="text-muted-foreground">Create and manage course curriculum, modules, and pricing</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2" onClick={resetForm}>
-                <Plus className="h-4 w-4" />
-                Add New Course
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Course</DialogTitle>
-              </DialogHeader>
-              {courseFormJSX}
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-2">
+            {roles?.isSuperAdmin && (
+              <ExportButton
+                filename="courses"
+                data={(courses || []).map((c: any) => ({
+                  title: c.title,
+                  course_code: c.course_code ?? "",
+                  duration: c.duration,
+                  level: c.level,
+                  base_fee: c.base_fee,
+                  days_of_week: (c.days_of_week || []).join("|"),
+                  description: c.description ?? "",
+                }))}
+              />
+            )}
+            {roles?.isAdmin && (
+              <ImportButton
+                table="courses"
+                label="Import Courses"
+                templateColumns={coursesImport.templateColumns}
+                requiredColumns={coursesImport.requiredColumns}
+                buildPayload={coursesImport.buildPayload}
+                invalidateKeys={[["courses"]]}
+              />
+            )}
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" onClick={resetForm}>
+                  <Plus className="h-4 w-4" />
+                  Add New Course
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Course</DialogTitle>
+                </DialogHeader>
+                {courseFormJSX}
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="space-y-6">
           {courses?.map((course, index) => (
+
             <Card key={course.id} className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <div>

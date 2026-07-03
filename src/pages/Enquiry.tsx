@@ -17,13 +17,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+const purposeOptions = [
+  "TO BECOME A CHEF WITH PLACEMENT IN 5 STAR HOTEL/CRUISE LINER/CAFE/BAKERIES",
+  "TO START A PREMIUM BAKERY/CAFE/PUSH KART",
+  "TO START A HOME BAKERY",
+  "HOBBY/FUN",
+];
+
 const Enquiry = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    level: "",
+    purpose: "",
     city: "",
     message: "",
   });

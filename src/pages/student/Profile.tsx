@@ -432,6 +432,19 @@ const Profile = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label>City</Label>
+                  <Select value={profile.city} onValueChange={(v) => setProfile({ ...profile, city: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Chennai">Chennai</SelectItem>
+                      <SelectItem value="Mumbai">Mumbai</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
                   <Label>Heard about Knead & Frost through</Label>
                   <Select value={profile.heard_about} onValueChange={(v) => setProfile({ ...profile, heard_about: v, heard_about_other: v === 'Other' ? profile.heard_about_other : '' })}>
                     <SelectTrigger>

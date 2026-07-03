@@ -638,7 +638,8 @@ const Batches = () => {
                   </Button>
                 </div>
               </DialogContent>
-            </Dialog>
+              </Dialog>
+            </div>
           </div>
 
           {/* Date Range Filter */}

@@ -183,33 +183,23 @@ const SchedulePayment = () => {
         order_id: orderData.order.id,
         handler: async function (response: any) {
           try {
-            // Update payment schedule status
-            const { error: updateError } = await supabase
-              .from('payment_schedules')
-              .update({
-                status: 'paid',
-                paid_at: new Date().toISOString(),
-                payment_id: response.razorpay_payment_id,
-              })
-              .eq('id', schedule.id);
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+              'verify-schedule-payment',
+              {
+                body: {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  schedule_id: schedule.id,
+                },
+                headers: {
+                  Authorization: `Bearer ${session.session?.access_token}`,
+                },
+              }
+            );
 
-            if (updateError) throw updateError;
-
-            // Check if all payments are complete (exclude the one just paid)
-            const { data: pendingPayments } = await supabase
-              .from('payment_schedules')
-              .select('id')
-              .eq('enrollment_id', enrollment.id)
-              .neq('id', schedule.id)
-              .in('status', ['pending', 'overdue']);
-
-            // If no pending payments, update enrollment payment_completed flag
-            if (!pendingPayments || pendingPayments.length === 0) {
-              await supabase
-                .from('enrollments')
-                .update({ payment_completed: true })
-                .eq('id', enrollment.id);
-            }
+            if (verifyError) throw verifyError;
+            if (verifyData?.error) throw new Error(verifyData.error);
 
             toast({
               title: "Payment successful!",

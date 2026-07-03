@@ -92,20 +92,9 @@ const Jobs = () => {
             <p className="text-muted-foreground">Find your perfect role in the baking industry</p>
           </div>
 
-          {/* Eligibility Gate */}
-          {!eligibilityLoading && eligibility && !eligibility.eligible && (
-            <Card className="p-6 mb-6 border-border/60">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30">
-                  <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-1">Applications Locked</h3>
-                  <p className="text-muted-foreground">{eligibility.reason}</p>
-                </div>
-              </div>
-            </Card>
-          )}
+          {/* Applications are open to all students; admin gates delivery to vendor. */}
+
+
 
           <Card className="p-4 border-border/60 mb-6">
             <div className="flex gap-3">

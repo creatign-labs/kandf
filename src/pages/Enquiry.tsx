@@ -24,6 +24,7 @@ const Enquiry = () => {
     email: "",
     phone: "",
     level: "",
+    city: "",
     message: "",
   });
 

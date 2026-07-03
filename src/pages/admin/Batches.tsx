@@ -48,6 +48,8 @@ const TIME_OPTIONS = [
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const Batches = () => {
+  const { data: roles } = useUserRoles();
+  const isAdmin = !!roles?.isAdmin;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any>(null);
   const [startTime, setStartTime] = useState("");

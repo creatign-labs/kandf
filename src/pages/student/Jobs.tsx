@@ -14,50 +14,9 @@ const Jobs = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const queryClient = useQueryClient();
 
-  // Check job eligibility: progress=100%, no outstanding payments, status=active/completed
-  const { data: eligibility, isLoading: eligibilityLoading } = useQuery({
-    queryKey: ["job-eligibility"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { eligible: false, reason: 'Not authenticated' };
-
-      // Check profile status
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('enrollment_status')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile) return { eligible: false, reason: 'Profile not found' };
-      
-      const status = profile.enrollment_status;
-      if (status?.startsWith('locked')) {
-        return { eligible: false, reason: 'Your account is currently restricted. Job applications are blocked.' };
-      }
-      if (status !== 'active' && status !== 'completed') {
-        return { eligible: false, reason: 'Job applications require an active or completed enrollment.' };
-      }
-
-      // Check course progress
-      const { data: enrollment } = await supabase
-        .from('enrollments')
-        .select('id, progress, course_id')
-        .eq('student_id', user.id)
-        .in('status', ['active', 'completed'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!enrollment || (enrollment.progress || 0) < 100) {
-        return { eligible: false, reason: 'Complete all course sessions before applying for jobs.' };
-      }
-
-      // Job applications are gated on course completion only — not on payment status.
-
-
-      return { eligible: true, reason: '' };
-    },
-  });
+  // Job applications are open to all students. Admin reviews before releasing to vendor.
+  const eligibility = { eligible: true, reason: '' };
+  const eligibilityLoading = false;
 
   const { data: jobs, isLoading } = useQuery({
     queryKey: ["jobs"],
@@ -133,20 +92,9 @@ const Jobs = () => {
             <p className="text-muted-foreground">Find your perfect role in the baking industry</p>
           </div>
 
-          {/* Eligibility Gate */}
-          {!eligibilityLoading && eligibility && !eligibility.eligible && (
-            <Card className="p-6 mb-6 border-border/60">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30">
-                  <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-1">Applications Locked</h3>
-                  <p className="text-muted-foreground">{eligibility.reason}</p>
-                </div>
-              </div>
-            </Card>
-          )}
+          {/* Applications are open to all students; admin gates delivery to vendor. */}
+
+
 
           <Card className="p-4 border-border/60 mb-6">
             <div className="flex gap-3">

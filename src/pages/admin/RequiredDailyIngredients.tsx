@@ -351,7 +351,23 @@ const RequiredDailyIngredients = () => {
               </p>
             )}
           </div>
-          <Button
+          <div className="flex items-center gap-2">
+            {roles?.isSuperAdmin && (
+              <ExportButton
+                filename={`daily_required_ingredients_${fromStr}_to_${toStr}`}
+                data={(cumulative || []).map((c: any) => ({
+                  ingredient: c.ingredient_name,
+                  unit: c.unit,
+                  quantity_per_student: c.quantity_per_student,
+                  student_count: c.student_count,
+                  total_required: c.total_required,
+                  current_stock: c.current_stock,
+                  sufficient: c.sufficient ? "Yes" : "No",
+                  recipe: c.recipe_title ?? "",
+                }))}
+              />
+            )}
+            <Button
             variant="outline"
             size="sm"
             className="gap-2"

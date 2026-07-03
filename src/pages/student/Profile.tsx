@@ -78,6 +78,7 @@ const Profile = () => {
         date_of_birth: (data as any).date_of_birth || '',
         date_of_joining: (data as any).date_of_joining || '',
         address: (data as any).address || '',
+        city: (data as any).city || '',
         heard_about: (data as any).heard_about || '',
         heard_about_other: (data as any).heard_about_other || ''
       });

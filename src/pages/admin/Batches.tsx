@@ -450,19 +450,21 @@ const Batches = () => {
         <Card className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">All Batches</h2>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) resetForm();
-            }}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Batch
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
+            <div className="flex items-center gap-2">
+              <BatchesImportSlot />
+              <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) resetForm();
+              }}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Batch
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
                     {editingBatch ? "Edit Batch" : "Create New Batch"}
                   </DialogTitle>
                 </DialogHeader>

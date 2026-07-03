@@ -198,6 +198,7 @@ function UpdateStockDialog({
 }
 
 const RequiredDailyIngredients = () => {
+  const { data: roles } = useUserRoles();
   const [fromDate, setFromDate] = useState<Date>(addDays(new Date(), 1));
   const [toDate, setToDate] = useState<Date>(addDays(new Date(), 1));
   const fromStr = format(fromDate, "yyyy-MM-dd");

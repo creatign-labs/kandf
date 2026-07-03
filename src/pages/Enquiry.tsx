@@ -17,13 +17,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+const purposeOptions = [
+  "TO BECOME A CHEF WITH PLACEMENT IN 5 STAR HOTEL/CRUISE LINER/CAFE/BAKERIES",
+  "TO START A PREMIUM BAKERY/CAFE/PUSH KART",
+  "TO START A HOME BAKERY",
+  "HOBBY/FUN",
+];
+
 const Enquiry = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    level: "",
+    purpose: "",
     city: "",
     message: "",
   });
@@ -32,9 +39,9 @@ const Enquiry = () => {
 
   const submitEnquiryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const levelLine = data.level ? `Interested Level: ${data.level}\n` : "";
+      const purposeLine = data.purpose ? `Purpose of Learning: ${data.purpose}\n` : "";
       const cityLine = data.city ? `City: ${data.city}\n` : "";
-      const prefix = levelLine || cityLine ? `${levelLine}${cityLine}\n` : "";
+      const prefix = purposeLine || cityLine ? `${purposeLine}${cityLine}\n` : "";
       const { error } = await supabase
         .from("leads")
         .insert({
@@ -60,7 +67,7 @@ const Enquiry = () => {
         title: "Enquiry Submitted!",
         description: "We'll get back to you within 24 hours. A confirmation has been sent to your email.",
       });
-      setFormData({ name: "", email: "", phone: "", level: "", city: "", message: "" });
+      setFormData({ name: "", email: "", phone: "", purpose: "", city: "", message: "" });
 
     },
     onError: (error: Error) => {
@@ -135,18 +142,20 @@ const Enquiry = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="level">Course Level</Label>
+                      <Label htmlFor="purpose">Purpose of Learning</Label>
                       <Select
-                        value={formData.level}
-                        onValueChange={(value) => setFormData({ ...formData, level: value })}
+                        value={formData.purpose}
+                        onValueChange={(value) => setFormData({ ...formData, purpose: value })}
                       >
-                        <SelectTrigger id="level">
-                          <SelectValue placeholder="Select a level" />
+                        <SelectTrigger id="purpose">
+                          <SelectValue placeholder="Select a purpose" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Beginner">Beginner</SelectItem>
-                          <SelectItem value="Intermediate">Intermediate</SelectItem>
-                          <SelectItem value="Advanced">Advanced</SelectItem>
+                          {purposeOptions.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

@@ -163,10 +163,10 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
                             {lead.courses.title}
                           </p>
                         ) : (() => {
-                          const lvl = lead.message?.match(/Interested Level:\s*(Beginner|Intermediate|Advanced)/i)?.[1];
-                          return lvl ? (
-                            <p className="text-xs text-muted-foreground truncate mt-1">
-                              Interested Level: {lvl}
+                          const purpose = lead.message?.match(/Purpose of Learning:\s*(.+?)(?:\n|City:)/i)?.[1]?.trim();
+                          return purpose ? (
+                            <p className="text-xs text-muted-foreground truncate mt-1" title={purpose}>
+                              {purpose.length > 45 ? purpose.slice(0, 45) + "..." : purpose}
                             </p>
                           ) : null;
                         })()}

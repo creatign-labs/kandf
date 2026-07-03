@@ -32,7 +32,9 @@ const Enquiry = () => {
 
   const submitEnquiryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const levelLine = data.level ? `Interested Level: ${data.level}\n\n` : "";
+      const levelLine = data.level ? `Interested Level: ${data.level}\n` : "";
+      const cityLine = data.city ? `City: ${data.city}\n` : "";
+      const prefix = levelLine || cityLine ? `${levelLine}${cityLine}\n` : "";
       const { error } = await supabase
         .from("leads")
         .insert({
@@ -40,10 +42,11 @@ const Enquiry = () => {
           email: data.email,
           phone: data.phone || null,
           course_id: null,
-          message: `${levelLine}${data.message}`,
+          city: data.city || null,
+          message: `${prefix}${data.message}`,
           stage: "new",
           source: "website",
-        });
+        } as any);
 
       if (error) throw error;
 

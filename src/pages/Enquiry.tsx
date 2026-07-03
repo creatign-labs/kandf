@@ -146,8 +146,24 @@ const Enquiry = () => {
                         </SelectContent>
                       </Select>
                     </div>
-
                   </div>
+
+                  <div>
+                    <Label htmlFor="city">City *</Label>
+                    <Select
+                      value={formData.city}
+                      onValueChange={(value) => setFormData({ ...formData, city: value })}
+                    >
+                      <SelectTrigger id="city">
+                        <SelectValue placeholder="Select your city" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Chennai">Chennai</SelectItem>
+                        <SelectItem value="Mumbai">Mumbai</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
 
                   <div>
                     <Label htmlFor="message">Your Message *</Label>

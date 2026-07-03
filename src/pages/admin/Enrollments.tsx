@@ -374,6 +374,23 @@ const AdminEnrollments = () => {
             </p>
           </div>
 
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && (
+              <ExportButton
+                filename="pending_enrollments"
+                data={(pendingEnrollments || []).map((p: any) => ({
+                  name: `${p.profiles?.first_name ?? ""} ${p.profiles?.last_name ?? ""}`.trim(),
+                  email: p.profiles?.email ?? "",
+                  phone: p.profiles?.phone ?? "",
+                  course: p.courses?.title ?? "",
+                  amount: p.amount,
+                  status: p.status,
+                  paid_at: p.paid_at ?? p.created_at,
+                }))}
+              />
+            )}
+          </div>
+
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">

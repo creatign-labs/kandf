@@ -60,7 +60,7 @@ const Certificates = () => {
           courses (title)
         `)
         .eq("student_id", user.id)
-        .eq("status", "active");
+        .in("status", ["active", "completed"]);
 
       if (error) throw error;
       return data;

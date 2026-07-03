@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle, Lock, Award } from "lucide-react";
 
 interface CertificateEligibilityProps {
@@ -51,6 +52,23 @@ export const CertificateEligibilityCard = ({
         ) : (
           <Badge variant="outline" className="ml-auto">Not Yet Eligible</Badge>
         )}
+      </div>
+
+      <div className="space-y-4 mb-4">
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-muted-foreground">Course Progress</span>
+            <span className="font-medium">{progress}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-muted-foreground">Payment Progress</span>
+            <span className="font-medium">{paymentCompleted ? 100 : 0}%</span>
+          </div>
+          <Progress value={paymentCompleted ? 100 : 0} className="h-2" />
+        </div>
       </div>
 
       <div className="space-y-3">

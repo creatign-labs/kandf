@@ -52,17 +52,8 @@ const Jobs = () => {
         return { eligible: false, reason: 'Complete all course sessions before applying for jobs.' };
       }
 
-      // Check outstanding payments
-      const { data: pendingPayments } = await supabase
-        .from('payment_schedules')
-        .select('id')
-        .eq('student_id', user.id)
-        .neq('status', 'paid')
-        .limit(1);
+      // Job applications are gated on course completion only — not on payment status.
 
-      if (pendingPayments && pendingPayments.length > 0) {
-        return { eligible: false, reason: 'Clear all pending dues before applying for jobs.' };
-      }
 
       return { eligible: true, reason: '' };
     },

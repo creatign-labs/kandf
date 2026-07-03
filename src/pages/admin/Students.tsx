@@ -48,6 +48,7 @@ import { format } from "date-fns";
 import { OnlineClassManager } from "@/components/admin/OnlineClassManager";
 import { StudentViewDialog } from "@/components/admin/StudentViewDialog";
 import { useSearchParams } from "react-router-dom";
+import { ExportButton } from "@/components/ExportButton";
 
 const Students = () => {
   const [searchParams] = useSearchParams();

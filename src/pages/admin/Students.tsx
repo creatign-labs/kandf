@@ -390,13 +390,18 @@ const Students = () => {
             <ExportButton
               filename="students"
               data={(enrollments || []).map((e: any) => ({
-                student_name: `${e.profiles?.first_name ?? ""} ${e.profiles?.last_name ?? ""}`.trim(),
-                email: e.profiles?.email ?? "",
-                phone: e.profiles?.phone ?? "",
+                student_code: e.student_code ?? "",
+                first_name: e.profile?.first_name ?? "",
+                last_name: e.profile?.last_name ?? "",
+                email: e.profile?.email ?? "",
+                phone: e.profile?.phone ?? "",
                 course: e.courses?.title ?? "",
-                batch: e.batches?.batch_name ?? "",
                 status: e.status,
-                enrolled_at: e.enrolled_at ?? e.created_at,
+                progress: e.progress ?? 0,
+                payment_completed: e.payment_completed ?? false,
+                attendance_completed: e.attendance_completed ?? false,
+                enrollment_date: e.enrollment_date ?? e.created_at,
+                created_at: e.created_at,
               }))}
             />
           )}

@@ -40,8 +40,13 @@ import { Search, Plus, ChefHat, Loader2, Trash2, ChevronsUpDown } from "lucide-r
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { ExportButton } from "@/components/ExportButton";
+import { ImportButton } from "@/components/ImportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { recipeIngredientsImport } from "@/lib/importConfigs";
 
 const RecipeIngredients = () => {
+  const { data: roles } = useUserRoles();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRecipe, setSelectedRecipe] = useState<string>("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);

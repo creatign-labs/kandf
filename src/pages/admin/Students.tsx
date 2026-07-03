@@ -516,6 +516,11 @@ const Students = () => {
                             {enrollment.profile?.phone || 'N/A'}
                           </span>
                         </TableCell>
+                        <TableCell>
+                          <span className="text-muted-foreground">
+                            {(enrollment.profile as any)?.city || 'N/A'}
+                          </span>
+                        </TableCell>
                         <TableCell>{enrollment.courses?.title}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

@@ -94,7 +94,7 @@ const Students = () => {
         (data || []).map(async (enrollment) => {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, phone, email')
+            .select('id, first_name, last_name, phone, email, city')
             .eq('id', enrollment.student_id)
             .maybeSingle();
           return { ...enrollment, profile };

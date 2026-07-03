@@ -70,6 +70,8 @@ export const CertificateEligibilityCard = ({
           <Progress value={paymentCompleted ? 100 : 0} className="h-2" />
         </div>
       </div>
+
+      <div className="space-y-3">
         {conditions.map((condition, index) => (
           <div
             key={index}

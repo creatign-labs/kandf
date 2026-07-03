@@ -60,7 +60,7 @@ const Enquiry = () => {
         title: "Enquiry Submitted!",
         description: "We'll get back to you within 24 hours. A confirmation has been sent to your email.",
       });
-      setFormData({ name: "", email: "", phone: "", level: "", message: "" });
+      setFormData({ name: "", email: "", phone: "", level: "", city: "", message: "" });
 
     },
     onError: (error: Error) => {

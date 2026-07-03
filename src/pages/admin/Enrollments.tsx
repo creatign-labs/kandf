@@ -43,6 +43,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Search, UserPlus, Phone, Calendar, CheckCircle, Copy } from "lucide-react";
 import { format } from "date-fns";
+import { ExportButton } from "@/components/ExportButton";
 
 const AdminEnrollments = () => {
   const { toast } = useToast();

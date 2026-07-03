@@ -18,8 +18,8 @@ interface ImportButtonProps {
   table: TableName;
   templateColumns: string[];
   requiredColumns?: string[];
-  /** Transform a parsed row (all values strings) into the object to insert. Return null to skip. */
-  transformRow?: (row: Record<string, string>, idx: number) => Promise<Record<string, unknown> | null> | Record<string, unknown> | null;
+  /** Build the insert payload from parsed rows. Return array of records to insert. */
+  buildPayload?: (rows: Record<string, string>[]) => Promise<Record<string, unknown>[]> | Record<string, unknown>[];
   invalidateKeys?: string[][];
   label?: string;
   className?: string;

@@ -381,9 +381,25 @@ const Students = () => {
       <Header role="admin" userName="Admin" />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Student Management</h1>
-          <p className="text-muted-foreground">View and manage all students</p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Student Management</h1>
+            <p className="text-muted-foreground">View and manage all students</p>
+          </div>
+          {isSuperAdmin && (
+            <ExportButton
+              filename="students"
+              data={(enrollments || []).map((e: any) => ({
+                student_name: `${e.profiles?.first_name ?? ""} ${e.profiles?.last_name ?? ""}`.trim(),
+                email: e.profiles?.email ?? "",
+                phone: e.profiles?.phone ?? "",
+                course: e.courses?.title ?? "",
+                batch: e.batches?.batch_name ?? "",
+                status: e.status,
+                enrolled_at: e.enrolled_at ?? e.created_at,
+              }))}
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">

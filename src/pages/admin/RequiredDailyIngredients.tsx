@@ -27,6 +27,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, addDays, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { ExportButton } from "@/components/ExportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface IngredientRequirement {
   inventory_id: string;

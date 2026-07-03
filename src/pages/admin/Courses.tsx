@@ -32,6 +32,10 @@ import { Plus, Edit, Clock, Users, IndianRupee, Loader2, Trash2, ChefHat, Search
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { ExportButton } from "@/components/ExportButton";
+import { ImportButton } from "@/components/ImportButton";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { coursesImport } from "@/lib/importConfigs";
 
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 

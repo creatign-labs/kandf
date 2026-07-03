@@ -597,26 +597,32 @@ const Courses = () => {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-4xl font-bold text-foreground mb-2">Course Management</h1>
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Course Management</h1>
             <p className="text-muted-foreground">Create and manage course curriculum, modules, and pricing</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2" onClick={resetForm}>
-                <Plus className="h-4 w-4" />
-                Add New Course
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Course</DialogTitle>
-              </DialogHeader>
-              {courseFormJSX}
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <CoursesToolbar courses={courses} />
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" onClick={resetForm}>
+                  <Plus className="h-4 w-4" />
+                  Add New Course
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Course</DialogTitle>
+                </DialogHeader>
+                {courseFormJSX}
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="space-y-6">
           {courses?.map((course, index) => (
+
             <Card key={course.id} className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <div>

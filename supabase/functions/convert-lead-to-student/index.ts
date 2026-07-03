@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
 
     // Upsert profile to enrolled (handles case where profile was deleted or doesn't exist)
     const nameParts = (lead.name || "").trim().split(/\s+/);
-    const profileData = {
+    const profileData: Record<string, unknown> = {
       id: studentId,
       enrollment_status: "enrolled",
       first_name: nameParts[0] || "Student",
@@ -117,6 +117,7 @@ Deno.serve(async (req) => {
       email: lead.email,
       updated_at: new Date().toISOString(),
     };
+    if ((lead as any).city) profileData.city = (lead as any).city;
     
     const { error: profileError } = await supabaseAdmin.from("profiles").upsert(profileData, { onConflict: "id" });
     if (profileError) {

@@ -24,6 +24,7 @@ const Enquiry = () => {
     email: "",
     phone: "",
     level: "",
+    city: "",
     message: "",
   });
 
@@ -31,7 +32,9 @@ const Enquiry = () => {
 
   const submitEnquiryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const levelLine = data.level ? `Interested Level: ${data.level}\n\n` : "";
+      const levelLine = data.level ? `Interested Level: ${data.level}\n` : "";
+      const cityLine = data.city ? `City: ${data.city}\n` : "";
+      const prefix = levelLine || cityLine ? `${levelLine}${cityLine}\n` : "";
       const { error } = await supabase
         .from("leads")
         .insert({
@@ -39,10 +42,11 @@ const Enquiry = () => {
           email: data.email,
           phone: data.phone || null,
           course_id: null,
-          message: `${levelLine}${data.message}`,
+          city: data.city || null,
+          message: `${prefix}${data.message}`,
           stage: "new",
           source: "website",
-        });
+        } as any);
 
       if (error) throw error;
 
@@ -56,7 +60,7 @@ const Enquiry = () => {
         title: "Enquiry Submitted!",
         description: "We'll get back to you within 24 hours. A confirmation has been sent to your email.",
       });
-      setFormData({ name: "", email: "", phone: "", level: "", message: "" });
+      setFormData({ name: "", email: "", phone: "", level: "", city: "", message: "" });
 
     },
     onError: (error: Error) => {
@@ -70,6 +74,10 @@ const Enquiry = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.city) {
+      toast({ title: "City required", description: "Please select your city.", variant: "destructive" });
+      return;
+    }
     submitEnquiryMutation.mutate(formData);
   };
 
@@ -142,8 +150,24 @@ const Enquiry = () => {
                         </SelectContent>
                       </Select>
                     </div>
-
                   </div>
+
+                  <div>
+                    <Label htmlFor="city">City *</Label>
+                    <Select
+                      value={formData.city}
+                      onValueChange={(value) => setFormData({ ...formData, city: value })}
+                    >
+                      <SelectTrigger id="city">
+                        <SelectValue placeholder="Select your city" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Chennai">Chennai</SelectItem>
+                        <SelectItem value="Mumbai">Mumbai</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
 
                   <div>
                     <Label htmlFor="message">Your Message *</Label>

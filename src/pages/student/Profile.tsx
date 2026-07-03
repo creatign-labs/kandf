@@ -32,6 +32,7 @@ const Profile = () => {
     date_of_birth: '',
     date_of_joining: '',
     address: '',
+    city: '',
     heard_about: '',
     heard_about_other: ''
   });
@@ -77,6 +78,7 @@ const Profile = () => {
         date_of_birth: (data as any).date_of_birth || '',
         date_of_joining: (data as any).date_of_joining || '',
         address: (data as any).address || '',
+        city: (data as any).city || '',
         heard_about: (data as any).heard_about || '',
         heard_about_other: (data as any).heard_about_other || ''
       });
@@ -213,6 +215,7 @@ const Profile = () => {
         date_of_birth: profile.date_of_birth || null,
         date_of_joining: profile.date_of_joining || null,
         address: profile.address || null,
+        city: profile.city || null,
         heard_about: profile.heard_about || null,
         heard_about_other: profile.heard_about === 'Other' ? profile.heard_about_other : null,
       } as any).eq('id', user.id);
@@ -426,6 +429,19 @@ const Profile = () => {
                 <div className="space-y-2">
                   <Label htmlFor="address">Address</Label>
                   <Textarea id="address" value={profile.address} onChange={e => setProfile({ ...profile, address: e.target.value })} placeholder="Your address" rows={2} maxLength={500} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Select value={profile.city} onValueChange={(v) => setProfile({ ...profile, city: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Chennai">Chennai</SelectItem>
+                      <SelectItem value="Mumbai">Mumbai</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

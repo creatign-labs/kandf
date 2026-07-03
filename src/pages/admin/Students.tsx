@@ -94,7 +94,7 @@ const Students = () => {
         (data || []).map(async (enrollment) => {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, phone, email')
+            .select('id, first_name, last_name, phone, email, city')
             .eq('id', enrollment.student_id)
             .maybeSingle();
           return { ...enrollment, profile };
@@ -395,6 +395,7 @@ const Students = () => {
                 last_name: e.profile?.last_name ?? "",
                 email: e.profile?.email ?? "",
                 phone: e.profile?.phone ?? "",
+                city: (e.profile as any)?.city ?? "",
                 course: e.courses?.title ?? "",
                 status: e.status,
                 progress: e.progress ?? 0,
@@ -492,6 +493,7 @@ const Students = () => {
                     <TableRow>
                       <TableHead>Student</TableHead>
                       <TableHead>Phone</TableHead>
+                      <TableHead>City</TableHead>
                       <TableHead>Course</TableHead>
                       <TableHead>Progress</TableHead>
                       <TableHead>Status</TableHead>
@@ -513,6 +515,11 @@ const Students = () => {
                         <TableCell>
                           <span className="text-muted-foreground">
                             {enrollment.profile?.phone || 'N/A'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-muted-foreground">
+                            {(enrollment.profile as any)?.city || 'N/A'}
                           </span>
                         </TableCell>
                         <TableCell>{enrollment.courses?.title}</TableCell>
@@ -555,7 +562,7 @@ const Students = () => {
                     ))}
                     {filteredEnrollments.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           No students found
                         </TableCell>
                       </TableRow>

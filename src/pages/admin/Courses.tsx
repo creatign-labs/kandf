@@ -596,9 +596,6 @@ const Courses = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Course Management</h1>
-          <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Course Management</h1>
             <p className="text-muted-foreground">Create and manage course curriculum, modules, and pricing</p>
           </div>
           <div className="flex items-center gap-2">

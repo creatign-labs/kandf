@@ -49,6 +49,8 @@ const Leads = () => {
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { data: roles } = useUserRoles();
+
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ["leads"],

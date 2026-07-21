@@ -95,13 +95,22 @@ const VendorPayment = () => {
             await supabase.auth.signOut();
             navigate("/vendor/payment/success");
           } catch (e: any) {
-            toast({ title: "Verification failed", description: e.message, variant: "destructive" });
+            navigate("/vendor/payment/failed", {
+              state: { reason: e?.message || "We couldn't verify your payment. Please retry." },
+            });
           }
+        },
+        modal: {
+          ondismiss: () => {
+            navigate("/vendor/payment/cancelled");
+          },
         },
       };
       const rp = new window.Razorpay(options);
       rp.on("payment.failed", (r: any) => {
-        toast({ title: "Payment failed", description: r.error?.description || "Try again", variant: "destructive" });
+        navigate("/vendor/payment/failed", {
+          state: { reason: r?.error?.description || r?.error?.reason || "Payment was declined by your bank." },
+        });
       });
       rp.open();
     } catch (e: any) {

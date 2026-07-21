@@ -84,6 +84,7 @@ const VendorApprovals = () => {
           *,
           vendor_profiles(*)
         `)
+        .neq("status", "pending_payment")
         .order("created_at", { ascending: false });
 
       if (error) throw error;

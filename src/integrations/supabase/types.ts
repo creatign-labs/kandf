@@ -2735,6 +2735,65 @@ export type Database = {
           },
         ]
       }
+      vendor_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          gst_amount: number
+          id: string
+          paid_at: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+          vendor_profile_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          gst_amount: number
+          id?: string
+          paid_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          status?: string
+          total_amount: number
+          updated_at?: string
+          user_id: string
+          vendor_profile_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          gst_amount?: number
+          id?: string
+          paid_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+          vendor_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_payments_vendor_profile_id_fkey"
+            columns: ["vendor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_profiles: {
         Row: {
           approval_status: string

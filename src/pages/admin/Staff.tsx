@@ -655,6 +655,22 @@ const Staff = () => {
                         <UserMinus className="h-4 w-4" />
                       </Button>
                     )}
+                    {/* View Credentials — SUPER ADMIN ONLY */}
+                    {isSuperAdminViewer && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setShowPassword(false);
+                          setResetPwd("");
+                          setDialogAction("credentials");
+                        }}
+                        title="View login credentials"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
+                    )}
                     {/* Delete button */}
                     <Button
                       variant="outline"

@@ -1042,6 +1042,131 @@ const Staff = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Credentials Dialog — SUPER ADMIN ONLY */}
+      <Dialog
+        open={dialogAction === "credentials"}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDialogAction(null);
+            setShowPassword(false);
+            setResetPwd("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" />
+              Login Credentials
+            </DialogTitle>
+            <DialogDescription>
+              {selectedUser?.first_name} {selectedUser?.last_name} — visible to Super Admins only.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!isSuperAdminViewer ? (
+            <p className="text-sm text-destructive py-4">Access denied. Only Super Admins can view credentials.</p>
+          ) : (
+            <div className="space-y-4 py-2">
+              <Card className="p-4 bg-muted/50 space-y-2">
+                <div className="text-sm">
+                  <span className="font-semibold">Email:</span>{" "}
+                  <span className="font-mono">{selectedUser?.email || "—"}</span>
+                </div>
+                <div className="text-sm flex items-center gap-2">
+                  <span className="font-semibold">Password:</span>
+                  {loadingCreds ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : viewedCredentials?.password_plain ? (
+                    <>
+                      <span className="font-mono">
+                        {showPassword ? viewedCredentials.password_plain : "••••••••••"}
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={() => setShowPassword((s) => !s)}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground italic">Not on record — reset below to set one.</span>
+                  )}
+                </div>
+                {viewedCredentials?.updated_at && (
+                  <div className="text-xs text-muted-foreground">
+                    Last updated: {new Date(viewedCredentials.updated_at).toLocaleString()}
+                  </div>
+                )}
+              </Card>
+
+              {viewedCredentials?.password_plain && (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    className="gap-2 w-full"
+                    onClick={() => copyCredentials(selectedUser?.email || "", viewedCredentials.password_plain)}
+                  >
+                    {copiedCreds ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedCreds ? "Copied!" : "Copy Credentials"}
+                  </Button>
+                  <Button
+                    className="gap-2 w-full"
+                    onClick={() =>
+                      sendCredentialsViaEmail(
+                        selectedUser?.email || "",
+                        viewedCredentials.password_plain,
+                        `${selectedUser?.first_name || ""} ${selectedUser?.last_name || ""}`.trim()
+                      )
+                    }
+                  >
+                    <Send className="h-4 w-4" />
+                    Send via Email
+                  </Button>
+                  {selectedUser?.phone && (
+                    <Button
+                      variant="secondary"
+                      className="gap-2 w-full"
+                      onClick={() =>
+                        sendCredentialsViaWhatsApp(
+                          selectedUser.phone,
+                          selectedUser?.email || "",
+                          viewedCredentials.password_plain,
+                          `${selectedUser?.first_name || ""} ${selectedUser?.last_name || ""}`.trim()
+                        )
+                      }
+                    >
+                      <Send className="h-4 w-4" />
+                      Send via WhatsApp
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2 pt-2 border-t">
+                <Label>Reset Password</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="New password (min 6 chars)"
+                    value={resetPwd}
+                    onChange={(e) => setResetPwd(e.target.value)}
+                  />
+                  <Button
+                    onClick={() => resetPasswordMutation.mutate({ userId: selectedUser.id, newPassword: resetPwd })}
+                    disabled={resetPasswordMutation.isPending || resetPwd.length < 6}
+                  >
+                    {resetPasswordMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reset"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogAction(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };

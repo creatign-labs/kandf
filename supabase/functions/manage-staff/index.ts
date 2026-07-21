@@ -55,6 +55,8 @@ Deno.serve(async (req) => {
       return await handleCreate(supabaseAdmin, body);
     } else if (action === "delete") {
       return await handleDelete(supabaseAdmin, body, user.id);
+    } else if (action === "reset_password") {
+      return await handleResetPassword(supabaseAdmin, body);
     } else {
       return new Response(JSON.stringify({ error: "Invalid action" }), {
         status: 400,
@@ -158,6 +160,13 @@ async function handleCreate(supabaseAdmin: ReturnType<typeof createClient>, body
   }
 
 
+  // Store plaintext password for super-admin recovery (RLS restricts read to super_admin only)
+  await supabaseAdmin.from("staff_credentials").upsert({
+    user_id: userId,
+    password_plain: password,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "user_id" });
+
   return new Response(JSON.stringify({
     success: true,
     userId,
@@ -165,6 +174,45 @@ async function handleCreate(supabaseAdmin: ReturnType<typeof createClient>, body
     password,
     message: "Staff member created successfully",
   }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function handleResetPassword(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  body: Record<string, string>
+) {
+  const { userId, newPassword } = body;
+  if (!userId || !newPassword) {
+    return new Response(JSON.stringify({ error: "Missing userId or newPassword" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  if (newPassword.length < 6) {
+    return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  });
+  if (updErr) {
+    return new Response(JSON.stringify({ error: updErr.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  await supabaseAdmin.from("staff_credentials").upsert({
+    user_id: userId,
+    password_plain: newPassword,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "user_id" });
+
+  return new Response(JSON.stringify({ success: true, message: "Password reset" }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }

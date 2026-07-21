@@ -2331,6 +2331,27 @@ export type Database = {
           },
         ]
       }
+      staff_credentials: {
+        Row: {
+          created_at: string
+          password_plain: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          password_plain: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          password_plain?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       staff_permissions: {
         Row: {
           created_at: string

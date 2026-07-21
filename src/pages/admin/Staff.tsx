@@ -36,11 +36,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Users, ChefHat, Shield, Search, UserPlus, UserMinus, Loader2, Settings, Save, Trash2, Send, Copy, Check, Package } from "lucide-react";
+import { Users, ChefHat, Shield, Search, UserPlus, UserMinus, Loader2, Settings, Save, Trash2, Send, Copy, Check, Package, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 type AppRole = "admin" | "student" | "chef" | "inventory_manager";
 
@@ -115,15 +116,19 @@ const PERMISSION_CATEGORIES = [
 
 const Staff = () => {
   const queryClient = useQueryClient();
+  const { data: currentRoles } = useUserRoles();
+  const isSuperAdminViewer = !!currentRoles?.isSuperAdmin;
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [dialogAction, setDialogAction] = useState<"add" | "remove" | "permissions" | "create" | null>(null);
+  const [dialogAction, setDialogAction] = useState<"add" | "remove" | "permissions" | "create" | "credentials" | null>(null);
   const [selectedRole, setSelectedRole] = useState<AppRole>("chef");
   const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [copiedCreds, setCopiedCreds] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetPwd, setResetPwd] = useState("");
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -294,7 +299,46 @@ const Staff = () => {
     },
   });
 
-  // Save permissions
+  // Fetch stored credentials (super_admin only via RLS)
+  const { data: viewedCredentials, isLoading: loadingCreds, refetch: refetchCreds } = useQuery({
+    queryKey: ["staff-credentials", selectedUser?.id],
+    queryFn: async () => {
+      if (!selectedUser?.id) return null;
+      const { data, error } = await supabase
+        .from("staff_credentials")
+        .select("password_plain, updated_at")
+        .eq("user_id", selectedUser.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedUser?.id && dialogAction === "credentials" && isSuperAdminViewer,
+  });
+
+  // Reset password mutation (super_admin only)
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { data, error } = await supabase.functions.invoke("manage-staff", {
+        body: { action: "reset_password", userId, newPassword },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to reset password");
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Password reset successfully" });
+      setResetPwd("");
+      refetchCreds();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error resetting password", description: error.message, variant: "destructive" });
+    },
+  });
+
+
   const savePermissions = async () => {
     if (!selectedUser?.id) return;
     setIsSaving(true);
@@ -609,6 +653,22 @@ const Staff = () => {
                         }}
                       >
                         <UserMinus className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {/* View Credentials — SUPER ADMIN ONLY */}
+                    {isSuperAdminViewer && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setShowPassword(false);
+                          setResetPwd("");
+                          setDialogAction("credentials");
+                        }}
+                        title="View login credentials"
+                      >
+                        <KeyRound className="h-4 w-4" />
                       </Button>
                     )}
                     {/* Delete button */}
@@ -982,6 +1042,131 @@ const Staff = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Credentials Dialog — SUPER ADMIN ONLY */}
+      <Dialog
+        open={dialogAction === "credentials"}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDialogAction(null);
+            setShowPassword(false);
+            setResetPwd("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" />
+              Login Credentials
+            </DialogTitle>
+            <DialogDescription>
+              {selectedUser?.first_name} {selectedUser?.last_name} — visible to Super Admins only.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!isSuperAdminViewer ? (
+            <p className="text-sm text-destructive py-4">Access denied. Only Super Admins can view credentials.</p>
+          ) : (
+            <div className="space-y-4 py-2">
+              <Card className="p-4 bg-muted/50 space-y-2">
+                <div className="text-sm">
+                  <span className="font-semibold">Email:</span>{" "}
+                  <span className="font-mono">{selectedUser?.email || "—"}</span>
+                </div>
+                <div className="text-sm flex items-center gap-2">
+                  <span className="font-semibold">Password:</span>
+                  {loadingCreds ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : viewedCredentials?.password_plain ? (
+                    <>
+                      <span className="font-mono">
+                        {showPassword ? viewedCredentials.password_plain : "••••••••••"}
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={() => setShowPassword((s) => !s)}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground italic">Not on record — reset below to set one.</span>
+                  )}
+                </div>
+                {viewedCredentials?.updated_at && (
+                  <div className="text-xs text-muted-foreground">
+                    Last updated: {new Date(viewedCredentials.updated_at).toLocaleString()}
+                  </div>
+                )}
+              </Card>
+
+              {viewedCredentials?.password_plain && (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    className="gap-2 w-full"
+                    onClick={() => copyCredentials(selectedUser?.email || "", viewedCredentials.password_plain)}
+                  >
+                    {copiedCreds ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedCreds ? "Copied!" : "Copy Credentials"}
+                  </Button>
+                  <Button
+                    className="gap-2 w-full"
+                    onClick={() =>
+                      sendCredentialsViaEmail(
+                        selectedUser?.email || "",
+                        viewedCredentials.password_plain,
+                        `${selectedUser?.first_name || ""} ${selectedUser?.last_name || ""}`.trim()
+                      )
+                    }
+                  >
+                    <Send className="h-4 w-4" />
+                    Send via Email
+                  </Button>
+                  {selectedUser?.phone && (
+                    <Button
+                      variant="secondary"
+                      className="gap-2 w-full"
+                      onClick={() =>
+                        sendCredentialsViaWhatsApp(
+                          selectedUser.phone,
+                          selectedUser?.email || "",
+                          viewedCredentials.password_plain,
+                          `${selectedUser?.first_name || ""} ${selectedUser?.last_name || ""}`.trim()
+                        )
+                      }
+                    >
+                      <Send className="h-4 w-4" />
+                      Send via WhatsApp
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2 pt-2 border-t">
+                <Label>Reset Password</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="New password (min 6 chars)"
+                    value={resetPwd}
+                    onChange={(e) => setResetPwd(e.target.value)}
+                  />
+                  <Button
+                    onClick={() => resetPasswordMutation.mutate({ userId: selectedUser.id, newPassword: resetPwd })}
+                    disabled={resetPasswordMutation.isPending || resetPwd.length < 6}
+                  >
+                    {resetPasswordMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reset"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogAction(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };

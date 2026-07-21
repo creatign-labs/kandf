@@ -96,7 +96,7 @@ const VendorSignup = () => {
       }
 
       if (authData.user) {
-        // Create vendor profile with pending approval status
+        // Create vendor profile awaiting payment
         const { data: vendorProfile, error: profileError } = await supabase
           .from("vendor_profiles")
           .insert({
@@ -105,7 +105,7 @@ const VendorSignup = () => {
             contact_email: validated.email,
             contact_phone: validated.phone,
             gst_number: validated.gstNumber,
-            approval_status: "pending",
+            approval_status: "pending_payment",
             is_active: false,
           } as any)
           .select()
@@ -115,25 +115,19 @@ const VendorSignup = () => {
           console.error("Failed to create vendor profile:", profileError);
         }
 
-        // Create approval record
         if (vendorProfile) {
           const { error: approvalError } = await supabase
             .from("vendor_access_approvals")
             .insert({
               user_id: authData.user.id,
               vendor_profile_id: vendorProfile.id,
-              status: "pending",
+              status: "pending_payment",
             });
-
-          if (approvalError) {
-            console.error("Failed to create approval record:", approvalError);
-          }
+          if (approvalError) console.error("Failed to create approval record:", approvalError);
         }
 
-        await supabase.auth.signOut();
-
-        // Show success state
-        setRegistrationComplete(true);
+        // Keep session alive so vendor can complete payment, then redirect
+        navigate("/vendor/payment");
       }
     } catch (error) {
       if (error instanceof z.ZodError) {

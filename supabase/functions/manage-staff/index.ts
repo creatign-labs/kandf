@@ -55,6 +55,8 @@ Deno.serve(async (req) => {
       return await handleCreate(supabaseAdmin, body);
     } else if (action === "delete") {
       return await handleDelete(supabaseAdmin, body, user.id);
+    } else if (action === "reset_password") {
+      return await handleResetPassword(supabaseAdmin, body);
     } else {
       return new Response(JSON.stringify({ error: "Invalid action" }), {
         status: 400,

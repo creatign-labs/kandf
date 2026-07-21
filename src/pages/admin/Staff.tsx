@@ -299,7 +299,46 @@ const Staff = () => {
     },
   });
 
-  // Save permissions
+  // Fetch stored credentials (super_admin only via RLS)
+  const { data: viewedCredentials, isLoading: loadingCreds, refetch: refetchCreds } = useQuery({
+    queryKey: ["staff-credentials", selectedUser?.id],
+    queryFn: async () => {
+      if (!selectedUser?.id) return null;
+      const { data, error } = await supabase
+        .from("staff_credentials")
+        .select("password_plain, updated_at")
+        .eq("user_id", selectedUser.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedUser?.id && dialogAction === "credentials" && isSuperAdminViewer,
+  });
+
+  // Reset password mutation (super_admin only)
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { data, error } = await supabase.functions.invoke("manage-staff", {
+        body: { action: "reset_password", userId, newPassword },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to reset password");
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Password reset successfully" });
+      setResetPwd("");
+      refetchCreds();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error resetting password", description: error.message, variant: "destructive" });
+    },
+  });
+
+
   const savePermissions = async () => {
     if (!selectedUser?.id) return;
     setIsSaving(true);

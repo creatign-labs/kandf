@@ -215,8 +215,7 @@ const Enquiry = () => {
                   <Mail className="h-6 w-6 text-primary mt-1" />
                   <div>
                     <h3 className="font-semibold mb-1">Email Us</h3>
-                    <p className="text-sm text-muted-foreground">info@bakingacademy.com</p>
-                    <p className="text-sm text-muted-foreground">admissions@bakingacademy.com</p>
+                    <p className="text-sm text-muted-foreground">hello@kneadfrost.com</p>
                   </div>
                 </div>
 
@@ -224,8 +223,7 @@ const Enquiry = () => {
                   <Phone className="h-6 w-6 text-primary mt-1" />
                   <div>
                     <h3 className="font-semibold mb-1">Call Us</h3>
-                    <p className="text-sm text-muted-foreground">+1 (555) 123-4567</p>
-                    <p className="text-sm text-muted-foreground">Mon-Fri: 9am - 6pm</p>
+                    <p className="text-sm text-muted-foreground">073059 70545</p>
                   </div>
                 </div>
 
@@ -234,9 +232,9 @@ const Enquiry = () => {
                   <div>
                     <h3 className="font-semibold mb-1">Visit Us</h3>
                     <p className="text-sm text-muted-foreground">
-                      123 Baker Street<br />
-                      Culinary District<br />
-                      San Francisco, CA 94102
+                      9/3A, Adyar Bridge Rd, Arunachalapuram<br />
+                      Adyar, Chennai, Greater Chennai<br />
+                      Tamil Nadu 600020
                     </p>
                   </div>
                 </div>
@@ -244,11 +242,15 @@ const Enquiry = () => {
                 <div className="flex items-start gap-4">
                   <Clock className="h-6 w-6 text-primary mt-1" />
                   <div>
-                    <h3 className="font-semibold mb-1">Office Hours</h3>
+                    <h3 className="font-semibold mb-1">Working Hours</h3>
                     <p className="text-sm text-muted-foreground">
-                      Monday - Friday: 9:00 AM - 6:00 PM<br />
-                      Saturday: 10:00 AM - 4:00 PM<br />
-                      Sunday: Closed
+                      Monday 10 am–6 pm<br />
+                      Tuesday 10 am–6 pm<br />
+                      Wednesday 10 am–6 pm<br />
+                      Thursday Closed<br />
+                      Friday 10 am–6 pm<br />
+                      Saturday 10 am–6 pm<br />
+                      Sunday 10 am–6 pm
                     </p>
                   </div>
                 </div>

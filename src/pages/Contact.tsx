@@ -152,9 +152,9 @@ const Contact = () => {
                 <div>
                   <h3 className="font-semibold mb-1">Our Location</h3>
                   <p className="text-sm text-muted-foreground">
-                    123 Baking Street, Culinary District<br />
-                    Mumbai, Maharashtra 400001<br />
-                    India
+                    9/3A, Adyar Bridge Rd, Arunachalapuram<br />
+                    Adyar, Chennai, Greater Chennai<br />
+                    Tamil Nadu 600020
                   </p>
                 </div>
               </div>
@@ -168,8 +168,7 @@ const Contact = () => {
                 <div>
                   <h3 className="font-semibold mb-1">Phone</h3>
                   <p className="text-sm text-muted-foreground">
-                    +91 98765 43210<br />
-                    +91 98765 43211
+                    073059 70545
                   </p>
                 </div>
               </div>
@@ -183,8 +182,7 @@ const Contact = () => {
                 <div>
                   <h3 className="font-semibold mb-1">Email</h3>
                   <p className="text-sm text-muted-foreground">
-                    info@kneadandfrost.com<br />
-                    admissions@kneadandfrost.com
+                    hello@kneadfrost.com
                   </p>
                 </div>
               </div>
@@ -198,8 +196,13 @@ const Contact = () => {
                 <div>
                   <h3 className="font-semibold mb-1">Working Hours</h3>
                   <p className="text-sm text-muted-foreground">
-                    Monday - Saturday<br />
-                    9:00 AM - 6:00 PM IST
+                    Monday 10 am–6 pm<br />
+                    Tuesday 10 am–6 pm<br />
+                    Wednesday 10 am–6 pm<br />
+                    Thursday Closed<br />
+                    Friday 10 am–6 pm<br />
+                    Saturday 10 am–6 pm<br />
+                    Sunday 10 am–6 pm
                   </p>
                 </div>
               </div>

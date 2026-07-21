@@ -83,6 +83,8 @@ import ReleasedApplications from "./pages/vendor/ReleasedApplications";
 import VendorProfile from "./pages/vendor/VendorProfile";
 import VendorSignup from "./pages/vendor/VendorSignup";
 import VendorAwaitingApproval from "./pages/vendor/VendorAwaitingApproval";
+import VendorPayment from "./pages/vendor/VendorPayment";
+import VendorPaymentSuccess from "./pages/vendor/VendorPaymentSuccess";
 import VendorApprovals from "./pages/admin/VendorApprovals";
 import PurchaseOrders from "./pages/admin/PurchaseOrders";
 import BatchCalendar from "./pages/admin/BatchCalendar";
@@ -110,6 +112,8 @@ const App = () => (
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/signup" element={<SignupDisabled />} />
           <Route path="/vendor/signup" element={<VendorSignup />} />
+          <Route path="/vendor/payment" element={<VendorPayment />} />
+          <Route path="/vendor/payment/success" element={<VendorPaymentSuccess />} />
           <Route path="/vendor/awaiting-approval" element={<VendorAwaitingApproval />} />
           <Route path="/flow-walkthrough" element={<FlowWalkthrough />} />
           <Route path="/feature-report" element={<FeatureReport />} />

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Phone, Mail, Clock, Send, Loader2 } from "lucide-react";
+import { MapPin, Phone, Mail, Clock, Navigation, Send, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -222,12 +222,30 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* Map Placeholder */}
+      {/* Google Map */}
       <section className="container px-6 pb-16">
-        <Card className="h-[300px] border-border/60 bg-muted/50 flex items-center justify-center">
-          <div className="text-center">
-            <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Interactive map would be displayed here</p>
+        <Card className="overflow-hidden border-border/60">
+          <div className="h-[300px] w-full">
+            <iframe
+              title="Knead & Frost Academy Location"
+              src="https://www.google.com/maps?q=9%2F3A%2C%20Adyar%20Bridge%20Rd%2C%20Arunachalapuram%2C%20Adyar%2C%20Chennai%2C%20Greater%20Chennai%2C%20Tamil%20Nadu%20600020&output=embed"
+              className="w-full h-full border-0"
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+          <div className="p-4 flex justify-end">
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href="https://www.google.com/maps/dir/?api=1&destination=9%2F3A%2C%20Adyar%20Bridge%20Rd%2C%20Arunachalapuram%2C%20Adyar%2C%20Chennai%2C%20Greater%20Chennai%2C%20Tamil%20Nadu%20600020"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Navigation className="h-4 w-4 mr-2" />
+                Get Directions
+              </a>
+            </Button>
           </div>
         </Card>
       </section>

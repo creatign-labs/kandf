@@ -116,15 +116,19 @@ const PERMISSION_CATEGORIES = [
 
 const Staff = () => {
   const queryClient = useQueryClient();
+  const { data: currentRoles } = useUserRoles();
+  const isSuperAdminViewer = !!currentRoles?.isSuperAdmin;
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [dialogAction, setDialogAction] = useState<"add" | "remove" | "permissions" | "create" | null>(null);
+  const [dialogAction, setDialogAction] = useState<"add" | "remove" | "permissions" | "create" | "credentials" | null>(null);
   const [selectedRole, setSelectedRole] = useState<AppRole>("chef");
   const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [copiedCreds, setCopiedCreds] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetPwd, setResetPwd] = useState("");
 
   // New user form state
   const [newUser, setNewUser] = useState({

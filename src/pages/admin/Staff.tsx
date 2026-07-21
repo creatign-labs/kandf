@@ -36,11 +36,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Users, ChefHat, Shield, Search, UserPlus, UserMinus, Loader2, Settings, Save, Trash2, Send, Copy, Check, Package } from "lucide-react";
+import { Users, ChefHat, Shield, Search, UserPlus, UserMinus, Loader2, Settings, Save, Trash2, Send, Copy, Check, Package, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 type AppRole = "admin" | "student" | "chef" | "inventory_manager";
 

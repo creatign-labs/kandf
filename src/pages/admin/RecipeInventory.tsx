@@ -74,9 +74,9 @@ const RecipeInventory = () => {
     },
   });
 
-  const filteredRecipes = recipes?.filter((recipe) => {
+  const filteredRecipes = (recipes || []).filter(Boolean).filter((recipe: any) => {
     const matchesSearch =
-      recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (recipe.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       recipe.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const linkedCourseIds = ((recipe as any).course_recipes || [])
       .map((cr: any) => cr.courses?.id)

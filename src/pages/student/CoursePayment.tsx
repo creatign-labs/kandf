@@ -41,11 +41,13 @@ const CoursePayment = () => {
         .from("enrollments")
         .select("id, course_id, courses(title, base_fee)")
         .eq("student_id", user.id)
-        .eq("status", "active")
-        .single();
+        .in("status", ["active", "enrolled"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error) throw error;
-      return data as Enrollment;
+      return (data as Enrollment) || null;
     },
   });
 

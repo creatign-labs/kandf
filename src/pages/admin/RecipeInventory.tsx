@@ -124,10 +124,11 @@ const RecipeInventory = () => {
     }
   };
 
-  const totalRecipes = recipes?.length || 0;
-  const readyRecipes = recipes?.filter(r => getIngredientStatus(r) === "ready").length || 0;
-  const lowStockRecipes = recipes?.filter(r => getIngredientStatus(r) === "low-stock").length || 0;
-  const noIngredientsRecipes = recipes?.filter(r => getIngredientStatus(r) === "no-ingredients").length || 0;
+  const safeRecipes = (recipes || []).filter(Boolean) as any[];
+  const totalRecipes = safeRecipes.length;
+  const readyRecipes = safeRecipes.filter(r => getIngredientStatus(r) === "ready").length;
+  const lowStockRecipes = safeRecipes.filter(r => getIngredientStatus(r) === "low-stock").length;
+  const noIngredientsRecipes = safeRecipes.filter(r => getIngredientStatus(r) === "no-ingredients").length;
 
   if (isLoading) {
     return (

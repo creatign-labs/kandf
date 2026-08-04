@@ -41,11 +41,13 @@ const CoursePayment = () => {
         .from("enrollments")
         .select("id, course_id, courses(title, base_fee)")
         .eq("student_id", user.id)
-        .eq("status", "active")
-        .single();
+        .in("status", ["active", "enrolled"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error) throw error;
-      return data as Enrollment;
+      return (data as Enrollment) || null;
     },
   });
 
@@ -79,9 +81,9 @@ const CoursePayment = () => {
         .eq("status", "completed")
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== "PGRST116") throw error;
+      if (error) throw error;
       return data;
     },
   });
@@ -149,6 +151,17 @@ const CoursePayment = () => {
             View and manage your course payment schedule
           </p>
         </div>
+
+        {!enrollment && (paymentSchedules || []).length === 0 && (
+          <Card className="p-8 mb-6 text-center border-border/60">
+            <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <h2 className="font-semibold text-lg mb-1">No payment schedule yet</h2>
+            <p className="text-muted-foreground text-sm">
+              Your course payment plan will appear here once your enrollment is confirmed by the academy.
+            </p>
+          </Card>
+        )}
+
 
         {/* Course Info */}
         {enrollment?.courses && (

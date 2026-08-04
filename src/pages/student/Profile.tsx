@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Header } from '@/components/Header';
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -319,16 +320,18 @@ const Profile = () => {
   const getInitials = () => {
     return `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || 'U';
   };
+  const location = useLocation();
+  const headerRole = location.pathname.startsWith('/admin') ? 'admin' : location.pathname.startsWith('/chef') ? 'chef' : 'student';
   if (loading) {
     return <div className="min-h-screen bg-background">
-        <Header role="student" />
+        <Header role={headerRole} />
         <div className="container px-6 py-12">
           <p className="text-center">Loading profile...</p>
         </div>
       </div>;
   }
   return <div className="min-h-screen bg-background">
-      <Header role="student" />
+      <Header role={headerRole} />
       
       <div className="container px-6 py-12">
         <div className="max-w-2xl mx-auto space-y-6">

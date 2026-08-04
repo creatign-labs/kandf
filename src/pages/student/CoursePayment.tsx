@@ -152,6 +152,17 @@ const CoursePayment = () => {
           </p>
         </div>
 
+        {!enrollment && (paymentSchedules || []).length === 0 && (
+          <Card className="p-8 mb-6 text-center border-border/60">
+            <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <h2 className="font-semibold text-lg mb-1">No payment schedule yet</h2>
+            <p className="text-muted-foreground text-sm">
+              Your course payment plan will appear here once your enrollment is confirmed by the academy.
+            </p>
+          </Card>
+        )}
+
+
         {/* Course Info */}
         {enrollment?.courses && (
           <Card className="p-6 mb-6 border-border/60">

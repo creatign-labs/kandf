@@ -100,7 +100,7 @@ const RecipeInventory = () => {
   };
 
   const getIngredientStatus = (recipe: any) => {
-    const ingredients = recipe.recipe_ingredients || [];
+    const ingredients = recipe?.recipe_ingredients || [];
     if (ingredients.length === 0) return "no-ingredients";
     
     const hasLowStock = ingredients.some((ri: any) => 

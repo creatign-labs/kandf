@@ -305,6 +305,7 @@ const Leads = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Interested Course / Level</TableHead>
+                    <TableHead>City</TableHead>
                     <TableHead>Stage</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>

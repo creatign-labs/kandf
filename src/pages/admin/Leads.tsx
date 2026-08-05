@@ -45,6 +45,7 @@ import { useUserRoles } from "@/hooks/useUserRoles";
 const Leads = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const queryClient = useQueryClient();

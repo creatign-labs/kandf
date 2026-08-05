@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     // STEP 1: VALIDATE
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("enrollment_status")
+      .select("enrollment_status, email")
       .eq("id", student_id)
       .single();
 

@@ -339,9 +339,13 @@ const Batches = () => {
     },
   });
 
+  const activeBatches = (batches || []).filter((b: any) => !b.is_archived);
+  const archivedBatches = (batches || []).filter((b: any) => !!b.is_archived);
+  const visibleBatches = showArchived ? archivedBatches : activeBatches;
+
   // Calculate if all batches have booking enabled
-  const allBookingsEnabled = batches?.every((b) => b.booking_enabled ?? true) ?? true;
-  const someBookingsEnabled = batches?.some((b) => b.booking_enabled ?? true) ?? false;
+  const allBookingsEnabled = activeBatches.every((b) => b.booking_enabled ?? true) ?? true;
+  const someBookingsEnabled = activeBatches.some((b) => b.booking_enabled ?? true) ?? false;
 
   const resetForm = () => {
     setFormData({

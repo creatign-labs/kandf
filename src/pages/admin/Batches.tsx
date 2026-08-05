@@ -490,8 +490,29 @@ const Batches = () => {
         {/* Add Batch Button & Table */}
         <Card className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">All Batches</h2>
+            <h2 className="text-xl font-bold">
+              {showArchived ? "Archived Batches" : "Active Batches"}
+            </h2>
             <div className="flex items-center gap-2">
+              <div className="flex rounded-md border overflow-hidden">
+                <Button
+                  variant={showArchived ? "ghost" : "secondary"}
+                  size="sm"
+                  className="rounded-none"
+                  onClick={() => setShowArchived(false)}
+                >
+                  Active ({activeBatches.length})
+                </Button>
+                <Button
+                  variant={showArchived ? "secondary" : "ghost"}
+                  size="sm"
+                  className="rounded-none gap-2"
+                  onClick={() => setShowArchived(true)}
+                >
+                  <Archive className="h-4 w-4" />
+                  Archived ({archivedBatches.length})
+                </Button>
+              </div>
               {isAdmin && (
                 <ImportButton
                   table="batches"

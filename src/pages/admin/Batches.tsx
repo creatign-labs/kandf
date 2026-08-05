@@ -314,10 +314,10 @@ const Batches = () => {
   // Master toggle for all batches
   const masterToggleMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("batches")
         .update({ booking_enabled: enabled, updated_at: new Date().toISOString() })
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Update all batches
+        .eq("is_archived", false); // Update all active batches
 
       if (error) throw error;
     },

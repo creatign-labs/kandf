@@ -288,6 +288,48 @@ const Courses = () => {
     },
   });
 
+  const archiveCourseMutation = useMutation({
+    mutationFn: async ({ id, archive }: { id: string; archive: boolean }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from("courses")
+        .update({
+          is_archived: archive,
+          archived_at: archive ? new Date().toISOString() : null,
+          archived_by: archive ? userData?.user?.id ?? null : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      if (error) throw error;
+
+      // Archiving a course also archives its batches (and closes booking)
+      const { error: batchError } = await (supabase as any)
+        .from("batches")
+        .update({
+          is_archived: archive,
+          archived_at: archive ? new Date().toISOString() : null,
+          archived_by: archive ? userData?.user?.id ?? null : null,
+          booking_enabled: archive ? false : true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("course_id", id);
+      if (batchError) throw batchError;
+    },
+    onSuccess: (_, { archive }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-batches"] });
+      toast({
+        title: archive ? "Course archived" : "Course restored",
+        description: archive
+          ? "The course and its batches are hidden from active lists. Existing records are untouched."
+          : "The course and its batches are active again.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       title: "",

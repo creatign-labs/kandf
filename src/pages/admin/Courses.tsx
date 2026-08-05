@@ -647,6 +647,25 @@ const Courses = () => {
             <p className="text-muted-foreground">Create and manage course curriculum, modules, and pricing</p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex rounded-md border overflow-hidden">
+              <Button
+                variant={showArchived ? "ghost" : "secondary"}
+                size="sm"
+                className="rounded-none"
+                onClick={() => setShowArchived(false)}
+              >
+                Active ({activeCourses.length})
+              </Button>
+              <Button
+                variant={showArchived ? "secondary" : "ghost"}
+                size="sm"
+                className="rounded-none gap-2"
+                onClick={() => setShowArchived(true)}
+              >
+                <Archive className="h-4 w-4" />
+                Archived ({archivedCourses.length})
+              </Button>
+            </div>
             {roles?.isSuperAdmin && (
               <ExportButton
                 filename="courses"

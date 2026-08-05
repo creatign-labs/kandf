@@ -441,7 +441,7 @@ const Batches = () => {
                   Total Enrolled
                 </div>
                 <div className="text-3xl font-bold">
-                  {batches?.reduce((sum, b) => sum + (b.enrolled_count || 0), 0) || 0}
+                  {activeBatches.reduce((sum, b) => sum + (b.enrolled_count || 0), 0)}
                 </div>
               </div>
               <Users className="h-8 w-8 text-muted-foreground" />

@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Users, Calendar, Loader2, CalendarCheck, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Calendar, Loader2, CalendarCheck, Eye, Archive, ArchiveRestore } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +51,7 @@ const Batches = () => {
   const { data: roles } = useUserRoles();
   const isAdmin = !!roles?.isAdmin;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -157,6 +158,7 @@ const Batches = () => {
       const { data, error } = await supabase
         .from("courses")
         .select("id, title, duration, days_of_week")
+        .eq("is_archived", false)
         .order("title");
 
       if (error) throw error;
@@ -279,13 +281,44 @@ const Batches = () => {
     },
   });
 
+  // Archive / restore mutation
+  const archiveMutation = useMutation({
+    mutationFn: async ({ batchId, archive }: { batchId: string; archive: boolean }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from("batches")
+        .update({
+          is_archived: archive,
+          archived_at: archive ? new Date().toISOString() : null,
+          archived_by: archive ? userData?.user?.id ?? null : null,
+          booking_enabled: archive ? false : true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", batchId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { archive }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-batches"] });
+      toast({
+        title: archive ? "Batch archived" : "Batch restored",
+        description: archive
+          ? "The batch is hidden from active lists and booking is closed."
+          : "The batch is active again.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Master toggle for all batches
   const masterToggleMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("batches")
         .update({ booking_enabled: enabled, updated_at: new Date().toISOString() })
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Update all batches
+        .eq("is_archived", false); // Update all active batches
 
       if (error) throw error;
     },
@@ -307,9 +340,13 @@ const Batches = () => {
     },
   });
 
+  const activeBatches = (batches || []).filter((b: any) => !b.is_archived);
+  const archivedBatches = (batches || []).filter((b: any) => !!b.is_archived);
+  const visibleBatches = showArchived ? archivedBatches : activeBatches;
+
   // Calculate if all batches have booking enabled
-  const allBookingsEnabled = batches?.every((b) => b.booking_enabled ?? true) ?? true;
-  const someBookingsEnabled = batches?.some((b) => b.booking_enabled ?? true) ?? false;
+  const allBookingsEnabled = activeBatches.every((b) => b.booking_enabled ?? true) ?? true;
+  const someBookingsEnabled = activeBatches.some((b) => b.booking_enabled ?? true) ?? false;
 
   const resetForm = () => {
     setFormData({
@@ -388,9 +425,12 @@ const Batches = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-muted-foreground mb-1">
-                  Total Batches
+                  Active Batches
                 </div>
-                <div className="text-3xl font-bold">{batches?.length || 0}</div>
+                <div className="text-3xl font-bold">{activeBatches.length}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {archivedBatches.length} archived
+                </div>
               </div>
               <Calendar className="h-8 w-8 text-primary" />
             </div>
@@ -402,7 +442,7 @@ const Batches = () => {
                   Total Enrolled
                 </div>
                 <div className="text-3xl font-bold">
-                  {batches?.reduce((sum, b) => sum + (b.enrolled_count || 0), 0) || 0}
+                  {activeBatches.reduce((sum, b) => sum + (b.enrolled_count || 0), 0)}
                 </div>
               </div>
               <Users className="h-8 w-8 text-muted-foreground" />
@@ -415,7 +455,7 @@ const Batches = () => {
                   Available Seats
                 </div>
                 <div className="text-3xl font-bold text-green-500">
-                  {batches?.reduce((sum, b) => sum + (b.available_seats || 0), 0) || 0}
+                  {activeBatches.reduce((sum, b) => sum + (b.available_seats || 0), 0)}
                 </div>
               </div>
               <Users className="h-8 w-8 text-green-500" />
@@ -451,8 +491,29 @@ const Batches = () => {
         {/* Add Batch Button & Table */}
         <Card className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">All Batches</h2>
+            <h2 className="text-xl font-bold">
+              {showArchived ? "Archived Batches" : "Active Batches"}
+            </h2>
             <div className="flex items-center gap-2">
+              <div className="flex rounded-md border overflow-hidden">
+                <Button
+                  variant={showArchived ? "ghost" : "secondary"}
+                  size="sm"
+                  className="rounded-none"
+                  onClick={() => setShowArchived(false)}
+                >
+                  Active ({activeBatches.length})
+                </Button>
+                <Button
+                  variant={showArchived ? "secondary" : "ghost"}
+                  size="sm"
+                  className="rounded-none gap-2"
+                  onClick={() => setShowArchived(true)}
+                >
+                  <Archive className="h-4 w-4" />
+                  Archived ({archivedBatches.length})
+                </Button>
+              </div>
               {isAdmin && (
                 <ImportButton
                   table="batches"
@@ -702,10 +763,18 @@ const Batches = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {batches?.map((batch) => (
-                  <TableRow key={batch.id}>
+                {visibleBatches.map((batch: any) => (
+                  <TableRow key={batch.id} className={batch.is_archived ? "opacity-70" : undefined}>
                     <TableCell className="font-medium">
-                      {batch.batch_name}
+                      <div className="flex items-center gap-2">
+                        {batch.batch_name}
+                        {batch.is_archived && (
+                          <Badge variant="outline" className="gap-1">
+                            <Archive className="h-3 w-3" />
+                            Archived
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{batch.courses?.title}</TableCell>
                     <TableCell>
@@ -775,19 +844,34 @@ const Batches = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Switch
-                          checked={batch.booking_enabled ?? true}
+                          checked={batch.is_archived ? false : (batch.booking_enabled ?? true)}
                           onCheckedChange={(checked) =>
                             toggleBookingMutation.mutate({ batchId: batch.id, enabled: checked })
                           }
-                          disabled={toggleBookingMutation.isPending}
+                          disabled={toggleBookingMutation.isPending || batch.is_archived}
                         />
                         <span className="text-xs text-muted-foreground">
-                          {batch.booking_enabled ?? true ? "Open" : "Closed"}
+                          {batch.is_archived ? "Closed" : (batch.booking_enabled ?? true) ? "Open" : "Closed"}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          title={batch.is_archived ? "Restore batch" : "Archive batch"}
+                          onClick={() =>
+                            archiveMutation.mutate({ batchId: batch.id, archive: !batch.is_archived })
+                          }
+                          disabled={archiveMutation.isPending}
+                        >
+                          {batch.is_archived ? (
+                            <ArchiveRestore className="h-4 w-4" />
+                          ) : (
+                            <Archive className="h-4 w-4" />
+                          )}
+                        </Button>
                         <Button
                           variant="outline"
                           size="icon"
@@ -808,13 +892,13 @@ const Batches = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {(!batches || batches.length === 0) && (
+                {visibleBatches.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={8}
                       className="text-center py-8 text-muted-foreground"
                     >
-                      No batches created yet
+                      {showArchived ? "No archived batches" : "No batches created yet"}
                     </TableCell>
                   </TableRow>
                 )}

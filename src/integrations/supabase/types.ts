@@ -269,6 +269,8 @@ export type Database = {
       }
       batches: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           available_seats: number
           batch_name: string
           booking_enabled: boolean | null
@@ -278,12 +280,15 @@ export type Database = {
           days_of_week: string[]
           end_date: string | null
           id: string
+          is_archived: boolean
           start_date: string | null
           time_slot: string
           total_seats: number
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           available_seats?: number
           batch_name: string
           booking_enabled?: boolean | null
@@ -293,12 +298,15 @@ export type Database = {
           days_of_week?: string[]
           end_date?: string | null
           id?: string
+          is_archived?: boolean
           start_date?: string | null
           time_slot: string
           total_seats?: number
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           available_seats?: number
           batch_name?: string
           booking_enabled?: boolean | null
@@ -308,6 +316,7 @@ export type Database = {
           days_of_week?: string[]
           end_date?: string | null
           id?: string
+          is_archived?: boolean
           start_date?: string | null
           time_slot?: string
           total_seats?: number
@@ -542,6 +551,8 @@ export type Database = {
       }
       courses: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           base_fee: number
           course_code: string | null
           created_at: string
@@ -550,12 +561,15 @@ export type Database = {
           duration: string
           id: string
           image_url: string | null
+          is_archived: boolean
           level: string
           materials_count: number | null
           title: string
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           base_fee: number
           course_code?: string | null
           created_at?: string
@@ -564,12 +578,15 @@ export type Database = {
           duration: string
           id?: string
           image_url?: string | null
+          is_archived?: boolean
           level: string
           materials_count?: number | null
           title: string
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           base_fee?: number
           course_code?: string | null
           created_at?: string
@@ -578,6 +595,7 @@ export type Database = {
           duration?: string
           id?: string
           image_url?: string | null
+          is_archived?: boolean
           level?: string
           materials_count?: number | null
           title?: string

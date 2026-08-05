@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Clock, Users, IndianRupee, Loader2, Trash2, ChefHat, Search } from "lucide-react";
+import { Plus, Edit, Clock, Users, IndianRupee, Loader2, Trash2, ChefHat, Search, Archive, ArchiveRestore } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -57,6 +57,7 @@ const Courses = () => {
   });
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const toggleCourseDay = (day: string) => {
     setFormData(prev => ({
@@ -288,6 +289,48 @@ const Courses = () => {
     },
   });
 
+  const archiveCourseMutation = useMutation({
+    mutationFn: async ({ id, archive }: { id: string; archive: boolean }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from("courses")
+        .update({
+          is_archived: archive,
+          archived_at: archive ? new Date().toISOString() : null,
+          archived_by: archive ? userData?.user?.id ?? null : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      if (error) throw error;
+
+      // Archiving a course also archives its batches (and closes booking)
+      const { error: batchError } = await (supabase as any)
+        .from("batches")
+        .update({
+          is_archived: archive,
+          archived_at: archive ? new Date().toISOString() : null,
+          archived_by: archive ? userData?.user?.id ?? null : null,
+          booking_enabled: archive ? false : true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("course_id", id);
+      if (batchError) throw batchError;
+    },
+    onSuccess: (_, { archive }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-batches"] });
+      toast({
+        title: archive ? "Course archived" : "Course restored",
+        description: archive
+          ? "The course and its batches are hidden from active lists. Existing records are untouched."
+          : "The course and its batches are active again.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -355,11 +398,15 @@ const Courses = () => {
     }
   };
 
+  const activeCourses = (courses || []).filter((c: any) => !c.is_archived);
+  const archivedCourses = (courses || []).filter((c: any) => !!c.is_archived);
+  const visibleCourses = showArchived ? archivedCourses : activeCourses;
+
   // Stats calculation
   const stats = {
-    totalCourses: courses?.length || 0,
-    totalStudents: courses?.reduce((acc, c) => acc + c.studentCount, 0) || 0,
-    activeBatches: courses?.reduce((acc, c) => acc + c.batches.length, 0) || 0,
+    totalCourses: activeCourses.length,
+    totalStudents: activeCourses.reduce((acc, c) => acc + c.studentCount, 0),
+    activeBatches: activeCourses.reduce((acc, c) => acc + c.batches.length, 0),
   };
 
   if (isLoading) {
@@ -600,6 +647,25 @@ const Courses = () => {
             <p className="text-muted-foreground">Create and manage course curriculum, modules, and pricing</p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex rounded-md border overflow-hidden">
+              <Button
+                variant={showArchived ? "ghost" : "secondary"}
+                size="sm"
+                className="rounded-none"
+                onClick={() => setShowArchived(false)}
+              >
+                Active ({activeCourses.length})
+              </Button>
+              <Button
+                variant={showArchived ? "secondary" : "ghost"}
+                size="sm"
+                className="rounded-none gap-2"
+                onClick={() => setShowArchived(true)}
+              >
+                <Archive className="h-4 w-4" />
+                Archived ({archivedCourses.length})
+              </Button>
+            </div>
             {roles?.isSuperAdmin && (
               <ExportButton
                 filename="courses"
@@ -642,14 +708,20 @@ const Courses = () => {
         </div>
 
         <div className="space-y-6">
-          {courses?.map((course, index) => (
+          {visibleCourses.map((course: any, index: number) => (
 
-            <Card key={course.id} className="p-6">
+            <Card key={course.id} className={`p-6 ${course.is_archived ? "opacity-75 border-dashed" : ""}`}>
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <Badge className="text-lg px-3 py-1">Course {String.fromCharCode(65 + index)}</Badge>
                     <h2 className="text-2xl font-bold text-foreground">{course.title}</h2>
+                    {course.is_archived && (
+                      <Badge variant="outline" className="gap-1">
+                        <Archive className="h-3 w-3" />
+                        Archived
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-muted-foreground mb-3">{course.description}</p>
                   <div className="flex gap-6 text-sm text-muted-foreground">
@@ -683,6 +755,29 @@ const Courses = () => {
                       {courseFormJSX}
                     </DialogContent>
                   </Dialog>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    disabled={archiveCourseMutation.isPending}
+                    onClick={() => {
+                      const archive = !course.is_archived;
+                      if (
+                        confirm(
+                          archive
+                            ? "Archive this course? It will be hidden from active lists and its batches will stop accepting bookings. Existing student records stay intact."
+                            : "Restore this course and its batches?"
+                        )
+                      ) {
+                        archiveCourseMutation.mutate({ id: course.id, archive });
+                      }
+                    }}
+                  >
+                    {course.is_archived ? (
+                      <><ArchiveRestore className="h-4 w-4" />Restore</>
+                    ) : (
+                      <><Archive className="h-4 w-4" />Archive</>
+                    )}
+                  </Button>
                   <Button
                     variant="destructive"
                     size="icon"

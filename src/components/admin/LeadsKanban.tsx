@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, Mail, Calendar, GripVertical, CreditCard, UserCheck, Clock, CheckCircle } from "lucide-react";
+import { Phone, Mail, Calendar, GripVertical, CreditCard, UserCheck, Clock, CheckCircle, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";

@@ -445,6 +445,12 @@ const Leads = () => {
               </div>
             )}
             <div>
+              <p className="text-sm text-muted-foreground">City</p>
+              <p className="font-medium">
+                {selectedLead?.city || selectedLead?.message?.match(/City:\s*(.+)/i)?.[1]?.trim() || "Not specified"}
+              </p>
+            </div>
+            <div>
               <p className="text-sm text-muted-foreground">Interested In</p>
               <Select
                 value={selectedLead?.course_id || "none"}

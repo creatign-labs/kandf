@@ -397,11 +397,15 @@ const Courses = () => {
     }
   };
 
+  const activeCourses = (courses || []).filter((c: any) => !c.is_archived);
+  const archivedCourses = (courses || []).filter((c: any) => !!c.is_archived);
+  const visibleCourses = showArchived ? archivedCourses : activeCourses;
+
   // Stats calculation
   const stats = {
-    totalCourses: courses?.length || 0,
-    totalStudents: courses?.reduce((acc, c) => acc + c.studentCount, 0) || 0,
-    activeBatches: courses?.reduce((acc, c) => acc + c.batches.length, 0) || 0,
+    totalCourses: activeCourses.length,
+    totalStudents: activeCourses.reduce((acc, c) => acc + c.studentCount, 0),
+    activeBatches: activeCourses.reduce((acc, c) => acc + c.batches.length, 0),
   };
 
   if (isLoading) {

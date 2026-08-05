@@ -280,6 +280,37 @@ const Batches = () => {
     },
   });
 
+  // Archive / restore mutation
+  const archiveMutation = useMutation({
+    mutationFn: async ({ batchId, archive }: { batchId: string; archive: boolean }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from("batches")
+        .update({
+          is_archived: archive,
+          archived_at: archive ? new Date().toISOString() : null,
+          archived_by: archive ? userData?.user?.id ?? null : null,
+          booking_enabled: archive ? false : true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", batchId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { archive }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-batches"] });
+      toast({
+        title: archive ? "Batch archived" : "Batch restored",
+        description: archive
+          ? "The batch is hidden from active lists and booking is closed."
+          : "The batch is active again.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Master toggle for all batches
   const masterToggleMutation = useMutation({
     mutationFn: async (enabled: boolean) => {

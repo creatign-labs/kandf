@@ -195,6 +195,7 @@ const Leads = () => {
                 phone: l.phone,
                 stage: l.stage,
                 interested_course: l.courses?.title ?? "",
+                city: l.city ?? "",
                 message: l.message ?? "",
                 created_at: l.created_at,
               }))}

@@ -843,19 +843,34 @@ const Batches = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Switch
-                          checked={batch.booking_enabled ?? true}
+                          checked={batch.is_archived ? false : (batch.booking_enabled ?? true)}
                           onCheckedChange={(checked) =>
                             toggleBookingMutation.mutate({ batchId: batch.id, enabled: checked })
                           }
-                          disabled={toggleBookingMutation.isPending}
+                          disabled={toggleBookingMutation.isPending || batch.is_archived}
                         />
                         <span className="text-xs text-muted-foreground">
-                          {batch.booking_enabled ?? true ? "Open" : "Closed"}
+                          {batch.is_archived ? "Closed" : (batch.booking_enabled ?? true) ? "Open" : "Closed"}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          title={batch.is_archived ? "Restore batch" : "Archive batch"}
+                          onClick={() =>
+                            archiveMutation.mutate({ batchId: batch.id, archive: !batch.is_archived })
+                          }
+                          disabled={archiveMutation.isPending}
+                        >
+                          {batch.is_archived ? (
+                            <ArchiveRestore className="h-4 w-4" />
+                          ) : (
+                            <Archive className="h-4 w-4" />
+                          )}
+                        </Button>
                         <Button
                           variant="outline"
                           size="icon"
@@ -876,13 +891,13 @@ const Batches = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {(!batches || batches.length === 0) && (
+                {visibleBatches.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={8}
                       className="text-center py-8 text-muted-foreground"
                     >
-                      No batches created yet
+                      {showArchived ? "No archived batches" : "No batches created yet"}
                     </TableCell>
                   </TableRow>
                 )}

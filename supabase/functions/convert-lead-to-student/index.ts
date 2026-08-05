@@ -143,6 +143,35 @@ Deno.serve(async (req) => {
       courseId = plan?.course_id || null;
     }
 
+    // Determine the amount the lead actually paid (first / paid installments),
+    // never a hardcoded figure.
+    let paidAmount = 0;
+    const { data: planRow } = await supabaseAdmin
+      .from("lead_payment_plans")
+      .select("id, enrollment_fee")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (planRow?.id) {
+      const { data: installments } = await supabaseAdmin
+        .from("lead_installments")
+        .select("amount, status, installment_number")
+        .eq("plan_id", planRow.id)
+        .order("installment_number", { ascending: true });
+
+      const paid = (installments || []).filter((i: { status: string }) => i.status === "paid");
+      if (paid.length > 0) {
+        paidAmount = paid.reduce((s: number, i: { amount: number }) => s + Number(i.amount || 0), 0);
+      } else if (installments && installments.length > 0) {
+        paidAmount = Number(installments[0].amount || 0);
+      } else {
+        paidAmount = Number(planRow.enrollment_fee || 0);
+      }
+    }
+    if (!paidAmount || paidAmount <= 0) paidAmount = 2000;
+
     // Create advance_payments record FIRST so we can link it to the approval
     let advancePaymentId: string | null = null;
     if (courseId) {
@@ -151,7 +180,7 @@ Deno.serve(async (req) => {
         .insert({
           student_id: studentId,
           course_id: courseId,
-          amount: 2000,
+          amount: paidAmount,
           status: "completed",
           payment_method: "lead_conversion",
           paid_at: new Date().toISOString(),

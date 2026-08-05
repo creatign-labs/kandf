@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     // STEP 1: VALIDATE
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("enrollment_status")
+      .select("enrollment_status, email")
       .eq("id", student_id)
       .single();
 
@@ -170,13 +170,66 @@ Deno.serve(async (req) => {
         .eq("id", lockedCourseId)
         .single();
 
-      if (payment_schedule && payment_schedule.balance1Amount && payment_schedule.balance2Amount) {
+      // Mirror the lead payment plan (source of truth for what the student
+      // actually agreed to / paid) into the student payment schedule.
+      type LeadInstallment = {
+        installment_number: number;
+        amount: number;
+        due_date: string;
+        status: string;
+        paid_at: string | null;
+      };
+      let leadInstallments: LeadInstallment[] = [];
+      if (profile.email) {
+        const { data: leadRow } = await supabaseAdmin
+          .from("leads")
+          .select("id")
+          .eq("email", profile.email)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (leadRow?.id) {
+          const { data: planRow } = await supabaseAdmin
+            .from("lead_payment_plans")
+            .select("id")
+            .eq("lead_id", leadRow.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (planRow?.id) {
+            const { data: inst } = await supabaseAdmin
+              .from("lead_installments")
+              .select("installment_number, amount, due_date, status, paid_at")
+              .eq("plan_id", planRow.id)
+              .order("installment_number", { ascending: true });
+            leadInstallments = (inst || []) as LeadInstallment[];
+          }
+        }
+      }
+
+      if (leadInstallments.length > 0) {
+        const rows = leadInstallments.map((i) => ({
+          enrollment_id: enrollmentId,
+          student_id,
+          payment_stage: i.installment_number === 1 ? "registration" : `balance_${i.installment_number - 1}`,
+          amount: i.amount,
+          due_date: i.due_date,
+          status: i.status === "paid" ? "paid" : "pending",
+          paid_at: i.status === "paid" ? (i.paid_at || new Date().toISOString()) : null,
+        }));
+        await supabaseAdmin.from("payment_schedules").insert(rows);
+      } else if (payment_schedule && payment_schedule.balance1Amount && payment_schedule.balance2Amount) {
+        const registrationAmount = Number(payment_schedule.registrationAmount) > 0
+          ? Number(payment_schedule.registrationAmount)
+          : 2000;
         await supabaseAdmin.from("payment_schedules").insert([
           {
             enrollment_id: enrollmentId,
             student_id,
             payment_stage: "registration",
-            amount: 2000,
+            amount: registrationAmount,
             due_date: new Date().toISOString().split("T")[0],
             status: "paid",
             paid_at: new Date().toISOString(),
@@ -208,6 +261,7 @@ Deno.serve(async (req) => {
           p_due_days_2: 30,
         });
       }
+
     }
 
     const { error: updateProfileError } = await supabaseAdmin

@@ -708,14 +708,20 @@ const Courses = () => {
         </div>
 
         <div className="space-y-6">
-          {courses?.map((course, index) => (
+          {visibleCourses.map((course: any, index: number) => (
 
-            <Card key={course.id} className="p-6">
+            <Card key={course.id} className={`p-6 ${course.is_archived ? "opacity-75 border-dashed" : ""}`}>
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <Badge className="text-lg px-3 py-1">Course {String.fromCharCode(65 + index)}</Badge>
                     <h2 className="text-2xl font-bold text-foreground">{course.title}</h2>
+                    {course.is_archived && (
+                      <Badge variant="outline" className="gap-1">
+                        <Archive className="h-3 w-3" />
+                        Archived
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-muted-foreground mb-3">{course.description}</p>
                   <div className="flex gap-6 text-sm text-muted-foreground">

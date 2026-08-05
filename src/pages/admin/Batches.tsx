@@ -424,9 +424,12 @@ const Batches = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-muted-foreground mb-1">
-                  Total Batches
+                  Active Batches
                 </div>
-                <div className="text-3xl font-bold">{batches?.length || 0}</div>
+                <div className="text-3xl font-bold">{activeBatches.length}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {archivedBatches.length} archived
+                </div>
               </div>
               <Calendar className="h-8 w-8 text-primary" />
             </div>

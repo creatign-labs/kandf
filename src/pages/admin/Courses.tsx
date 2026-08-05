@@ -57,6 +57,7 @@ const Courses = () => {
   });
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const toggleCourseDay = (day: string) => {
     setFormData(prev => ({

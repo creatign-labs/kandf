@@ -259,6 +259,16 @@ const Leads = () => {
                   <SelectItem value="lost">Lost</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={cityFilter} onValueChange={setCityFilter}>
+                <SelectTrigger className="w-full md:w-40">
+                  <SelectValue placeholder="Filter by city" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cities</SelectItem>
+                  <SelectItem value="Chennai">Chennai</SelectItem>
+                  <SelectItem value="Mumbai">Mumbai</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* View Toggle */}

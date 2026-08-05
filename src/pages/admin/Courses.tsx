@@ -756,6 +756,29 @@ const Courses = () => {
                     </DialogContent>
                   </Dialog>
                   <Button
+                    variant="outline"
+                    className="gap-2"
+                    disabled={archiveCourseMutation.isPending}
+                    onClick={() => {
+                      const archive = !course.is_archived;
+                      if (
+                        confirm(
+                          archive
+                            ? "Archive this course? It will be hidden from active lists and its batches will stop accepting bookings. Existing student records stay intact."
+                            : "Restore this course and its batches?"
+                        )
+                      ) {
+                        archiveCourseMutation.mutate({ id: course.id, archive });
+                      }
+                    }}
+                  >
+                    {course.is_archived ? (
+                      <><ArchiveRestore className="h-4 w-4" />Restore</>
+                    ) : (
+                      <><Archive className="h-4 w-4" />Archive</>
+                    )}
+                  </Button>
+                  <Button
                     variant="destructive"
                     size="icon"
                     onClick={() => {

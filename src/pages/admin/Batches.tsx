@@ -51,6 +51,7 @@ const Batches = () => {
   const { data: roles } = useUserRoles();
   const isAdmin = !!roles?.isAdmin;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");

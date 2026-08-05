@@ -181,6 +181,12 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
                               <span>{lead.phone}</span>
                             </div>
                           )}
+                          {lead.city && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span>{lead.city}</span>
+                            </div>
+                          )}
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 flex-shrink-0" />
                             <span>{format(new Date(lead.created_at), "MMM d")}</span>

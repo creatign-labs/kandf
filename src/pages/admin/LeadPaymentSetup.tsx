@@ -76,7 +76,7 @@ const LeadPaymentSetup = () => {
   const { data: allCourses } = useQuery({
     queryKey: ["courses-list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("courses").select("id, title, base_fee").order("title");
+      const { data, error } = await (supabase as any).from("courses").select("id, title, base_fee").eq("is_archived", false).order("title");
       if (error) throw error;
       return data;
     },

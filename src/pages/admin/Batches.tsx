@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Users, Calendar, Loader2, CalendarCheck, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Calendar, Loader2, CalendarCheck, Eye, Archive, ArchiveRestore } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

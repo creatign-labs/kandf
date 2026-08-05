@@ -267,13 +267,16 @@ const Students = () => {
         fullName.includes(searchQuery.toLowerCase()) ||
         phone.includes(searchQuery.toLowerCase());
       const matchesCourse = courseFilter === "all" || enrollment.courses?.id === courseFilter;
+      const matchesCity = cityFilter === "all" ||
+        ((enrollment.profile as any)?.city || "").toLowerCase() === cityFilter.toLowerCase();
       const matchesStatus = statusFilter === "all-status" || 
         (statusFilter === "active" && enrollment.status === "active") ||
         (statusFilter === "completed" && enrollment.status === "completed") ||
         (statusFilter === "onhold" && enrollment.status === "on_hold");
-      return matchesSearch && matchesCourse && matchesStatus;
+      return matchesSearch && matchesCourse && matchesStatus && matchesCity;
     });
-  }, [enrollments, searchQuery, courseFilter, statusFilter]);
+  }, [enrollments, searchQuery, courseFilter, statusFilter, cityFilter]);
+
 
   // Awaiting tab filters
   const filteredApprovals = useMemo(() => {

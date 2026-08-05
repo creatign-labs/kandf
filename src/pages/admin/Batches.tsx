@@ -158,6 +158,7 @@ const Batches = () => {
       const { data, error } = await supabase
         .from("courses")
         .select("id, title, duration, days_of_week")
+        .eq("is_archived", false)
         .order("title");
 
       if (error) throw error;

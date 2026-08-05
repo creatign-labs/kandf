@@ -54,6 +54,7 @@ const Students = () => {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") === "awaiting" ? "awaiting" : "enrolled");
   const [onlineClassStudent, setOnlineClassStudent] = useState<{ id: string; name: string } | null>(null);

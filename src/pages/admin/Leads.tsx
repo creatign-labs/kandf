@@ -45,6 +45,7 @@ import { useUserRoles } from "@/hooks/useUserRoles";
 const Leads = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const queryClient = useQueryClient();
@@ -164,8 +165,10 @@ const Leads = () => {
       (lead.phone && lead.phone.includes(searchQuery));
     
     const matchesStage = stageFilter === "all" || lead.stage === stageFilter;
+    const matchesCity = cityFilter === "all" ||
+      ((lead as any).city || "").toLowerCase() === cityFilter.toLowerCase();
     
-    return matchesSearch && matchesStage;
+    return matchesSearch && matchesStage && matchesCity;
   });
 
   const stageCounts = leads?.reduce((acc, lead) => {
@@ -192,6 +195,7 @@ const Leads = () => {
                 phone: l.phone,
                 stage: l.stage,
                 interested_course: l.courses?.title ?? "",
+                city: l.city ?? "",
                 message: l.message ?? "",
                 created_at: l.created_at,
               }))}
@@ -255,6 +259,16 @@ const Leads = () => {
                   <SelectItem value="lost">Lost</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={cityFilter} onValueChange={setCityFilter}>
+                <SelectTrigger className="w-full md:w-40">
+                  <SelectValue placeholder="Filter by city" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cities</SelectItem>
+                  <SelectItem value="Chennai">Chennai</SelectItem>
+                  <SelectItem value="Mumbai">Mumbai</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* View Toggle */}
@@ -291,6 +305,7 @@ const Leads = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Interested Course / Level</TableHead>
+                    <TableHead>City</TableHead>
                     <TableHead>Stage</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -315,6 +330,7 @@ const Leads = () => {
                         </div>
                       </TableCell>
                       <TableCell>{lead.courses?.title || (lead.message?.match(/Purpose of Learning:\s*(.+?)(?:\n|City:)/i)?.[1]?.trim() || "Not specified")}</TableCell>
+                      <TableCell>{lead.city || lead.message?.match(/City:\s*(.+)/i)?.[1]?.trim() || "—"}</TableCell>
                       <TableCell>
                         <Badge className={getStageColor(lead.stage)}>
                           {lead.stage.charAt(0).toUpperCase() + lead.stage.slice(1).replace("-", " ")}
@@ -399,7 +415,7 @@ const Leads = () => {
                   ))}
                   {filteredLeads?.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         No leads found
                       </TableCell>
                     </TableRow>
@@ -428,6 +444,12 @@ const Leads = () => {
                 <p className="font-medium">{selectedLead?.phone}</p>
               </div>
             )}
+            <div>
+              <p className="text-sm text-muted-foreground">City</p>
+              <p className="font-medium">
+                {selectedLead?.city || selectedLead?.message?.match(/City:\s*(.+)/i)?.[1]?.trim() || "Not specified"}
+              </p>
+            </div>
             <div>
               <p className="text-sm text-muted-foreground">Interested In</p>
               <Select

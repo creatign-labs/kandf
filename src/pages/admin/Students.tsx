@@ -54,6 +54,7 @@ const Students = () => {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") === "awaiting" ? "awaiting" : "enrolled");
   const [onlineClassStudent, setOnlineClassStudent] = useState<{ id: string; name: string } | null>(null);
@@ -267,13 +268,16 @@ const Students = () => {
         fullName.includes(searchQuery.toLowerCase()) ||
         phone.includes(searchQuery.toLowerCase());
       const matchesCourse = courseFilter === "all" || enrollment.courses?.id === courseFilter;
+      const matchesCity = cityFilter === "all" ||
+        ((enrollment.profile as any)?.city || "").toLowerCase() === cityFilter.toLowerCase();
       const matchesStatus = statusFilter === "all-status" || 
         (statusFilter === "active" && enrollment.status === "active") ||
         (statusFilter === "completed" && enrollment.status === "completed") ||
         (statusFilter === "onhold" && enrollment.status === "on_hold");
-      return matchesSearch && matchesCourse && matchesStatus;
+      return matchesSearch && matchesCourse && matchesStatus && matchesCity;
     });
-  }, [enrollments, searchQuery, courseFilter, statusFilter]);
+  }, [enrollments, searchQuery, courseFilter, statusFilter, cityFilter]);
+
 
   // Awaiting tab filters
   const filteredApprovals = useMemo(() => {
@@ -468,6 +472,16 @@ const Students = () => {
                         {course.title}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+                <Select value={cityFilter} onValueChange={setCityFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Filter by city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Cities</SelectItem>
+                    <SelectItem value="Chennai">Chennai</SelectItem>
+                    <SelectItem value="Mumbai">Mumbai</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>

@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, Mail, Calendar, GripVertical, CreditCard, UserCheck, Clock, CheckCircle } from "lucide-react";
+import { Phone, Mail, Calendar, GripVertical, CreditCard, UserCheck, Clock, CheckCircle, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -18,6 +18,7 @@ interface Lead {
   stage: string;
   created_at: string;
   message?: string | null;
+  city?: string | null;
   courses?: { title: string } | null;
 }
 
@@ -179,6 +180,12 @@ export const LeadsKanban = ({ leads, onLeadClick }: LeadsKanbanProps) => {
                             <div className="flex items-center gap-1">
                               <Phone className="h-3 w-3 flex-shrink-0" />
                               <span>{lead.phone}</span>
+                            </div>
+                          )}
+                          {lead.city && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span>{lead.city}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-1">

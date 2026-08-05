@@ -454,7 +454,7 @@ const Batches = () => {
                   Available Seats
                 </div>
                 <div className="text-3xl font-bold text-green-500">
-                  {batches?.reduce((sum, b) => sum + (b.available_seats || 0), 0) || 0}
+                  {activeBatches.reduce((sum, b) => sum + (b.available_seats || 0), 0)}
                 </div>
               </div>
               <Users className="h-8 w-8 text-green-500" />

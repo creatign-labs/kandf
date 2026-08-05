@@ -165,8 +165,10 @@ const Leads = () => {
       (lead.phone && lead.phone.includes(searchQuery));
     
     const matchesStage = stageFilter === "all" || lead.stage === stageFilter;
+    const matchesCity = cityFilter === "all" ||
+      ((lead as any).city || "").toLowerCase() === cityFilter.toLowerCase();
     
-    return matchesSearch && matchesStage;
+    return matchesSearch && matchesStage && matchesCity;
   });
 
   const stageCounts = leads?.reduce((acc, lead) => {

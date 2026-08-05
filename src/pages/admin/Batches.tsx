@@ -762,10 +762,18 @@ const Batches = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {batches?.map((batch) => (
-                  <TableRow key={batch.id}>
+                {visibleBatches.map((batch: any) => (
+                  <TableRow key={batch.id} className={batch.is_archived ? "opacity-70" : undefined}>
                     <TableCell className="font-medium">
-                      {batch.batch_name}
+                      <div className="flex items-center gap-2">
+                        {batch.batch_name}
+                        {batch.is_archived && (
+                          <Badge variant="outline" className="gap-1">
+                            <Archive className="h-3 w-3" />
+                            Archived
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{batch.courses?.title}</TableCell>
                     <TableCell>

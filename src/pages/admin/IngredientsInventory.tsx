@@ -23,10 +23,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const UNIT_OPTIONS = ["g", "kg", "ml", "l", "pieces"] as const;
-import { Search, AlertTriangle, Plus, Package, Loader2, Carrot } from "lucide-react";
+import { Search, AlertTriangle, Plus, Package, Loader2, Carrot, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { getDetailedErrorMessage } from "@/lib/errors";
+
 
 const IngredientsInventory = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,7 +51,9 @@ const IngredientsInventory = () => {
     required_stock: 0,
     reorder_level: 10,
   });
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const queryClient = useQueryClient();
+
 
   const { data: inventory, isLoading } = useQuery({
     queryKey: ["ingredients-inventory"],
@@ -80,6 +94,35 @@ const IngredientsInventory = () => {
       toast({ title: "Stock updated" });
     },
   });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory").delete().eq("id", id);
+      if (error) {
+        if (error.code === "23503") {
+          throw new Error(
+            "This ingredient is still linked to other records (recipes, purchase orders, usage logs or daily requirements). Remove those links first, then delete the ingredient."
+          );
+        }
+        throw new Error(await getDetailedErrorMessage(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ingredients-inventory"] });
+      toast({ title: "Ingredient deleted" });
+      setDeleteTarget(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not delete ingredient",
+        description: `Reason: ${error.message}`,
+        variant: "destructive",
+        duration: 12000,
+      });
+      setDeleteTarget(null);
+    },
+  });
+
 
   const getStatus = (current: number, required: number, reorderLevel: number) => {
     if (current <= reorderLevel * 0.3) return "critical";
@@ -335,6 +378,14 @@ const IngredientsInventory = () => {
                             >
                               Update
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setDeleteTarget({ id: item.id, name: item.name })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -346,7 +397,33 @@ const IngredientsInventory = () => {
           )}
         </Card>
       </main>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete ingredient?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{deleteTarget?.name}" will be permanently removed from the inventory. If it
+              is used in any recipe or purchase record, the deletion will be blocked and the
+              exact reason will be shown.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteItemMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteItemMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteTarget) deleteItemMutation.mutate(deleteTarget.id);
+              }}
+            >
+              {deleteItemMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 };
 

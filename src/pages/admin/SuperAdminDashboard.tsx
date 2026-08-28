@@ -270,7 +270,19 @@ const SuperAdminDashboard = () => {
               <Link to="/admin/student-details">Open Student Details</Link>
             </Button>
           </Card>
+
+          <Card className="p-6">
+            <h3 className="font-semibold mb-2 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              After-Class Reports
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">Date-wise logs of completed classes, downloadable as CSV</p>
+            <Button asChild className="w-full">
+              <Link to="/admin/after-class-reports">Open After-Class Reports</Link>
+            </Button>
+          </Card>
         </div>
+
 
         <div className="grid md:grid-cols-3 gap-6">
           <Card className="p-6">

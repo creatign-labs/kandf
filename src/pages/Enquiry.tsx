@@ -22,7 +22,9 @@ const purposeOptions = [
   "TO START A PREMIUM BAKERY/CAFE/PUSH KART",
   "TO START A HOME BAKERY",
   "HOBBY/FUN",
+  "BECOME CHEF ABROAD",
 ];
+
 
 const Enquiry = () => {
   const { toast } = useToast();
@@ -40,10 +42,11 @@ const Enquiry = () => {
   const submitEnquiryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const purposeLine = data.purpose ? `Purpose of Learning: ${data.purpose}\n` : "";
-      const cityLine = data.city ? `City: ${data.city}\n` : "";
+      const cityLine = data.city ? `Preferred City - ${data.city}\n` : "";
       const prefix = purposeLine || cityLine ? `${purposeLine}${cityLine}\n` : "";
       const { error } = await supabase
         .from("leads")
+
         .insert({
           name: data.name,
           email: data.email,
@@ -162,15 +165,16 @@ const Enquiry = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="city">City *</Label>
+                    <Label htmlFor="city">From whcih city do you like to pursue? *</Label>
                     <Select
                       value={formData.city}
                       onValueChange={(value) => setFormData({ ...formData, city: value })}
                     >
                       <SelectTrigger id="city">
-                        <SelectValue placeholder="Select your city" />
+                        <SelectValue placeholder="Select your preferred city" />
                       </SelectTrigger>
                       <SelectContent>
+
                         <SelectItem value="Chennai">Chennai</SelectItem>
                         <SelectItem value="Mumbai">Mumbai</SelectItem>
                       </SelectContent>

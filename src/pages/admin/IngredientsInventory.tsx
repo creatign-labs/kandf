@@ -95,6 +95,35 @@ const IngredientsInventory = () => {
     },
   });
 
+  const deleteItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory").delete().eq("id", id);
+      if (error) {
+        if (error.code === "23503") {
+          throw new Error(
+            "This ingredient is still linked to other records (recipes, purchase orders, usage logs or daily requirements). Remove those links first, then delete the ingredient."
+          );
+        }
+        throw new Error(await getDetailedErrorMessage(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ingredients-inventory"] });
+      toast({ title: "Ingredient deleted" });
+      setDeleteTarget(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not delete ingredient",
+        description: `Reason: ${error.message}`,
+        variant: "destructive",
+        duration: 12000,
+      });
+      setDeleteTarget(null);
+    },
+  });
+
+
   const getStatus = (current: number, required: number, reorderLevel: number) => {
     if (current <= reorderLevel * 0.3) return "critical";
     if (current <= reorderLevel) return "low";

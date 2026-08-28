@@ -22,7 +22,9 @@ const purposeOptions = [
   "TO START A PREMIUM BAKERY/CAFE/PUSH KART",
   "TO START A HOME BAKERY",
   "HOBBY/FUN",
+  "BECOME CHEF ABROAD",
 ];
+
 
 const Enquiry = () => {
   const { toast } = useToast();

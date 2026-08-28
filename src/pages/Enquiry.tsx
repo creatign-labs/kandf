@@ -165,15 +165,16 @@ const Enquiry = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="city">City *</Label>
+                    <Label htmlFor="city">From whcih city do you like to pursue? *</Label>
                     <Select
                       value={formData.city}
                       onValueChange={(value) => setFormData({ ...formData, city: value })}
                     >
                       <SelectTrigger id="city">
-                        <SelectValue placeholder="Select your city" />
+                        <SelectValue placeholder="Select your preferred city" />
                       </SelectTrigger>
                       <SelectContent>
+
                         <SelectItem value="Chennai">Chennai</SelectItem>
                         <SelectItem value="Mumbai">Mumbai</SelectItem>
                       </SelectContent>

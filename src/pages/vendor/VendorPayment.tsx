@@ -10,8 +10,8 @@ declare global {
   interface Window { Razorpay: any }
 }
 
-const VENDOR_FEE = 499;
-const GST_RATE = 0;
+const VENDOR_FEE = 5000;
+const GST_RATE = 0.18;
 
 const VendorPayment = () => {
   const navigate = useNavigate();

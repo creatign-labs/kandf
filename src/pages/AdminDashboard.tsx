@@ -431,6 +431,13 @@ const AdminDashboard = () => {
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/admin/after-class-reports">
+                    <FileText className="h-4 w-4 mr-2" />
+                    After-Class Reports
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" asChild>
+
                   <Link to="/admin/leads">
                     <TrendingUp className="h-4 w-4 mr-2" />
                     Manage Leads

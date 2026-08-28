@@ -94,6 +94,8 @@ import LeadPaymentSetup from "./pages/admin/LeadPaymentSetup";
 import RequiredDailyIngredients from "./pages/admin/RequiredDailyIngredients";
 import AttendanceManagement from "./pages/admin/AttendanceManagement";
 import EmailLogs from "./pages/admin/EmailLogs";
+import AfterClassReports from "./pages/admin/AfterClassReports";
+
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 

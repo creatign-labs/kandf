@@ -23,10 +23,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const UNIT_OPTIONS = ["g", "kg", "ml", "l", "pieces"] as const;
-import { Search, AlertTriangle, Plus, Package, Loader2, Carrot } from "lucide-react";
+import { Search, AlertTriangle, Plus, Package, Loader2, Carrot, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { getDetailedErrorMessage } from "@/lib/errors";
+
 
 const IngredientsInventory = () => {
   const [searchQuery, setSearchQuery] = useState("");

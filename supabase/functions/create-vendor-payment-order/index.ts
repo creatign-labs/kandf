@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const VENDOR_FEE = 5000;
-const GST_RATE = 0.18;
+const VENDOR_FEE = 499;
+const GST_RATE = 0;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

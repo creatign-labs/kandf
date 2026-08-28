@@ -312,15 +312,11 @@ const Staff = () => {
   // Reset password mutation (super_admin only)
   const resetPasswordMutation = useMutation({
     mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-      const { data, error } = await supabase.functions.invoke("manage-staff", {
-        body: { action: "reset_password", userId, newPassword },
-        headers: { Authorization: `Bearer ${session.access_token}` },
+      return await invokeEdgeFunction("manage-staff", {
+        action: "reset_password",
+        userId,
+        newPassword,
       });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Failed to reset password");
-      return data;
     },
     onSuccess: () => {
       toast({ title: "Password reset successfully" });
@@ -328,8 +324,14 @@ const Staff = () => {
       refetchCreds();
     },
     onError: (error: Error) => {
-      toast({ title: "Error resetting password", description: error.message, variant: "destructive" });
+      toast({
+        title: "Could not reset password",
+        description: `Reason: ${error.message}`,
+        variant: "destructive",
+        duration: 12000,
+      });
     },
+
   });
 
 

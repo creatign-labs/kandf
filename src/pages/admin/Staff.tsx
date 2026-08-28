@@ -211,17 +211,10 @@ const Staff = () => {
   // Create staff mutation
   const createStaffMutation = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase.functions.invoke("manage-staff", {
-        body: { action: "create", ...newUser },
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Failed to create staff");
-      return data;
+      return await invokeEdgeFunction<{ email: string; password: string }>(
+        "manage-staff",
+        { action: "create", ...newUser }
+      );
     },
     onSuccess: (data) => {
       setCreatedCreds({ email: data.email, password: data.password });
@@ -229,24 +222,19 @@ const Staff = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-staff"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Error creating staff", description: error.message, variant: "destructive" });
+      toast({
+        title: "Could not create staff member",
+        description: `Reason: ${error.message}`,
+        variant: "destructive",
+        duration: 12000,
+      });
     },
   });
 
   // Delete staff mutation
   const deleteStaffMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase.functions.invoke("manage-staff", {
-        body: { action: "delete", userId },
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Failed to delete staff");
-      return data;
+      return await invokeEdgeFunction("manage-staff", { action: "delete", userId });
     },
     onSuccess: () => {
       toast({ title: "Staff member deleted successfully" });
@@ -254,10 +242,16 @@ const Staff = () => {
       setDeleteTarget(null);
     },
     onError: (error: Error) => {
-      toast({ title: "Error deleting staff", description: error.message, variant: "destructive" });
+      toast({
+        title: "Could not delete staff member",
+        description: `Reason: ${error.message}`,
+        variant: "destructive",
+        duration: 12000,
+      });
       setDeleteTarget(null);
     },
   });
+
 
   // Add role mutation
   const addRoleMutation = useMutation({

@@ -42,10 +42,11 @@ const Enquiry = () => {
   const submitEnquiryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const purposeLine = data.purpose ? `Purpose of Learning: ${data.purpose}\n` : "";
-      const cityLine = data.city ? `City: ${data.city}\n` : "";
+      const cityLine = data.city ? `Preferred City - ${data.city}\n` : "";
       const prefix = purposeLine || cityLine ? `${purposeLine}${cityLine}\n` : "";
       const { error } = await supabase
         .from("leads")
+
         .insert({
           name: data.name,
           email: data.email,

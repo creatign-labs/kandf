@@ -51,7 +51,9 @@ const IngredientsInventory = () => {
     required_stock: 0,
     reorder_level: 10,
   });
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const queryClient = useQueryClient();
+
 
   const { data: inventory, isLoading } = useQuery({
     queryKey: ["ingredients-inventory"],

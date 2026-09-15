@@ -312,6 +312,14 @@ const Inventory = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">Current Inventory</h2>
             <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                onClick={() => setIsDeleteAllOpen(true)}
+                disabled={(inventory?.length || 0) === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete All
+              </Button>
               <Button variant="outline" asChild>
                 <Link to="/admin/required-daily-ingredients">
                   <Utensils className="h-4 w-4 mr-2" />

@@ -54,6 +54,8 @@ const Inventory = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("add") === "1") {

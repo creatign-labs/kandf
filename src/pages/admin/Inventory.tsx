@@ -156,6 +156,57 @@ const Inventory = () => {
     },
   });
 
+  const describeDeleteError = (error: any, scope: string) => {
+    const code = error?.code;
+    if (code === "23503") {
+      return `${scope} is still linked to recipes, purchase orders or usage records. Remove those links first, then delete.`;
+    }
+    if (code === "42501") {
+      return "You don't have permission to delete inventory items. Ask a Super Admin to do this.";
+    }
+    return error?.message || "Unknown error";
+  };
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      setItemToDelete(null);
+      toast({ title: "Item deleted" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Could not delete item",
+        description: describeDeleteError(error, "This item"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const ids = (inventory || []).map((i: any) => i.id);
+      if (ids.length === 0) return;
+      const { error } = await supabase.from("inventory").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      setIsDeleteAllOpen(false);
+      toast({ title: "All inventory items deleted" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Could not delete all items",
+        description: describeDeleteError(error, "One or more items"),
+        variant: "destructive",
+      });
+    },
+  });
+
   const getStatus = (current: number, required: number, reorderLevel: number) => {
     if (current <= reorderLevel * 0.3) return "critical";
     if (current <= reorderLevel) return "low";

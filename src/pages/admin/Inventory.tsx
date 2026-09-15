@@ -30,7 +30,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, AlertTriangle, Plus, Package, Loader2, Utensils } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, AlertTriangle, Plus, Package, Loader2, Utensils, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -44,6 +54,8 @@ const Inventory = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("add") === "1") {
@@ -143,6 +155,57 @@ const Inventory = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast({ title: "Stock updated" });
+    },
+  });
+
+  const describeDeleteError = (error: any, scope: string) => {
+    const code = error?.code;
+    if (code === "23503") {
+      return `${scope} is still linked to recipes, purchase orders or usage records. Remove those links first, then delete.`;
+    }
+    if (code === "42501") {
+      return "You don't have permission to delete inventory items. Ask a Super Admin to do this.";
+    }
+    return error?.message || "Unknown error";
+  };
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("inventory").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      setItemToDelete(null);
+      toast({ title: "Item deleted" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Could not delete item",
+        description: describeDeleteError(error, "This item"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const ids = (inventory || []).map((i: any) => i.id);
+      if (ids.length === 0) return;
+      const { error } = await supabase.from("inventory").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      setIsDeleteAllOpen(false);
+      toast({ title: "All inventory items deleted" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Could not delete all items",
+        description: describeDeleteError(error, "One or more items"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -249,6 +312,14 @@ const Inventory = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">Current Inventory</h2>
             <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                onClick={() => setIsDeleteAllOpen(true)}
+                disabled={(inventory?.length || 0) === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete All
+              </Button>
               <Button variant="outline" asChild>
                 <Link to="/admin/required-daily-ingredients">
                   <Utensils className="h-4 w-4 mr-2" />
@@ -433,6 +504,14 @@ const Inventory = () => {
                             >
                               Update
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setItemToDelete(item)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -443,6 +522,56 @@ const Inventory = () => {
             </div>
           )}
         </Card>
+
+        <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete "{itemToDelete?.name}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the item from inventory permanently. It cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (itemToDelete) deleteItemMutation.mutate(itemToDelete.id);
+                }}
+                disabled={deleteItemMutation.isPending}
+              >
+                {deleteItemMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete all inventory items?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all {inventory?.length || 0} inventory items. This
+                cannot be undone. Items still linked to recipes or purchase orders will be kept and
+                the reason will be shown.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  deleteAllMutation.mutate();
+                }}
+                disabled={deleteAllMutation.isPending}
+              >
+                {deleteAllMutation.isPending ? "Deleting..." : "Delete All"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

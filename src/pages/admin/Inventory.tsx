@@ -522,6 +522,56 @@ const Inventory = () => {
             </div>
           )}
         </Card>
+
+        <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete "{itemToDelete?.name}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the item from inventory permanently. It cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (itemToDelete) deleteItemMutation.mutate(itemToDelete.id);
+                }}
+                disabled={deleteItemMutation.isPending}
+              >
+                {deleteItemMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete all inventory items?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all {inventory?.length || 0} inventory items. This
+                cannot be undone. Items still linked to recipes or purchase orders will be kept and
+                the reason will be shown.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  deleteAllMutation.mutate();
+                }}
+                disabled={deleteAllMutation.isPending}
+              >
+                {deleteAllMutation.isPending ? "Deleting..." : "Delete All"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

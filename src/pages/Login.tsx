@@ -166,7 +166,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header role="public" logoLink={false} />
+      <Header role="public" logoLink={false} hideNav />
       
       <div className="container px-6 py-16">
         <div className="mx-auto max-w-md">

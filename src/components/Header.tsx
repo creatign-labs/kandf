@@ -19,6 +19,8 @@ import knfLogo from "@/assets/knf-logo.png.asset.json";
 interface HeaderProps {
   role?: "public" | "student" | "admin" | "chef" | "super_admin" | "vendor";
   userName?: string;
+  /** When false, the logo is displayed as a plain image with no link */
+  logoLink?: boolean;
 }
 
 interface NavItem {
@@ -99,7 +101,7 @@ const chefNavItems = [
   { to: "/chef/daily-ingredients", label: "Ingredients", icon: Package },
 ];
 
-export const Header = ({ role = "public", userName }: HeaderProps) => {
+export const Header = ({ role = "public", userName, logoLink = true }: HeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -195,10 +197,17 @@ export const Header = ({ role = "public", userName }: HeaderProps) => {
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-14 md:h-16 items-center justify-between px-4 md:px-6">
         {/* Logo */}
-        <Link to={getLogoPath()} className="flex items-center gap-2">
-          <img src={knfLogo.url} alt="Knead & Frost — International School of Baking" className="h-9 md:h-11 w-auto" />
-          <span className="sr-only">Knead & Frost</span>
-        </Link>
+        {logoLink ? (
+          <Link to={getLogoPath()} className="flex items-center gap-2">
+            <img src={knfLogo.url} alt="Knead & Frost — International School of Baking" className="h-9 md:h-11 w-auto" />
+            <span className="sr-only">Knead & Frost</span>
+          </Link>
+        ) : (
+          <div className="flex items-center gap-2 select-none">
+            <img src={knfLogo.url} alt="Knead & Frost — International School of Baking" className="h-9 md:h-11 w-auto" />
+            <span className="sr-only">Knead & Frost</span>
+          </div>
+        )}
 
 
         {/* Desktop Navigation */}

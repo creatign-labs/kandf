@@ -103,7 +103,7 @@ const chefNavItems = [
   { to: "/chef/daily-ingredients", label: "Ingredients", icon: Package },
 ];
 
-export const Header = ({ role = "public", userName, logoLink = true }: HeaderProps) => {
+export const Header = ({ role = "public", userName, logoLink = true, hideNav = false }: HeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -160,7 +160,8 @@ export const Header = ({ role = "public", userName, logoLink = true }: HeaderPro
     }
   };
 
-  const getNavItems = () => {
+  const getNavItems = (): NavItem[] => {
+    if (hideNav) return [];
     switch (role) {
       case "student": return studentMainNavItems;
       case "admin": return adminNavItems;
@@ -171,7 +172,8 @@ export const Header = ({ role = "public", userName, logoLink = true }: HeaderPro
     }
   };
 
-  const getMobileNavItems = () => {
+  const getMobileNavItems = (): NavItem[] => {
+    if (hideNav) return [];
     switch (role) {
       case "student": return studentNavItems;
       case "admin": return adminNavItems;

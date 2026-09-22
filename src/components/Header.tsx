@@ -21,6 +21,8 @@ interface HeaderProps {
   userName?: string;
   /** When false, the logo is displayed as a plain image with no link */
   logoLink?: boolean;
+  /** When true, the public navigation menu (Home, Courses, About, Contact) is hidden */
+  hideNav?: boolean;
 }
 
 interface NavItem {

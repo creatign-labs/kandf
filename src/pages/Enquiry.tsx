@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Mail, Phone, MapPin, Clock, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +19,6 @@ const purposeOptions = [
   "BECOME CHEF ABROAD",
 ];
 
-
 const Enquiry = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -36,8 +29,6 @@ const Enquiry = () => {
     city: "",
     message: "",
   });
-
-
 
   const submitEnquiryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -61,9 +52,11 @@ const Enquiry = () => {
       if (error) throw error;
 
       // Send branded acknowledgment email (fire-and-forget)
-      supabase.functions.invoke("send-branded-email", {
-        body: { template: "enquiry_ack", to: data.email, data: { name: data.name } },
-      }).catch((err) => console.error("Failed to send ack email:", err));
+      supabase.functions
+        .invoke("send-branded-email", {
+          body: { template: "enquiry_ack", to: data.email, data: { name: data.name } },
+        })
+        .catch((err) => console.error("Failed to send ack email:", err));
     },
     onSuccess: () => {
       toast({
@@ -71,7 +64,6 @@ const Enquiry = () => {
         description: "We'll get back to you within 24 hours. A confirmation has been sent to your email.",
       });
       setFormData({ name: "", email: "", phone: "", purpose: "", city: "", message: "" });
-
     },
     onError: (error: Error) => {
       toast({
@@ -94,7 +86,7 @@ const Enquiry = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header role="public" logoLink={false} hideNav />
-      
+
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
@@ -112,9 +104,9 @@ const Enquiry = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label htmlFor="name">Full Name *</Label>
-                      <Input 
-                        id="name" 
-                        placeholder="John Doe" 
+                      <Input
+                        id="name"
+                        placeholder="John Doe"
                         required
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -122,10 +114,10 @@ const Enquiry = () => {
                     </div>
                     <div>
                       <Label htmlFor="email">Email Address *</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="john@example.com" 
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="john@example.com"
                         required
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -136,9 +128,9 @@ const Enquiry = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label htmlFor="phone">Phone Number</Label>
-                      <Input 
-                        id="phone" 
-                        type="tel" 
+                      <Input
+                        id="phone"
+                        type="tel"
                         placeholder="+1 234-567-8900"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -166,26 +158,21 @@ const Enquiry = () => {
 
                   <div>
                     <Label htmlFor="city">From whcih city do you like to pursue? *</Label>
-                    <Select
-                      value={formData.city}
-                      onValueChange={(value) => setFormData({ ...formData, city: value })}
-                    >
+                    <Select value={formData.city} onValueChange={(value) => setFormData({ ...formData, city: value })}>
                       <SelectTrigger id="city">
                         <SelectValue placeholder="Select your preferred city" />
                       </SelectTrigger>
                       <SelectContent>
-
                         <SelectItem value="Chennai">Chennai</SelectItem>
                         <SelectItem value="Mumbai">Mumbai</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-
                   <div>
                     <Label htmlFor="message">Your Message *</Label>
-                    <Textarea 
-                      id="message" 
+                    <Textarea
+                      id="message"
                       placeholder="Tell us about your baking goals and any questions you have..."
                       className="min-h-[150px]"
                       required
@@ -194,12 +181,7 @@ const Enquiry = () => {
                     />
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    className="w-full"
-                    disabled={submitEnquiryMutation.isPending}
-                  >
+                  <Button type="submit" size="lg" className="w-full" disabled={submitEnquiryMutation.isPending}>
                     {submitEnquiryMutation.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -219,7 +201,7 @@ const Enquiry = () => {
                   <Mail className="h-6 w-6 text-primary mt-1" />
                   <div>
                     <h3 className="font-semibold mb-1">Email Us</h3>
-                    <p className="text-sm text-muted-foreground">hello@kneadfrost.com</p>
+                    <p className="text-sm text-muted-foreground">kneadfrost@gmail.com</p>
                   </div>
                 </div>
 
@@ -236,8 +218,10 @@ const Enquiry = () => {
                   <div>
                     <h3 className="font-semibold mb-1">Visit Us</h3>
                     <p className="text-sm text-muted-foreground">
-                      9/3A, Adyar Bridge Rd, Arunachalapuram<br />
-                      Adyar, Chennai, Greater Chennai<br />
+                      9/3A, Adyar Bridge Rd, Arunachalapuram
+                      <br />
+                      Adyar, Chennai, Greater Chennai
+                      <br />
                       Tamil Nadu 600020
                     </p>
                   </div>
@@ -248,12 +232,18 @@ const Enquiry = () => {
                   <div>
                     <h3 className="font-semibold mb-1">Working Hours</h3>
                     <p className="text-sm text-muted-foreground">
-                      Monday 10 am–6 pm<br />
-                      Tuesday 10 am–6 pm<br />
-                      Wednesday 10 am–6 pm<br />
-                      Thursday Closed<br />
-                      Friday 10 am–6 pm<br />
-                      Saturday 10 am–6 pm<br />
+                      Monday 10 am–6 pm
+                      <br />
+                      Tuesday 10 am–6 pm
+                      <br />
+                      Wednesday 10 am–6 pm
+                      <br />
+                      Thursday Closed
+                      <br />
+                      Friday 10 am–6 pm
+                      <br />
+                      Saturday 10 am–6 pm
+                      <br />
                       Sunday 10 am–6 pm
                     </p>
                   </div>

@@ -8,6 +8,13 @@
       "when": 1791553572392,
       "tag": "0000_stop_default_student_role",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791556708818,
+      "tag": "0001_realtime_roles_profiles",
+      "breakpoints": true
     }
   ]
 }

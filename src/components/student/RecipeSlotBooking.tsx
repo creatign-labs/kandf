@@ -3,16 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Users, 
-  AlertCircle, 
-  Loader2, 
-  CheckCircle,
-  Lock,
-  ChefHat
-} from "lucide-react";
+import { Calendar as CalendarIcon, Clock, AlertCircle, Loader2, CheckCircle, Lock, ChefHat } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { 
   useBookingEligibility, 

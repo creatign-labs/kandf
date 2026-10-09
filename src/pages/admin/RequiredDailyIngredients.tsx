@@ -22,10 +22,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const UNIT_OPTIONS = ["g", "kg", "ml", "l", "pieces"] as const;
 import { CalendarIcon, ChefHat, Loader2, Package, Users, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addDays, formatDistanceToNow } from "date-fns";
-import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { ExportButton } from "@/components/ExportButton";
 import { useUserRoles } from "@/hooks/useUserRoles";

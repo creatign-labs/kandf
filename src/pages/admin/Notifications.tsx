@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,23 @@ const Notifications = () => {
   const [selectedIndividuals, setSelectedIndividuals] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
+  // Keep recipient counts/lists live as people are added, removed or change roles
+  useEffect(() => {
+    const refresh = () => {
+      ["all-students", "all-chefs", "all-admins"].forEach((key) =>
+        queryClient.invalidateQueries({ queryKey: [key] })
+      );
+    };
+    const channel = supabase
+      .channel("notification-recipients")
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refresh)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   // Fetch all notifications (for admin view)
   const { data: notifications, isLoading } = useQuery({
     queryKey: ["admin-notifications"],
@@ -78,7 +95,7 @@ const Notifications = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_roles")
-        .select("user_id, profiles:user_id(id, first_name, last_name)")
+        .select("user_id, profiles:user_id!inner(id, first_name, last_name)")
         .eq("role", "student");
 
       if (error) throw error;
@@ -92,7 +109,7 @@ const Notifications = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_roles")
-        .select("user_id, profiles:user_id(id, first_name, last_name)")
+        .select("user_id, profiles:user_id!inner(id, first_name, last_name)")
         .eq("role", "chef");
 
       if (error) throw error;
@@ -106,7 +123,7 @@ const Notifications = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_roles")
-        .select("user_id, profiles:user_id(id, first_name, last_name)")
+        .select("user_id, profiles:user_id!inner(id, first_name, last_name)")
         .in("role", ["admin", "super_admin"]);
 
       if (error) throw error;

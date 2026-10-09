@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText, LayoutDashboard, ChevronDown, MoreHorizontal, CreditCard, MonitorPlay } from "lucide-react";
+import { Bell, MessageSquare, User, ChefHat, Menu, LogOut, Home, BookOpen, Calendar, Briefcase, ClipboardList, Users, Package, Settings, Award, FileText, LayoutDashboard, ChevronDown, CreditCard, MonitorPlay } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";

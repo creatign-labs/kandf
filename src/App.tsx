@@ -63,7 +63,6 @@ import AdminEnrollments from "./pages/admin/Enrollments";
 import JobApplicationsReview from "./pages/admin/JobApplicationsReview";
 import Attendance from "./pages/chef/Attendance";
 import ChefRecipes from "./pages/chef/Recipes";
-import MySpecializations from "./pages/chef/MySpecializations";
 import InventoryUsage from "./pages/chef/InventoryUsage";
 import DailyIngredients from "./pages/chef/DailyIngredients";
 import RequiredStock from "./pages/chef/RequiredStock";

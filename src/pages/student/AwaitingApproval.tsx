@@ -3,7 +3,7 @@ import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Clock, Loader2, LogOut, FileText } from "lucide-react";
+import { CheckCircle, Clock, Loader2, LogOut } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";

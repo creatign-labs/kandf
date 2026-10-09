@@ -24,7 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, CreditCard, Loader2, CheckCircle, Clock, AlertTriangle, Copy, Link2, ExternalLink } from "lucide-react";
+import { Search, CreditCard, Loader2, CheckCircle, Clock, AlertTriangle, Copy, ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";

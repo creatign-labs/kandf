@@ -24,18 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  CalendarIcon,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  ChefHat,
-  Users,
-  Clock,
-  FileText,
-  Package,
-  Download,
-} from "lucide-react";
+import { CalendarIcon, CheckCircle2, XCircle, Loader2, ChefHat, Clock, FileText, Package, Download } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";

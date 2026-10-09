@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Calendar, CreditCard, BookOpen, ClipboardList, MessageSquare, Briefcase, AlertTriangle, CheckCircle } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import { Loader2, Calendar, CreditCard, ClipboardList, MessageSquare, Briefcase, AlertTriangle } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 interface StudentTimelineProps {
   studentId: string;

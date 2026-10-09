@@ -26,7 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ArrowLeft, Loader2, Copy, ExternalLink, Plus, Trash2, CheckCircle, Clock, AlertTriangle, CreditCard, IndianRupee } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, CheckCircle, Clock, AlertTriangle, CreditCard, IndianRupee } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addDays } from "date-fns";

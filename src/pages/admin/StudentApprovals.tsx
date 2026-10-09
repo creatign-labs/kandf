@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, CheckCircle, Clock, Loader2, UserCheck, Mail, Eye, EyeOff, Trash2, Pencil, XCircle, Ban } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {

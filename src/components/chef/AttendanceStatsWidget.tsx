@@ -1,5 +1,4 @@
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Users, CheckCircle, XCircle, AlertTriangle, TrendingUp } from "lucide-react";
 
 interface StudentStats {

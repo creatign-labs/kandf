@@ -11,8 +11,8 @@ const BRAND = {
   ink: "#2b2118",
   muted: "#7a6a55",
   border: "#ecdfc9",
-  site: "https://kneadandfrost.in",
-  supportEmail: "support@kneadandfrost.in",
+  site: "https://kneadandfrost.com",
+  supportEmail: "support@kneadandfrost.com",
   address: "Knead & Frost Academy, India",
 };
 
@@ -231,5 +231,5 @@ export function renderTemplate(template: TemplateName, data: Record<string, any>
   }
 }
 
-export const FROM_ADDRESS = Deno.env.get("RESEND_FROM_EMAIL") || "Knead & Frost <noreply@kneadandfrost.in>";
+export const FROM_ADDRESS = Deno.env.get("RESEND_FROM_EMAIL") || "Knead & Frost <noreply@kneadandfrost.com>";
 export const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";

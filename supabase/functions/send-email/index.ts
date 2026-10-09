@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
-const DEFAULT_FROM = Deno.env.get("RESEND_FROM_EMAIL") || "Knead & Frost <noreply@kneadandfrost.in>";
+const DEFAULT_FROM = Deno.env.get("RESEND_FROM_EMAIL") || "Knead & Frost <noreply@kneadandfrost.com>";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

@@ -4,7 +4,7 @@ const corsHeaders = {
 };
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
-const FROM_ADDRESS = Deno.env.get("RESEND_FROM_EMAIL") || "Knead & Frost <noreply@kneadandfrost.in>";
+const FROM_ADDRESS = Deno.env.get("RESEND_FROM_EMAIL") || "Knead & Frost <noreply@kneadandfrost.com>";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       </div>
       <div class="footer">
         <p>This is an automated message from Knead & Frost. Please do not reply.</p>
-        <p>For urgent queries, contact support@kneadandfrost.in</p>
+        <p>For urgent queries, contact support@kneadandfrost.com</p>
       </div>
     </div>
   </div>

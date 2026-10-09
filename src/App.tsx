@@ -25,7 +25,6 @@ import OnlineClasses from "./pages/student/OnlineClasses";
 import RecipeDetail from "./pages/student/RecipeDetail";
 import MyBookings from "./pages/student/MyBookings";
 import Notifications from "./pages/student/Notifications";
-import Assessments from "./pages/student/Assessments";
 import Feedback from "./pages/student/Feedback";
 import Certificates from "./pages/student/Certificates";
 import Resume from "./pages/student/Resume";
@@ -138,7 +137,6 @@ const App = () => (
           <Route path="/student/recipes/:id" element={<ProtectedRoute requiredRole="student"><RecipeDetail /></ProtectedRoute>} />
           <Route path="/student/my-bookings" element={<ProtectedRoute requiredRole="student"><MyBookings /></ProtectedRoute>} />
           <Route path="/student/notifications" element={<ProtectedRoute requiredRole="student"><Notifications /></ProtectedRoute>} />
-          {/* Assessments hidden for now */}
           <Route path="/student/feedback" element={<ProtectedRoute requiredRole="student"><Feedback /></ProtectedRoute>} />
           <Route path="/student/certificates" element={<ProtectedRoute requiredRole="student"><Certificates /></ProtectedRoute>} />
           <Route path="/student/resume" element={<ProtectedRoute requiredRole="student"><Resume /></ProtectedRoute>} />

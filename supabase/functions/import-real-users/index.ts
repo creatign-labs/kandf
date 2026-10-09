@@ -44,7 +44,7 @@ async function sendCredentialEmail(email: string, firstName: string, password: s
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${RESEND_API_KEY}` },
       body: JSON.stringify({
-        from: Deno.env.get("RESEND_FROM_EMAIL") || "Knead & Frost <onboarding@resend.dev>",
+        from: Deno.env.get("RESEND_FROM_EMAIL") || "Knead & Frost <noreply@kneadandfrost.com>",
         to: [email],
         subject: "Your Knead & Frost account credentials",
         html: `

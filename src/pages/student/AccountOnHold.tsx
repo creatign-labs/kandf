@@ -48,7 +48,7 @@ const AccountOnHold = ({ status }: AccountOnHoldProps) => {
               className="flex items-center justify-center gap-2 text-primary hover:underline"
             >
               <Mail className="h-4 w-4" />
-              support@kneadfrost.com
+              kneadfrost@gmail.com
             </a>
             <a
               href="tel:+919876543210"

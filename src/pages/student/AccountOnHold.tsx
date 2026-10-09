@@ -44,11 +44,11 @@ const AccountOnHold = ({ status }: AccountOnHoldProps) => {
           <h3 className="font-medium mb-3">Contact Support</h3>
           <div className="space-y-2 text-sm">
             <a
-              href="mailto:support@kneadfrost.com"
+              href="mailto:kneadfrost@gmail.com"
               className="flex items-center justify-center gap-2 text-primary hover:underline"
             >
               <Mail className="h-4 w-4" />
-              support@kneadfrost.com
+              kneadfrost@gmail.com
             </a>
             <a
               href="tel:+919876543210"

@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       </div>
       <div class="footer">
         <p>This is an automated message from Knead & Frost. Please do not reply.</p>
-        <p>For urgent queries, contact support@kneadandfrost.com</p>
+        <p>For urgent queries, contact kneadfrost@gmail.com</p>
       </div>
     </div>
   </div>

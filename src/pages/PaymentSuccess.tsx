@@ -113,7 +113,7 @@ const PaymentSuccess = () => {
           
           <div class="footer">
             <p>Thank you for enrolling with Knead & Frost!</p>
-            <p>For any queries, contact us at support@kneadandfrost.com</p>
+            <p>For any queries, contact us at kneadfrost@gmail.com</p>
           </div>
         </div>
       </body>

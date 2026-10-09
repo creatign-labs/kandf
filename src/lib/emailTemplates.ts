@@ -75,7 +75,7 @@ export const studentCredentialsEmail = ({
       </div>
       <div class="footer">
         <p>This is an automated message from Knead & Frost. Please do not reply.</p>
-        <p>For support, contact support@kneadandfrost.com</p>
+        <p>For support, contact kneadfrost@gmail.com</p>
       </div>
     </div>
   </div>
@@ -160,7 +160,7 @@ export const vendorCredentialsEmail = ({
       </div>
       <div class="footer">
         <p>This is an automated message from Knead & Frost. Please do not reply.</p>
-        <p>For support, contact support@kneadandfrost.com</p>
+        <p>For support, contact kneadfrost@gmail.com</p>
       </div>
     </div>
   </div>
@@ -260,7 +260,7 @@ export const paymentReceiptEmail = ({
       </div>
       <div class="footer">
         <p>Thank you for enrolling with Knead & Frost!</p>
-        <p>For queries, contact support@kneadandfrost.com</p>
+        <p>For queries, contact kneadfrost@gmail.com</p>
       </div>
     </div>
   </div>

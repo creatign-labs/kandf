@@ -47,7 +47,6 @@ import RecipeInventory from "./pages/admin/RecipeInventory";
 import AdminNotifications from "./pages/admin/Notifications";
 import Batches from "./pages/admin/Batches";
 import Staff from "./pages/admin/Staff";
-import DataTemplate from "./pages/admin/DataTemplate";
 
 import InventoryChecklist from "./pages/admin/InventoryChecklist";
 import DailyInventoryRequirements from "./pages/admin/DailyInventoryRequirements";
@@ -73,8 +72,6 @@ import Schedule from "./pages/chef/Schedule";
 import ChefNotifications from "./pages/chef/Notifications";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/student/Profile";
-import FlowWalkthrough from "./pages/FlowWalkthrough";
-import FeatureReport from "./pages/FeatureReport";
 import VendorDashboard from "./pages/vendor/VendorDashboard";
 import VendorJobs from "./pages/vendor/VendorJobs";
 import JobForm from "./pages/vendor/JobForm";
@@ -121,8 +118,6 @@ const App = () => (
           <Route path="/vendor/payment/failed" element={<VendorPaymentFailed />} />
           <Route path="/vendor/payment/cancelled" element={<VendorPaymentCancelled />} />
           <Route path="/vendor/awaiting-approval" element={<VendorAwaitingApproval />} />
-          <Route path="/flow-walkthrough" element={<FlowWalkthrough />} />
-          <Route path="/feature-report" element={<FeatureReport />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/courses/:id" element={<CourseDetail />} />
           <Route path="/enroll/:courseId" element={<ProtectedRoute><Enroll /></ProtectedRoute>} />
@@ -144,7 +139,6 @@ const App = () => (
           <Route path="/student/my-bookings" element={<ProtectedRoute requiredRole="student"><MyBookings /></ProtectedRoute>} />
           <Route path="/student/notifications" element={<ProtectedRoute requiredRole="student"><Notifications /></ProtectedRoute>} />
           {/* Assessments hidden for now */}
-          {/* <Route path="/student/assessments" element={<ProtectedRoute requiredRole="student"><Assessments /></ProtectedRoute>} /> */}
           <Route path="/student/feedback" element={<ProtectedRoute requiredRole="student"><Feedback /></ProtectedRoute>} />
           <Route path="/student/certificates" element={<ProtectedRoute requiredRole="student"><Certificates /></ProtectedRoute>} />
           <Route path="/student/resume" element={<ProtectedRoute requiredRole="student"><Resume /></ProtectedRoute>} />
@@ -167,7 +161,6 @@ const App = () => (
           <Route path="/admin/notifications" element={<ProtectedRoute requiredRole="admin"><AdminNotifications /></ProtectedRoute>} />
           <Route path="/admin/batches" element={<ProtectedRoute requiredRole="admin"><Batches /></ProtectedRoute>} />
           <Route path="/admin/staff" element={<ProtectedRoute requiredRole="admin"><Staff /></ProtectedRoute>} />
-          <Route path="/admin/data-template" element={<ProtectedRoute requiredRole="admin"><DataTemplate /></ProtectedRoute>} />
           
           <Route path="/admin/inventory-checklist" element={<ProtectedRoute requiredRole="admin"><InventoryChecklist /></ProtectedRoute>} />
           <Route path="/admin/daily-inventory" element={<ProtectedRoute requiredRole="admin"><DailyInventoryRequirements /></ProtectedRoute>} />

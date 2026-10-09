@@ -469,12 +469,6 @@ const AdminDashboard = () => {
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/admin/data-template">
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Data Management Centre
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
                   <Link to="/admin/job-applications">
                     <Briefcase className="h-4 w-4 mr-2" />
                     Job Applications

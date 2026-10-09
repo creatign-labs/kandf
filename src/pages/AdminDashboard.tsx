@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, FileSpreadsheet, UserCheck, ClipboardList, UtensilsCrossed, Crown, Briefcase, CalendarCheck, Store, CreditCard, Shield, ClipboardCheck, Utensils, FileText } from "lucide-react";
+import { Users, TrendingUp, Calendar, Package, AlertCircle, Loader2, ChefHat, UserCheck, ClipboardList, UtensilsCrossed, Crown, Briefcase, CalendarCheck, Store, CreditCard, Shield, ClipboardCheck, Utensils, FileText } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -466,12 +466,6 @@ const AdminDashboard = () => {
                   <Link to="/admin/staff">
                     <Shield className="h-4 w-4 mr-2" />
                     Users and Access Management
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/admin/data-template">
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Data Management Centre
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start" asChild>

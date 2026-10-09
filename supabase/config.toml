@@ -3,12 +3,6 @@ project_id = "txsbiergktqyhfyxoqwg"
 [functions.get-razorpay-key]
 verify_jwt = false
 
-[functions.create-demo-users]
-verify_jwt = false
-
-[functions.reset-demo-password]
-verify_jwt = false
-
 [functions.daily-ingredient-push]
 verify_jwt = false
 
@@ -61,9 +55,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-enquiry-ack]
-verify_jwt = false
-
-[functions.clear-sample-data]
 verify_jwt = false
 
 [functions.export-database-snapshot]

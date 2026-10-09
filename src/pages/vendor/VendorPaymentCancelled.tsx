@@ -28,7 +28,7 @@ const VendorPaymentCancelled = () => {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-4">
-          Need help? Contact us at support@kneadandfrost.com
+          Need help? Contact us at kneadfrost@gmail.com
         </p>
       </Card>
     </div>

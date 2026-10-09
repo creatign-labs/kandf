@@ -417,7 +417,7 @@ const PublicPayment = () => {
 
           {/* Footer */}
           <div className="text-center mt-8 text-sm text-muted-foreground">
-            <p>Having trouble? Contact us at support@knead-frost.com</p>
+            <p>Having trouble? Contact us at kneadfrost@gmail.com</p>
           </div>
         </div>
       </div>

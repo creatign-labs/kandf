@@ -12,7 +12,7 @@ const BRAND = {
   muted: "#7a6a55",
   border: "#ecdfc9",
   site: "https://kneadandfrost.com",
-  supportEmail: "support@kneadandfrost.com",
+  supportEmail: "kneadfrost@gmail.com",
   address: "Knead & Frost Academy, India",
 };
 

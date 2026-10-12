@@ -82,7 +82,7 @@ const Login = () => {
 
         // For students, check login eligibility (3 no-shows or expired course)
         const hasVendorProfile = !!vendorProfile;
-        const isStudent = roles?.some(r => r.role === 'student') && !roles?.some(r => ['admin', 'super_admin', 'chef', 'vendor'].includes(r.role)) && !hasVendorProfile;
+        const isStudent = roles?.some(r => r.role === 'student') && !roles?.some(r => ['admin', 'super_admin', 'chef', 'vendor', 'inventory_manager'].includes(r.role)) && !hasVendorProfile;
         
         if (isStudent) {
           // Call the database function to check eligibility
@@ -115,6 +115,8 @@ const Login = () => {
           navigate('/admin');
         } else if (roles?.some(r => r.role === 'chef')) {
           navigate('/chef');
+        } else if (roles?.some(r => r.role === 'inventory_manager')) {
+          navigate('/inventory-manager');
         } else if (roles?.some(r => r.role === 'vendor') || hasVendorProfile) {
           if (vendorProfile?.approval_status !== 'approved' || vendorProfile?.is_active !== true) {
             navigate('/vendor/awaiting-approval');

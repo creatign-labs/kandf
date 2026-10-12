@@ -17,7 +17,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import knfLogo from "@/assets/knf-logo.png.asset.json";
 
 interface HeaderProps {
-  role?: "public" | "student" | "admin" | "chef" | "super_admin" | "vendor";
+  role?: "public" | "student" | "admin" | "chef" | "super_admin" | "vendor" | "inventory_manager";
   userName?: string;
   /** When false, the logo is displayed as a plain image with no link */
   logoLink?: boolean;
@@ -96,6 +96,10 @@ const superAdminNavItems = [
   { to: "/admin/notifications", label: "Notifications", icon: Bell },
 ];
 
+const inventoryManagerNavItems = [
+  { to: "/inventory-manager", label: "Inventory", icon: Package, end: true },
+];
+
 const chefNavItems = [
   { to: "/chef", label: "Today's Classes", icon: Home, end: true },
   { to: "/chef/schedule", label: "Schedule", icon: Calendar },
@@ -155,6 +159,7 @@ export const Header = ({ role = "public", userName, logoLink = true, hideNav = f
       case 'super_admin': return '/admin';
       case 'chef': return '/chef';
       case 'vendor': return '/vendor';
+      case 'inventory_manager': return '/inventory-manager';
       case 'student': return '/student';
       default: return isLoggedIn && userPrimaryRole ? getDashboardPath() : '/';
     }
@@ -168,6 +173,7 @@ export const Header = ({ role = "public", userName, logoLink = true, hideNav = f
       case "super_admin": return superAdminNavItems;
       case "chef": return chefNavItems;
       case "vendor": return vendorNavItems;
+      case "inventory_manager": return inventoryManagerNavItems;
       default: return publicNavItems;
     }
   };
@@ -180,6 +186,7 @@ export const Header = ({ role = "public", userName, logoLink = true, hideNav = f
       case "super_admin": return superAdminNavItems;
       case "chef": return chefNavItems;
       case "vendor": return vendorNavItems;
+      case "inventory_manager": return inventoryManagerNavItems;
       default: return publicNavItems;
     }
   };

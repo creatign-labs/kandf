@@ -1,0 +1,1 @@
+CREATE POLICY "Inventory managers can add inventory" ON public.inventory FOR INSERT TO authenticated WITH CHECK (public.has_role(auth.uid(), 'inventory_manager'::app_role));

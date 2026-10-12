@@ -15,6 +15,13 @@
       "when": 1791556708818,
       "tag": "0001_realtime_roles_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791794475194,
+      "tag": "0002_inventory_manager_insert_inventory",
+      "breakpoints": true
     }
   ]
 }

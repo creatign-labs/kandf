@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'chef' | 'student' | 'super_admin' | 'vendor';
+  requiredRole?: 'admin' | 'chef' | 'student' | 'super_admin' | 'vendor' | 'inventory_manager';
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
@@ -84,7 +84,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
 
       if (requiredRole) {
         // Check if user has the required role or is super_admin (super_admin has access to admin routes)
-        type AppRole = 'admin' | 'chef' | 'student' | 'super_admin' | 'vendor';
+        type AppRole = 'admin' | 'chef' | 'student' | 'super_admin' | 'vendor' | 'inventory_manager';
         const rolesToCheck: AppRole[] = requiredRole === 'admin' 
           ? ['admin', 'super_admin'] 
           : [requiredRole as AppRole];
@@ -118,7 +118,7 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
           if (userRoles && userRoles.length > 0) {
             const firstRole = userRoles[0].role;
             // Map super_admin to admin route
-            const route = firstRole === 'super_admin' ? 'admin' : firstRole;
+            const route = firstRole === 'super_admin' ? 'admin' : firstRole === 'inventory_manager' ? 'inventory-manager' : firstRole;
             navigate(`/${route}`);
           } else {
             navigate('/');

@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { format, addMonths } from "date-fns";
 
 interface ProfileDropdownProps {
-  role: "student" | "admin" | "chef" | "super_admin" | "vendor";
+  role: "student" | "admin" | "chef" | "super_admin" | "vendor" | "inventory_manager";
 }
 
 interface ProfileData {

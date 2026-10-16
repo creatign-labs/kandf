@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -2936,6 +2936,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_delete_recipes: {
+        Args: { p_recipe_ids?: string[] }
+        Returns: number
+      }
       admin_move_student_batch: {
         Args: {
           p_from_batch_id: string

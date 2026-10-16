@@ -29,10 +29,34 @@ import { ExportButton } from "@/components/ExportButton";
 import { ImportButton } from "@/components/ImportButton";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { recipesImport } from "@/lib/importConfigs";
+import { getDetailedErrorMessage } from "@/lib/errors";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const AdminRecipes = () => {
   const queryClient = useQueryClient();
   const { data: roles } = useUserRoles();
+  const queryClientDel = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const deleteRecipesMutation = useMutation({
+    mutationFn: async (ids: string[] | null) => {
+      const { data, error } = await supabase.rpc("admin_delete_recipes", { p_recipe_ids: ids as any });
+      if (error) throw new Error(await getDetailedErrorMessage(error));
+      return data as number;
+    },
+    onSuccess: (count) => {
+      toast({ title: "Deleted", description: `${count} recipe(s) deleted.` });
+      ["admin-recipes", "recipes", "recipe-ingredient-counts", "chef-recipes"].forEach((k) =>
+        queryClientDel.invalidateQueries({ queryKey: [k] })
+      );
+      setDeleteTarget(null);
+      setConfirmDeleteAll(false);
+    },
+    onError: (e: Error) => toast({ title: "Could not delete", description: e.message, variant: "destructive" }),
+  });
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   useEffect(() => {
@@ -273,7 +297,15 @@ const AdminRecipes = () => {
             <h1 className="text-4xl font-bold text-foreground mb-2">Recipe Library</h1>
             <p className="text-muted-foreground">Manage all recipes and their ingredients</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button
+              variant="destructive"
+              className="gap-2"
+              disabled={!recipes?.length || deleteRecipesMutation.isPending}
+              onClick={() => setConfirmDeleteAll(true)}
+            >
+              <Trash2 className="h-4 w-4" /> Delete All
+            </Button>
             {roles?.isSuperAdmin && (
               <ExportButton
                 filename="recipes"
@@ -522,7 +554,19 @@ const AdminRecipes = () => {
               <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div className="min-w-0">
-                    <h3 className="font-semibold truncate">{recipe.title}</h3>
+                    <h3 className="font-semibold truncate flex items-center gap-1">
+                      <span className="truncate">{recipe.title}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-destructive"
+                        aria-label={`Delete ${recipe.title}`}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: recipe.id, title: recipe.title }); }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </h3>
                     {(recipe as any).recipe_code && (
                       <button
                         type="button"
@@ -644,6 +688,44 @@ const AdminRecipes = () => {
             </div>
           </DialogContent>
         </Dialog>
+        <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete "{deleteTarget?.title}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the recipe, its ingredient list and its course links. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => { e.preventDefault(); if (deleteTarget) deleteRecipesMutation.mutate([deleteTarget.id]); }}
+              >
+                {deleteRecipesMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={confirmDeleteAll} onOpenChange={setConfirmDeleteAll}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete all {recipes?.length ?? 0} recipes?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Every recipe, with its ingredient list and course links, will be permanently deleted. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => { e.preventDefault(); deleteRecipesMutation.mutate(null); }}
+              >
+                {deleteRecipesMutation.isPending ? "Deleting..." : "Yes, delete all"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

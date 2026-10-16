@@ -2936,6 +2936,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_delete_recipes: {
+        Args: { p_recipe_ids?: string[] }
+        Returns: number
+      }
       admin_move_student_batch: {
         Args: {
           p_from_batch_id: string

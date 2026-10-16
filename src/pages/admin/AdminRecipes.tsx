@@ -295,7 +295,8 @@ const AdminRecipes = () => {
                 templateColumns={recipesImport.templateColumns}
                 requiredColumns={recipesImport.requiredColumns}
                 buildPayload={recipesImport.buildPayload}
-                invalidateKeys={[["recipes"]]}
+                insertRows={recipesImport.insertRows}
+                invalidateKeys={[["recipes"], ["admin-recipes"]]}
               />
             )}
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

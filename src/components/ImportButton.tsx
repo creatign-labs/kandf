@@ -1,3 +1,4 @@
+import { getDetailedErrorMessage } from "@/lib/errors";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Download, Loader2, CheckCircle2, AlertTriangle, ArrowLeft } from "lucide-react";
@@ -25,6 +26,8 @@ interface ImportButtonProps {
   /** Optional per-row validator run during preview. Return null if valid, else an error message. */
   validateRow?: (row: Record<string, string>, index: number, allRows: Record<string, string>[]) => string | null | Promise<string | null>;
   invalidateKeys?: string[][];
+  /** Optional custom insert. Returns number of rows inserted. */
+  insertRows?: (payload: Record<string, unknown>[]) => Promise<number>;
   label?: string;
   className?: string;
 }
@@ -73,6 +76,7 @@ export const ImportButton = ({
   buildPayload,
   validateRow,
   invalidateKeys = [],
+  insertRows,
   label = "Import CSV",
   className,
 }: ImportButtonProps) => {
@@ -185,7 +189,9 @@ export const ImportButton = ({
 
       const chunkSize = 100;
       let inserted = 0;
-      for (let i = 0; i < payload.length; i += chunkSize) {
+      if (insertRows) {
+        inserted = await insertRows(payload);
+      } else for (let i = 0; i < payload.length; i += chunkSize) {
         const chunk = payload.slice(i, i + chunkSize);
         const { error } = await (supabase.from(table) as any).insert(chunk);
         if (error) throw error;
@@ -196,7 +202,7 @@ export const ImportButton = ({
       invalidateKeys.forEach(k => qc.invalidateQueries({ queryKey: k }));
       closeDialog(false);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Import failed";
+      const msg = await getDetailedErrorMessage(e);
       toast({ title: "Import failed", description: msg, variant: "destructive" });
     } finally {
       setBusy(false);

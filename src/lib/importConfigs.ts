@@ -89,15 +89,48 @@ export const recipesImport = {
       if (error) throw error;
       map = new Map((data || []).map(c => [c.title.toLowerCase(), c.id]));
     }
-    return rows.map(r => ({
+    const codes = new Set<string>();
+    return rows.map((r, i) => {
+      const code = (r.recipe_code || "").trim();
+      if (code) {
+        if (code.length > 30) throw new Error(`Row ${i + 2}: recipe code "${code}" is longer than 30 characters`);
+        if (codes.has(code.toLowerCase())) throw new Error(`Row ${i + 2}: recipe code "${code}" appears twice in the file`);
+        codes.add(code.toLowerCase());
+      }
+      if (r.course_title && !map.get(r.course_title.toLowerCase())) {
+        throw new Error(`Row ${i + 2}: course "${r.course_title}" not found`);
+      }
+      return {
       title: r.title,
-      recipe_code: r.recipe_code || null,
+      recipe_code: code || null,
       description: r.description || null,
       difficulty: r.difficulty || null,
       prep_time: r.prep_time ? toNum(r.prep_time) : null,
       cook_time: r.cook_time ? toNum(r.cook_time) : null,
       course_id: r.course_title ? map.get(r.course_title.toLowerCase()) ?? null : null,
-    }));
+    };
+    });
+  },
+  /** Insert recipes and link them to their course so they show in the course curriculum. */
+  insertRows: async (payload: Record<string, unknown>[]) => {
+    const { data, error } = await supabase
+      .from("recipes")
+      .insert(payload as any)
+      .select("id, course_id");
+    if (error) {
+      if (error.code === "23505") {
+        throw new Error("One of the recipe codes in the file is already used by an existing recipe. Use unique codes.");
+      }
+      throw error;
+    }
+    const links = (data || [])
+      .filter(r => r.course_id)
+      .map(r => ({ course_id: r.course_id as string, recipe_id: r.id }));
+    if (links.length) {
+      const { error: linkErr } = await supabase.from("course_recipes").insert(links);
+      if (linkErr) throw linkErr;
+    }
+    return data?.length ?? 0;
   },
 };
 

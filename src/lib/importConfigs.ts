@@ -337,30 +337,52 @@ export const recipesImport = {
 };
 
 // -------- RECIPE INGREDIENTS --------
+// Columns mirror the "Add Ingredient to Recipe" form.
+const RI = { recipe: "Recipe (Title or Code)", ingredient: "Ingredient Name", qty: "Quantity per Student", notes: "Notes" } as const;
+let recipeLookupCache: Promise<Map<string, string>> | null = null;
+const loadRecipeLookup = () => {
+  if (!recipeLookupCache) {
+    recipeLookupCache = (async () => {
+      const { data, error } = await supabase.from("recipes").select("id, title, recipe_code");
+      if (error) { recipeLookupCache = null; throw error; }
+      const m = new Map<string, string>();
+      (data || []).forEach(r => {
+        m.set(r.title.trim().toLowerCase(), r.id);
+        if (r.recipe_code) m.set(String(r.recipe_code).trim().toLowerCase(), r.id);
+      });
+      return m;
+    })();
+  }
+  return recipeLookupCache;
+};
 export const recipeIngredientsImport = {
-  templateColumns: ["recipe_title", "ingredient_name", "quantity_per_student", "unit", "notes"],
-  requiredColumns: ["recipe_title", "ingredient_name", "quantity_per_student"],
+  templateColumns: [RI.recipe, RI.ingredient, RI.qty, RI.notes],
+  requiredColumns: [RI.recipe, RI.ingredient, RI.qty],
+  templateSample: [
+    ["RCP-001", "Flour", "250", ""],
+    ["Apple Pie", "Butter", "100", "Unsalted"],
+  ],
+  templateHint: "Recipe can be its title or code. Ingredient Name must match an item in Inventory (its unit is used). Quantity is per student.",
+  validateRow: async (r: Record<string, string>, i: number) => {
+    if (i === 0) { recipeLookupCache = null; inventoryCache = null; }
+    if (!(await loadRecipeLookup()).get(r[RI.recipe].trim().toLowerCase())) return `Recipe "${r[RI.recipe]}" not found`;
+    if (!(await loadInventory()).get(r[RI.ingredient].trim().toLowerCase())) return `Ingredient "${r[RI.ingredient]}" not found in Inventory`;
+    const n = Number(r[RI.qty]);
+    if (!Number.isFinite(n) || n <= 0) return "Quantity per Student must be a number above 0";
+    if ((r[RI.notes] || "").length > 100) return "Notes must be 100 characters or less";
+    return null;
+  },
   buildPayload: async (rows: Record<string, string>[]) => {
-    const recipeTitles = [...new Set(rows.map(r => r.recipe_title))];
-    const ingredientNames = [...new Set(rows.map(r => r.ingredient_name))];
-    const [{ data: recs, error: e1 }, { data: invs, error: e2 }] = await Promise.all([
-      supabase.from("recipes").select("id, title").in("title", recipeTitles),
-      supabase.from("inventory").select("id, name, unit").in("name", ingredientNames),
-    ]);
-    if (e1) throw e1; if (e2) throw e2;
-    const recMap = new Map((recs || []).map(r => [r.title.toLowerCase(), r.id]));
-    const invMap = new Map((invs || []).map(i => [i.name.toLowerCase(), i]));
-    return rows.map((r, i) => {
-      const rid = recMap.get(r.recipe_title.toLowerCase());
-      const inv = invMap.get(r.ingredient_name.toLowerCase());
-      if (!rid) throw new Error(`Row ${i + 2}: recipe "${r.recipe_title}" not found`);
-      if (!inv) throw new Error(`Row ${i + 2}: ingredient "${r.ingredient_name}" not found`);
+    const recs = await loadRecipeLookup();
+    const inv = await loadInventory();
+    return rows.map(r => {
+      const item = inv.get(r[RI.ingredient].trim().toLowerCase())!;
       return {
-        recipe_id: rid,
-        inventory_id: inv.id,
-        quantity_per_student: toNum(r.quantity_per_student),
-        unit: r.unit || inv.unit,
-        notes: r.notes || null,
+        recipe_id: recs.get(r[RI.recipe].trim().toLowerCase())!,
+        inventory_id: item.id,
+        quantity_per_student: Number(r[RI.qty]),
+        unit: item.unit,
+        notes: (r[RI.notes] || "").trim() || null,
       };
     });
   },

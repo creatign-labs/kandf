@@ -521,7 +521,10 @@ const Batches = () => {
                   templateColumns={batchesImport.templateColumns}
                   requiredColumns={batchesImport.requiredColumns}
                   buildPayload={batchesImport.buildPayload}
-                  invalidateKeys={[["batches"]]}
+                  validateRow={batchesImport.validateRow}
+                  templateSample={batchesImport.templateSample}
+                  templateHint={batchesImport.templateHint}
+                  invalidateKeys={[["batches"], ["admin-batches"]]}
                 />
               )}
               <Dialog open={isDialogOpen} onOpenChange={(open) => {

@@ -346,6 +346,9 @@ const Inventory = () => {
                   templateColumns={inventoryImport.templateColumns}
                   requiredColumns={inventoryImport.requiredColumns}
                   buildPayload={inventoryImport.buildPayload}
+                  validateRow={inventoryImport.validateRow}
+                  templateSample={inventoryImport.templateSample}
+                  templateHint={inventoryImport.templateHint}
                   invalidateKeys={[["inventory"]]}
                 />
               )}

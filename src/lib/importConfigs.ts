@@ -12,66 +12,197 @@ const toNum = (v: string, def = 0): number => {
   return Number.isFinite(n) ? n : def;
 };
 
-const toDate = (v: string): string | null => {
+
+const SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Days are stored the same way the forms save them: Mon, Tue, ...
+const canonicalDay = (d: string): string => {
+  const k = d.trim().toLowerCase().slice(0, 3);
+  return SHORT_DAYS.find(s => s.toLowerCase() === k) ?? d.trim();
+};
+const parseDays = (v: string) => [...new Set(toList(v).map(canonicalDay))];
+const badDays = (days: string[]) => days.filter(d => !SHORT_DAYS.includes(d));
+
+/** Accepts YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY (and M/D/YYYY when unambiguous). Returns YYYY-MM-DD or "invalid". */
+const parseDate = (v: string): string | null | "invalid" => {
   const s = (v || "").trim();
   if (!s) return null;
-  return s;
+  let y: number, m: number, d: number;
+  let mt = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  if (mt) { y = +mt[1]; m = +mt[2]; d = +mt[3]; }
+  else if ((mt = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/.exec(s))) {
+    let a = +mt[1], b = +mt[2]; y = +mt[3]; if (y < 100) y += 2000;
+    if (b > 12 && a <= 12) { m = a; d = b; } else { d = a; m = b; }
+  } else return "invalid";
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return "invalid";
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 };
 
-const canonicalDay = (d: string): string => {
-  const map: Record<string, string> = {
-    mon: "Monday", monday: "Monday",
-    tue: "Tuesday", tues: "Tuesday", tuesday: "Tuesday",
-    wed: "Wednesday", weds: "Wednesday", wednesday: "Wednesday",
-    thu: "Thursday", thurs: "Thursday", thursday: "Thursday",
-    fri: "Friday", friday: "Friday",
-    sat: "Saturday", saturday: "Saturday",
-    sun: "Sunday", sunday: "Sunday",
-  };
-  return map[d.toLowerCase()] ?? d;
+/** Accepts "9:00 AM", "9 am", "09:00", "13:30". Returns the form's "9:00 AM" style or null. */
+const parseTime = (v: string): string | null => {
+  const s = (v || "").trim().toUpperCase();
+  const mt = /^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*(AM|PM)?$/.exec(s);
+  if (!mt) return null;
+  let h = +mt[1]; const min = mt[2] ?? "00"; let ap = mt[3];
+  if (+min > 59) return null;
+  if (!ap) { if (h > 23) return null; ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12; }
+  else if (h < 1 || h > 12) return null;
+  return `${h}:${min} ${ap}`;
 };
+
+const isNonNegNum = (v: string) => v.trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0);
 
 // -------- COURSES --------
+// Columns mirror the "Add Course" form.
+const C = {
+  title: "Course Title", code: "Course Code", months: "Duration Months", days: "Duration Days",
+  fee: "Base Fee", level: "Level", week: "Days of the Week", recipes: "Recipe Codes",
+} as const;
+const LEVELS = ["Beginner", "Intermediate", "Advanced"];
+let recipeCodeCache: Promise<Map<string, string>> | null = null;
+const loadRecipeCodes = () => {
+  if (!recipeCodeCache) {
+    recipeCodeCache = (async () => {
+      const { data, error } = await supabase.from("recipes").select("id, recipe_code").not("recipe_code", "is", null);
+      if (error) { recipeCodeCache = null; throw error; }
+      return new Map((data || []).map(r => [String(r.recipe_code).trim().toLowerCase(), r.id]));
+    })();
+  }
+  return recipeCodeCache;
+};
+const formatDuration = (months: number, days: number) => {
+  const parts: string[] = [];
+  if (months > 0) parts.push(`${months} month${months > 1 ? "s" : ""}`);
+  if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
+  return parts.join(" ");
+};
+
 export const coursesImport = {
-  templateColumns: ["title", "description", "duration", "level", "base_fee", "course_code", "days_of_week"],
-  requiredColumns: ["title", "duration", "level", "base_fee"],
-  buildPayload: (rows: Record<string, string>[]) =>
-    rows.map(r => ({
-      title: r.title,
-      description: r.description || null,
-      duration: r.duration,
-      level: r.level,
-      base_fee: toNum(r.base_fee),
-      course_code: r.course_code || null,
-      days_of_week: toList(r.days_of_week).map(canonicalDay),
-    })),
+  templateColumns: [C.title, C.code, C.months, C.days, C.fee, C.level, C.week, C.recipes],
+  requiredColumns: [C.title, C.fee, C.level],
+  templateSample: [
+    ["Diploma in Baking", "DIB", "3", "0", "45000", "Beginner", "Mon, Wed, Fri", "RCP-001, RCP-002"],
+    ["Advanced Pastry", "ADP", "1", "15", "30000", "Advanced", "Sat, Sun", ""],
+  ],
+  templateHint:
+    "Duration: months (0-12) and/or days (0-31), at least one above 0. Level: Beginner, Intermediate or Advanced. Days: Mon, Tue, Wed, Thu, Fri, Sat, Sun separated by commas. Recipe Codes (optional): codes of existing recipes, separated by commas.",
+  validateRow: async (r: Record<string, string>, i: number, all: Record<string, string>[]) => {
+    if (i === 0) recipeCodeCache = null;
+    if (r[C.title].length > 100) return "Course title must be 100 characters or less";
+    const mo = (r[C.months] || "0").trim(), dy = (r[C.days] || "0").trim();
+    if (!/^\d+$/.test(mo) || +mo > 12) return "Duration Months must be a whole number 0-12";
+    if (!/^\d+$/.test(dy) || +dy > 31) return "Duration Days must be a whole number 0-31";
+    if (+mo === 0 && +dy === 0) return "Duration is required (months or days above 0)";
+    const fee = Number(r[C.fee]);
+    if (!Number.isFinite(fee) || fee <= 0) return "Base Fee must be a number above 0";
+    if (!LEVELS.some(l => l.toLowerCase() === r[C.level].trim().toLowerCase())) return "Level must be Beginner, Intermediate or Advanced";
+    const bad = badDays(parseDays(r[C.week]));
+    if (bad.length) return `Unknown day(s): ${bad.join(", ")}`;
+    const code = (r[C.code] || "").trim().toUpperCase();
+    if (code && all.filter(o => (o[C.code] || "").trim().toUpperCase() === code).length > 1) return `Course code "${code}" appears twice in the file`;
+    const codes = toList(r[C.recipes]);
+    if (codes.length) {
+      const map = await loadRecipeCodes();
+      const missing = codes.filter(c => !map.has(c.toLowerCase()));
+      if (missing.length) return `Recipe code(s) not found: ${missing.join(", ")}`;
+    }
+    return null;
+  },
+  buildPayload: async (rows: Record<string, string>[]) => {
+    const map = await loadRecipeCodes();
+    return rows.map(r => ({
+      course: {
+        title: r[C.title].trim(),
+        course_code: (r[C.code] || "").trim().toUpperCase() || null,
+        description: "",
+        duration: formatDuration(+(r[C.months] || 0), +(r[C.days] || 0)),
+        level: LEVELS.find(l => l.toLowerCase() === r[C.level].trim().toLowerCase())!,
+        base_fee: Number(r[C.fee]),
+        days_of_week: parseDays(r[C.week]),
+      },
+      recipe_ids: [...new Set(toList(r[C.recipes]).map(c => map.get(c.toLowerCase())!))],
+    }));
+  },
+  insertRows: async (payload: Record<string, unknown>[]) => {
+    const list = payload as unknown as { course: Record<string, unknown>; recipe_ids: string[] }[];
+    const { data, error } = await supabase.from("courses").insert(list.map(l => l.course) as any).select("id");
+    if (error) {
+      if (error.code === "23505") throw new Error("A course code in the file is already used by an existing course. Use unique codes.");
+      throw error;
+    }
+    const links = (data || []).flatMap((c, i) => list[i].recipe_ids.map(rid => ({ course_id: c.id, recipe_id: rid })));
+    if (links.length) {
+      const { error: e2 } = await supabase.from("course_recipes").insert(links);
+      if (e2) throw e2;
+    }
+    return data?.length ?? 0;
+  },
 };
 
 // -------- BATCHES --------
+// Columns mirror the "Create Batch" form.
+const B = {
+  course: "Course Title", name: "Batch Name", start: "Start Time", end: "End Time",
+  week: "Days of the Week", from: "Batch Start Date", to: "Batch End Date", seats: "Total Seats",
+} as const;
+let courseCache: Promise<Map<string, { id: string; days: string[]; archived: boolean }>> | null = null;
+const loadCourses = () => {
+  if (!courseCache) {
+    courseCache = (async () => {
+      const { data, error } = await supabase.from("courses").select("id, title, days_of_week, is_archived");
+      if (error) { courseCache = null; throw error; }
+      return new Map((data || []).map((c: any) => [c.title.trim().toLowerCase(), { id: c.id, days: c.days_of_week || [], archived: !!c.is_archived }]));
+    })();
+  }
+  return courseCache;
+};
+
 export const batchesImport = {
-  templateColumns: ["course_title", "batch_name", "time_slot", "total_seats", "start_date", "end_date", "days_of_week"],
-  requiredColumns: ["course_title", "batch_name", "time_slot", "total_seats"],
+  templateColumns: [B.course, B.name, B.start, B.end, B.week, B.from, B.to, B.seats],
+  requiredColumns: [B.course, B.name, B.start, B.end, B.week, B.seats],
+  templateSample: [
+    ["Diploma in Baking", "Morning Batch", "10:00 AM", "1:00 PM", "Mon, Wed, Fri", "2026-06-23", "2026-09-23", "20"],
+  ],
+  templateHint:
+    "Course Title must match an existing course. Times like 10:00 AM. Days: Mon-Sun separated by commas, and only days the course runs. Dates as YYYY-MM-DD (or DD/MM/YYYY).",
+  validateRow: async (r: Record<string, string>, i: number) => {
+    if (i === 0) courseCache = null;
+    const course = (await loadCourses()).get(r[B.course].trim().toLowerCase());
+    if (!course) return `Course "${r[B.course]}" not found`;
+    if (course.archived) return `Course "${r[B.course]}" is archived`;
+    if (r[B.name].length > 100) return "Batch name must be 100 characters or less";
+    if (!parseTime(r[B.start])) return "Start Time is not a valid time (e.g. 10:00 AM)";
+    if (!parseTime(r[B.end])) return "End Time is not a valid time (e.g. 1:00 PM)";
+    const days = parseDays(r[B.week]);
+    const bad = badDays(days);
+    if (bad.length) return `Unknown day(s): ${bad.join(", ")}`;
+    if (!days.length) return "Days of the Week is required";
+    if (course.days.length) {
+      const outside = days.filter(d => !course.days.includes(d));
+      if (outside.length) return `Course only runs on ${course.days.join(", ")} (not ${outside.join(", ")})`;
+    }
+    const from = parseDate(r[B.from]), to = parseDate(r[B.to]);
+    if (from === "invalid") return "Batch Start Date is not a valid date";
+    if (to === "invalid") return "Batch End Date is not a valid date";
+    if (from && to && to < from) return "Batch End Date is before the Start Date";
+    const seats = Number(r[B.seats]);
+    if (!Number.isInteger(seats) || seats < 1) return "Total Seats must be a whole number above 0";
+    return null;
+  },
   buildPayload: async (rows: Record<string, string>[]) => {
-    const titles = [...new Set(rows.map(r => r.course_title))];
-    const { data: courses, error } = await supabase
-      .from("courses")
-      .select("id, title")
-      .in("title", titles);
-    if (error) throw error;
-    const map = new Map((courses || []).map(c => [c.title.toLowerCase(), c.id]));
-    return rows.map((r, i) => {
-      const cid = map.get(r.course_title.toLowerCase());
-      if (!cid) throw new Error(`Row ${i + 2}: course "${r.course_title}" not found`);
-      const seats = toNum(r.total_seats, 30);
+    const courses = await loadCourses();
+    return rows.map(r => {
+      const seats = Number(r[B.seats]);
       return {
-        course_id: cid,
-        batch_name: r.batch_name,
-        time_slot: r.time_slot,
+        course_id: courses.get(r[B.course].trim().toLowerCase())!.id,
+        batch_name: r[B.name].trim(),
+        time_slot: `${parseTime(r[B.start])} - ${parseTime(r[B.end])}`,
+        days_of_week: parseDays(r[B.week]),
+        days: null,
         total_seats: seats,
         available_seats: seats,
-        start_date: toDate(r.start_date),
-        end_date: toDate(r.end_date),
-        days_of_week: toList(r.days_of_week).map(canonicalDay),
+        start_date: parseDate(r[B.from]) || null,
+        end_date: parseDate(r[B.to]) || null,
       };
     });
   },
@@ -206,46 +337,84 @@ export const recipesImport = {
 };
 
 // -------- RECIPE INGREDIENTS --------
+// Columns mirror the "Add Ingredient to Recipe" form.
+const RI = { recipe: "Recipe (Title or Code)", ingredient: "Ingredient Name", qty: "Quantity per Student", notes: "Notes" } as const;
+let recipeLookupCache: Promise<Map<string, string>> | null = null;
+const loadRecipeLookup = () => {
+  if (!recipeLookupCache) {
+    recipeLookupCache = (async () => {
+      const { data, error } = await supabase.from("recipes").select("id, title, recipe_code");
+      if (error) { recipeLookupCache = null; throw error; }
+      const m = new Map<string, string>();
+      (data || []).forEach(r => {
+        m.set(r.title.trim().toLowerCase(), r.id);
+        if (r.recipe_code) m.set(String(r.recipe_code).trim().toLowerCase(), r.id);
+      });
+      return m;
+    })();
+  }
+  return recipeLookupCache;
+};
 export const recipeIngredientsImport = {
-  templateColumns: ["recipe_title", "ingredient_name", "quantity_per_student", "unit", "notes"],
-  requiredColumns: ["recipe_title", "ingredient_name", "quantity_per_student"],
+  templateColumns: [RI.recipe, RI.ingredient, RI.qty, RI.notes],
+  requiredColumns: [RI.recipe, RI.ingredient, RI.qty],
+  templateSample: [
+    ["RCP-001", "Flour", "250", ""],
+    ["Apple Pie", "Butter", "100", "Unsalted"],
+  ],
+  templateHint: "Recipe can be its title or code. Ingredient Name must match an item in Inventory (its unit is used). Quantity is per student.",
+  validateRow: async (r: Record<string, string>, i: number) => {
+    if (i === 0) { recipeLookupCache = null; inventoryCache = null; }
+    if (!(await loadRecipeLookup()).get(r[RI.recipe].trim().toLowerCase())) return `Recipe "${r[RI.recipe]}" not found`;
+    if (!(await loadInventory()).get(r[RI.ingredient].trim().toLowerCase())) return `Ingredient "${r[RI.ingredient]}" not found in Inventory`;
+    const n = Number(r[RI.qty]);
+    if (!Number.isFinite(n) || n <= 0) return "Quantity per Student must be a number above 0";
+    if ((r[RI.notes] || "").length > 100) return "Notes must be 100 characters or less";
+    return null;
+  },
   buildPayload: async (rows: Record<string, string>[]) => {
-    const recipeTitles = [...new Set(rows.map(r => r.recipe_title))];
-    const ingredientNames = [...new Set(rows.map(r => r.ingredient_name))];
-    const [{ data: recs, error: e1 }, { data: invs, error: e2 }] = await Promise.all([
-      supabase.from("recipes").select("id, title").in("title", recipeTitles),
-      supabase.from("inventory").select("id, name, unit").in("name", ingredientNames),
-    ]);
-    if (e1) throw e1; if (e2) throw e2;
-    const recMap = new Map((recs || []).map(r => [r.title.toLowerCase(), r.id]));
-    const invMap = new Map((invs || []).map(i => [i.name.toLowerCase(), i]));
-    return rows.map((r, i) => {
-      const rid = recMap.get(r.recipe_title.toLowerCase());
-      const inv = invMap.get(r.ingredient_name.toLowerCase());
-      if (!rid) throw new Error(`Row ${i + 2}: recipe "${r.recipe_title}" not found`);
-      if (!inv) throw new Error(`Row ${i + 2}: ingredient "${r.ingredient_name}" not found`);
+    const recs = await loadRecipeLookup();
+    const inv = await loadInventory();
+    return rows.map(r => {
+      const item = inv.get(r[RI.ingredient].trim().toLowerCase())!;
       return {
-        recipe_id: rid,
-        inventory_id: inv.id,
-        quantity_per_student: toNum(r.quantity_per_student),
-        unit: r.unit || inv.unit,
-        notes: r.notes || null,
+        recipe_id: recs.get(r[RI.recipe].trim().toLowerCase())!,
+        inventory_id: item.id,
+        quantity_per_student: Number(r[RI.qty]),
+        unit: item.unit,
+        notes: (r[RI.notes] || "").trim() || null,
       };
     });
   },
 };
 
 // -------- INVENTORY --------
+// Columns mirror the "Add Inventory Item" form.
+const I = { name: "Item Name", unit: "Unit", stock: "Closing Stock", required: "Required Stock" } as const;
 export const inventoryImport = {
-  templateColumns: ["name", "category", "unit", "current_stock", "reorder_level", "cost_per_unit"],
-  requiredColumns: ["name", "unit"],
+  templateColumns: [I.name, I.unit, I.stock, I.required],
+  requiredColumns: [I.name, I.unit],
+  templateSample: [
+    ["Flour", "g", "5000", "10000"],
+    ["Milk", "ml", "2000", "4000"],
+    ["Eggs", "pieces", "60", "120"],
+  ],
+  templateHint: "Unit: ml, g or pieces. Closing Stock and Required Stock are numbers (leave empty for 0).",
+  validateRow: (r: Record<string, string>, _i: number, all: Record<string, string>[]) => {
+    if (r[I.name].length > 100) return "Item name must be 100 characters or less";
+    if (!["ml", "g", "pieces"].includes(r[I.unit].trim().toLowerCase())) return "Unit must be ml, g or pieces";
+    if (!isNonNegNum(r[I.stock] || "")) return "Closing Stock must be a number 0 or above";
+    if (!isNonNegNum(r[I.required] || "")) return "Required Stock must be a number 0 or above";
+    const n = r[I.name].trim().toLowerCase();
+    if (all.filter(o => (o[I.name] || "").trim().toLowerCase() === n).length > 1) return `"${r[I.name]}" appears twice in the file`;
+    return null;
+  },
   buildPayload: (rows: Record<string, string>[]) =>
     rows.map(r => ({
-      name: r.name,
-      category: r.category || null,
-      unit: r.unit,
-      current_stock: toNum(r.current_stock),
-      reorder_level: toNum(r.reorder_level, 10),
-      cost_per_unit: r.cost_per_unit ? toNum(r.cost_per_unit) : null,
+      name: r[I.name].trim(),
+      unit: r[I.unit].trim().toLowerCase(),
+      current_stock: toNum(r[I.stock]),
+      required_stock: toNum(r[I.required]),
+      reorder_level: 10,
     })),
 };

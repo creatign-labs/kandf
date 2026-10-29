@@ -208,7 +208,10 @@ const RecipeIngredients = () => {
                 templateColumns={recipeIngredientsImport.templateColumns}
                 requiredColumns={recipeIngredientsImport.requiredColumns}
                 buildPayload={recipeIngredientsImport.buildPayload}
-                invalidateKeys={[["recipe-ingredients"]]}
+                validateRow={recipeIngredientsImport.validateRow}
+                templateSample={recipeIngredientsImport.templateSample}
+                templateHint={recipeIngredientsImport.templateHint}
+                invalidateKeys={[["recipe-ingredients"], ["recipe-ingredient-counts"]]}
               />
             )}
           </div>

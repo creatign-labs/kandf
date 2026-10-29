@@ -686,7 +686,11 @@ const Courses = () => {
                 templateColumns={coursesImport.templateColumns}
                 requiredColumns={coursesImport.requiredColumns}
                 buildPayload={coursesImport.buildPayload}
-                invalidateKeys={[["courses"]]}
+                  validateRow={coursesImport.validateRow}
+                  templateSample={coursesImport.templateSample}
+                  templateHint={coursesImport.templateHint}
+                  insertRows={coursesImport.insertRows}
+                invalidateKeys={[["courses"], ["admin-courses"], ["all-recipes-for-course"]]}
               />
             )}
             <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetForm(); }}>

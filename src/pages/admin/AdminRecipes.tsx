@@ -323,15 +323,23 @@ const AdminRecipes = () => {
             {roles?.isSuperAdmin && (
               <ExportButton
                 filename="recipes"
-                data={(recipes || []).map((r: any) => ({
-                  title: r.title,
-                  recipe_code: r.recipe_code ?? "",
-                  course: r.courses?.title ?? "",
-                  difficulty: r.difficulty ?? "",
-                  prep_time: r.prep_time ?? "",
-                  cook_time: r.cook_time ?? "",
-                  description: r.description ?? "",
-                }))}
+                data={(recipes || []).flatMap((r: any) => {
+                  const ings = (recipeExportRows || []).filter((ri: any) => ri.recipes?.title === r.title);
+                  const base = {
+                    "Recipe Title": r.title,
+                    "Recipe Code": r.recipe_code ?? "",
+                    "YouTube Video URL": r.video_url ?? "",
+                  };
+                  if (ings.length === 0) {
+                    return [{ ...base, "Ingredient Name": "", "Quantity per Student": "", "Unit": "" }];
+                  }
+                  return ings.map((ri: any) => ({
+                    ...base,
+                    "Ingredient Name": ri.inventory?.name ?? "",
+                    "Quantity per Student": ri.quantity_per_student ?? "",
+                    "Unit": ri.unit ?? "",
+                  }));
+                })}
               />
             )}
             {roles?.isAdmin && (

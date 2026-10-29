@@ -524,7 +524,7 @@ const Batches = () => {
                   validateRow={batchesImport.validateRow}
                   templateSample={batchesImport.templateSample}
                   templateHint={batchesImport.templateHint}
-                  invalidateKeys={[["batches"]]}
+                  invalidateKeys={[["batches"], ["admin-batches"]]}
                 />
               )}
               <Dialog open={isDialogOpen} onOpenChange={(open) => {

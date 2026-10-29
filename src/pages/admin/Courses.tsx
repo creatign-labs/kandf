@@ -690,7 +690,7 @@ const Courses = () => {
                   templateSample={coursesImport.templateSample}
                   templateHint={coursesImport.templateHint}
                   insertRows={coursesImport.insertRows}
-                invalidateKeys={[["courses"]]}
+                invalidateKeys={[["courses"], ["admin-courses"], ["all-recipes-for-course"]]}
               />
             )}
             <Dialog open={isAddDialogOpen} onOpenChange={(open) => { setIsAddDialogOpen(open); if (!open) resetForm(); }}>

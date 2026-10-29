@@ -78,57 +78,128 @@ export const batchesImport = {
 };
 
 // -------- RECIPES --------
+// Columns mirror the "Add New Recipe" form exactly. One row per ingredient;
+// repeat the recipe title/code/video on each row of the same recipe.
+const R = {
+  title: "Recipe Title",
+  code: "Recipe Code",
+  video: "YouTube Video URL",
+  ingredient: "Ingredient Name",
+  qty: "Quantity per Student",
+  unit: "Unit",
+} as const;
+const RECIPE_UNITS = ["ml", "g", "pieces"];
+
+let inventoryCache: Promise<Map<string, { id: string; unit: string }>> | null = null;
+const loadInventory = () => {
+  if (!inventoryCache) {
+    inventoryCache = (async () => {
+      const { data, error } = await supabase.from("inventory").select("id, name, unit");
+      if (error) { inventoryCache = null; throw error; }
+      return new Map((data || []).map(i => [i.name.trim().toLowerCase(), { id: i.id, unit: i.unit }]));
+    })();
+  }
+  return inventoryCache;
+};
+
 export const recipesImport = {
-  templateColumns: ["title", "recipe_code", "description", "difficulty", "prep_time", "cook_time", "course_title"],
-  requiredColumns: ["title"],
-  buildPayload: async (rows: Record<string, string>[]) => {
-    const titles = [...new Set(rows.map(r => r.course_title).filter(Boolean))];
-    let map = new Map<string, string>();
-    if (titles.length) {
-      const { data, error } = await supabase.from("courses").select("id, title").in("title", titles);
-      if (error) throw error;
-      map = new Map((data || []).map(c => [c.title.toLowerCase(), c.id]));
+  templateColumns: [R.title, R.code, R.video, R.ingredient, R.qty, R.unit],
+  requiredColumns: [R.title],
+  templateSample: [
+    ["Apple Pie", "RCP-001", "https://www.youtube.com/watch?v=xxxx", "Flour", "250", "g"],
+    ["Apple Pie", "RCP-001", "https://www.youtube.com/watch?v=xxxx", "Butter", "100", "g"],
+    ["Apple Pie", "RCP-001", "https://www.youtube.com/watch?v=xxxx", "Milk", "50", "ml"],
+    ["Chocolate Brownie", "RCP-002", "", "Eggs", "2", "pieces"],
+  ],
+  templateHint:
+    "One row per ingredient. For a recipe with several ingredients, repeat the same Recipe Title, Code and Video URL on each row. Ingredient names must match items in Inventory. Unit: ml, g or pieces.",
+  validateRow: async (r: Record<string, string>, _i: number, all: Record<string, string>[]) => {
+    const title = (r[R.title] || "").trim();
+    const code = (r[R.code] || "").trim();
+    if (title.length > 100) return "Recipe title must be 100 characters or less";
+    if (code.length > 20) return "Recipe code must be 20 characters or less";
+    const video = (r[R.video] || "").trim();
+    if (video && !/^https?:\/\//i.test(video)) return "Video URL must start with http:// or https://";
+    // Same title must keep the same code across rows
+    const clash = all.find(o => (o[R.title] || "").trim().toLowerCase() === title.toLowerCase() && (o[R.code] || "").trim() !== code);
+    if (clash) return `Recipe "${title}" has different codes on different rows`;
+    const codeClash = code && all.find(o => (o[R.code] || "").trim().toLowerCase() === code.toLowerCase() && (o[R.title] || "").trim().toLowerCase() !== title.toLowerCase());
+    if (codeClash) return `Code "${code}" is used for two different recipes`;
+    const ing = (r[R.ingredient] || "").trim();
+    const qty = (r[R.qty] || "").trim();
+    const unit = (r[R.unit] || "").trim().toLowerCase();
+    if (!ing) {
+      if (qty || unit) return "Ingredient Name is missing";
+      return null;
     }
-    const codes = new Set<string>();
-    return rows.map((r, i) => {
-      const code = (r.recipe_code || "").trim();
-      if (code) {
-        if (code.length > 30) throw new Error(`Row ${i + 2}: recipe code "${code}" is longer than 30 characters`);
-        if (codes.has(code.toLowerCase())) throw new Error(`Row ${i + 2}: recipe code "${code}" appears twice in the file`);
-        codes.add(code.toLowerCase());
-      }
-      if (r.course_title && !map.get(r.course_title.toLowerCase())) {
-        throw new Error(`Row ${i + 2}: course "${r.course_title}" not found`);
-      }
-      return {
-      title: r.title,
-      recipe_code: code || null,
-      description: r.description || null,
-      difficulty: r.difficulty || null,
-      prep_time: r.prep_time ? toNum(r.prep_time) : null,
-      cook_time: r.cook_time ? toNum(r.cook_time) : null,
-      course_id: r.course_title ? map.get(r.course_title.toLowerCase()) ?? null : null,
-    };
-    });
+    const inv = await loadInventory();
+    if (!inv.get(ing.toLowerCase())) return `Ingredient "${ing}" not found in Inventory`;
+    const n = Number(qty);
+    if (!qty || !Number.isFinite(n) || n <= 0) return "Quantity per Student must be a number above 0";
+    if (unit && !RECIPE_UNITS.includes(unit)) return "Unit must be ml, g or pieces";
+    return null;
   },
-  /** Insert recipes and link them to their course so they show in the course curriculum. */
+  buildPayload: async (rows: Record<string, string>[]) => {
+    inventoryCache = null; // refresh
+    const inv = await loadInventory();
+    const groups = new Map<string, { title: string; recipe_code: string | null; video_url: string | null; ingredients: { inventory_id: string; quantity_per_student: number; unit: string }[] }>();
+    rows.forEach(r => {
+      const title = r[R.title].trim();
+      const key = title.toLowerCase();
+      if (!groups.has(key)) {
+        groups.set(key, {
+          title,
+          recipe_code: (r[R.code] || "").trim() || null,
+          video_url: (r[R.video] || "").trim() || null,
+          ingredients: [],
+        });
+      }
+      const g = groups.get(key)!;
+      if (!g.video_url && r[R.video]?.trim()) g.video_url = r[R.video].trim();
+      const ing = (r[R.ingredient] || "").trim();
+      if (ing) {
+        const item = inv.get(ing.toLowerCase())!;
+        const id = item.id;
+        const unit = (r[R.unit] || "").trim().toLowerCase() || "g";
+        const qty = Number(r[R.qty]);
+        const existing = g.ingredients.find(x => x.inventory_id === id);
+        if (existing) existing.quantity_per_student += qty;
+        else g.ingredients.push({ inventory_id: id, quantity_per_student: qty, unit });
+      }
+    });
+    const list = [...groups.values()];
+    const codes = list.map(g => g.recipe_code).filter(Boolean) as string[];
+    if (codes.length) {
+      const { data, error } = await supabase.from("recipes").select("title, recipe_code").not("recipe_code", "is", null);
+      if (error) throw error;
+      const used = new Map((data || []).map(d => [String(d.recipe_code).trim().toLowerCase(), d.title]));
+      for (const c of codes) {
+        const t = used.get(c.toLowerCase());
+        if (t) throw new Error(`Recipe code "${c}" is already used by "${t}". Use a unique code.`);
+      }
+    }
+    return list as unknown as Record<string, unknown>[];
+  },
+  /** Insert recipes, then their ingredient lists — same as the manual Add Recipe form. */
   insertRows: async (payload: Record<string, unknown>[]) => {
+    const list = payload as unknown as { title: string; recipe_code: string | null; video_url: string | null; ingredients: { inventory_id: string; quantity_per_student: number; unit: string }[] }[];
     const { data, error } = await supabase
       .from("recipes")
-      .insert(payload as any)
-      .select("id, course_id");
+      .insert(list.map(g => ({ title: g.title, recipe_code: g.recipe_code, video_url: g.video_url })) as any)
+      .select("id, title");
     if (error) {
       if (error.code === "23505") {
         throw new Error("One of the recipe codes in the file is already used by an existing recipe. Use unique codes.");
       }
       throw error;
     }
-    const links = (data || [])
-      .filter(r => r.course_id)
-      .map(r => ({ course_id: r.course_id as string, recipe_id: r.id }));
-    if (links.length) {
-      const { error: linkErr } = await supabase.from("course_recipes").insert(links);
-      if (linkErr) throw linkErr;
+    const idByTitle = new Map((data || []).map(d => [d.title.toLowerCase(), d.id]));
+    const ingRows = list.flatMap(g =>
+      g.ingredients.map(i => ({ recipe_id: idByTitle.get(g.title.toLowerCase())!, ...i }))
+    );
+    if (ingRows.length) {
+      const { error: ingErr } = await supabase.from("recipe_ingredients").insert(ingRows);
+      if (ingErr) throw ingErr;
     }
     return data?.length ?? 0;
   },

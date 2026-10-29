@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import * as XLSX from "xlsx";
 
 type TableName =
   | "courses"
@@ -30,6 +31,22 @@ interface ImportButtonProps {
   insertRows?: (payload: Record<string, unknown>[]) => Promise<number>;
   label?: string;
   className?: string;
+  /** Example rows included in the downloaded template. */
+  templateSample?: string[][];
+  /** Short instructions shown in the dialog and in the template. */
+  templateHint?: string;
+}
+
+function parseSheet(rows: unknown[][]): Record<string, string>[] {
+  if (!rows.length) return [];
+  const headers = (rows[0] || []).map(h => String(h ?? "").trim());
+  return rows.slice(1)
+    .map(r => {
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => { if (h) obj[h] = String(r?.[i] ?? "").trim(); });
+      return obj;
+    })
+    .filter(o => Object.values(o).some(v => v !== ""));
 }
 
 function parseCSV(text: string): Record<string, string>[] {
@@ -79,6 +96,8 @@ export const ImportButton = ({
   insertRows,
   label = "Import CSV",
   className,
+  templateSample,
+  templateHint,
 }: ImportButtonProps) => {
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>("upload");
@@ -108,20 +127,28 @@ export const ImportButton = ({
   };
 
   const downloadTemplate = () => {
-    const csv = templateColumns.join(",") + "\n";
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `${table}_template.csv`; a.click();
-    URL.revokeObjectURL(url);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([templateColumns, ...(templateSample || [])]);
+    ws["!cols"] = templateColumns.map(c => ({ wch: Math.max(14, c.length + 4) }));
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    if (templateHint) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["How to fill"], [templateHint], ["Replace the example rows with your own data before uploading."]]), "Instructions");
+    }
+    XLSX.writeFile(wb, `${table}_template.xlsx`);
+  };
+
+  const readFileRows = async (f: File): Promise<Record<string, string>[]> => {
+    if (/\.csv$/i.test(f.name)) return parseCSV(await f.text());
+    const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    return parseSheet(XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" }) as unknown[][]);
   };
 
   const buildPreview = async () => {
     if (!file) return;
     setBusy(true);
     try {
-      const text = await file.text();
-      const rows = parseCSV(text);
+      const rows = await readFileRows(file);
       if (!rows.length) {
         toast({ title: "Empty file", variant: "destructive" });
         setBusy(false);
@@ -198,7 +225,7 @@ export const ImportButton = ({
         inserted += chunk.length;
       }
 
-      toast({ title: "Import complete", description: `${inserted} row(s) added to ${table}` });
+      toast({ title: "Import complete", description: `${inserted} ${table.replace(/_/g, " ")} added` });
       invalidateKeys.forEach(k => qc.invalidateQueries({ queryKey: k }));
       closeDialog(false);
     } catch (e) {
@@ -229,7 +256,7 @@ export const ImportButton = ({
           <DialogHeader>
             <DialogTitle>
               {stage === "upload"
-                ? `Import ${table.replace(/_/g, " ")} from CSV`
+                ? `Import ${table.replace(/_/g, " ")} from Excel`
                 : `Preview: ${table.replace(/_/g, " ")}`}
             </DialogTitle>
             <DialogDescription>
@@ -249,12 +276,13 @@ export const ImportButton = ({
               </Button>
               <Input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".xlsx,.xls,.csv"
                 onChange={e => setFile(e.target.files?.[0] ?? null)}
               />
               <p className="text-xs text-muted-foreground">
                 Columns: {templateColumns.join(", ")}
               </p>
+              {templateHint && <p className="text-xs text-muted-foreground">{templateHint}</p>}
             </div>
           )}
 

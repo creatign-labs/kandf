@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon, Clock, AlertCircle, Loader2, CheckCircle, Lock, ChefHat } from "lucide-react";
 import { format, addDays } from "date-fns";
-import { 
 import { BakeryLoader } from "@/components/BakeryLoader";
+import { 
   useBookingEligibility, 
   useAvailableRecipeSlots, 
   useBookRecipeSlot

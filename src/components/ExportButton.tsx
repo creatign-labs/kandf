@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface ExportButtonProps {
   data: Record<string, unknown>[];
@@ -10,52 +11,56 @@ interface ExportButtonProps {
   className?: string;
 }
 
-export const ExportButton = ({ 
-  data, 
-  filename, 
-  columns, 
-  variant = "outline", 
+/** Turn snake_case keys into readable headers: student_code -> Student Code */
+const humanize = (key: string) =>
+  key
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+export const ExportButton = ({
+  data,
+  filename,
+  columns,
+  variant = "outline",
   size = "sm",
-  className 
+  className
 }: ExportButtonProps) => {
-  const exportToCSV = () => {
+  const exportToExcel = () => {
     if (!data || data.length === 0) return;
 
-    const cols = columns || Object.keys(data[0]).map(key => ({ key, label: key }));
-    
-    const escapeCSV = (val: unknown): string => {
-      const str = val === null || val === undefined ? "" : String(val);
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
+    const cols = columns || Object.keys(data[0]).map(key => ({ key, label: humanize(key) }));
 
-    const header = cols.map(c => escapeCSV(c.label)).join(",");
+    const header = cols.map(c => c.label);
     const rows = data.map(row =>
-      cols.map(c => escapeCSV(row[c.key])).join(",")
+      cols.map(c => {
+        const val = row[c.key];
+        return val === null || val === undefined ? "" : val;
+      })
     );
 
-    const csv = [header, ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${filename}_${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    ws["!cols"] = header.map((h, i) => ({
+      wch: Math.max(
+        String(h).length,
+        ...rows.map(r => String(r[i] ?? "").length)
+      ) + 2,
+    }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Export");
+    XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
   return (
     <Button
       variant={variant}
       size={size}
-      onClick={exportToCSV}
+      onClick={exportToExcel}
       disabled={!data || data.length === 0}
       className={className}
     >
       <Download className="h-4 w-4 mr-1" />
-      Export CSV
+      Export Excel
     </Button>
   );
 };

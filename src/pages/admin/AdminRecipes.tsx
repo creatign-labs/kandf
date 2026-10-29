@@ -103,6 +103,19 @@ const AdminRecipes = () => {
     },
   });
 
+  // Export rows mirror the bulk-import template exactly: one row per ingredient.
+  const { data: recipeExportRows } = useQuery({
+    queryKey: ["admin-recipes-export"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recipe_ingredients")
+        .select("quantity_per_student, unit, recipes(title, recipe_code, video_url), inventory(name)")
+        .order("recipe_id");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: courses } = useQuery({
     queryKey: ["courses-list"],
     queryFn: async () => {
@@ -310,15 +323,31 @@ const AdminRecipes = () => {
             {roles?.isSuperAdmin && (
               <ExportButton
                 filename="recipes"
-                data={(recipes || []).map((r: any) => ({
-                  title: r.title,
-                  recipe_code: r.recipe_code ?? "",
-                  course: r.courses?.title ?? "",
-                  difficulty: r.difficulty ?? "",
-                  prep_time: r.prep_time ?? "",
-                  cook_time: r.cook_time ?? "",
-                  description: r.description ?? "",
-                }))}
+                columns={[
+                  { key: "Recipe Title", label: "Recipe Title" },
+                  { key: "Recipe Code", label: "Recipe Code" },
+                  { key: "YouTube Video URL", label: "YouTube Video URL" },
+                  { key: "Ingredient Name", label: "Ingredient Name" },
+                  { key: "Quantity per Student", label: "Quantity per Student" },
+                  { key: "Unit", label: "Unit" },
+                ]}
+                data={(recipes || []).flatMap((r: any) => {
+                  const ings = (recipeExportRows || []).filter((ri: any) => ri.recipes?.title === r.title);
+                  const base = {
+                    "Recipe Title": r.title,
+                    "Recipe Code": r.recipe_code ?? "",
+                    "YouTube Video URL": r.video_url ?? "",
+                  };
+                  if (ings.length === 0) {
+                    return [{ ...base, "Ingredient Name": "", "Quantity per Student": "", "Unit": "" }];
+                  }
+                  return ings.map((ri: any) => ({
+                    ...base,
+                    "Ingredient Name": ri.inventory?.name ?? "",
+                    "Quantity per Student": ri.quantity_per_student ?? "",
+                    "Unit": ri.unit ?? "",
+                  }));
+                })}
               />
             )}
             {roles?.isAdmin && (

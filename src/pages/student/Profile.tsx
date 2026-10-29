@@ -327,7 +327,7 @@ const Profile = () => {
     return <div className="min-h-screen bg-background">
         <Header role={headerRole} />
         <div className="container px-6 py-12">
-          <p className="text-center">Loading profile...</p>
+          <BakeryLoader message="Loading profile..." className="py-24" />
         </div>
       </div>;
   }

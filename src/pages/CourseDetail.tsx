@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CourseCard } from "@/components/CourseCard";
 import { getCourseImage } from "@/lib/courseImages";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const CourseDetail = () => {
   const { id } = useParams();
@@ -73,7 +74,7 @@ const CourseDetail = () => {
       <div className="min-h-screen bg-background">
         <Header role="public" />
         <div className="container px-6 py-12">
-          <p className="text-center">Loading course details...</p>
+          <BakeryLoader message="Loading course details..." className="py-24" />
         </div>
       </div>
     );

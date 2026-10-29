@@ -7,6 +7,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const Enroll = () => {
   const { courseId } = useParams();
@@ -103,7 +104,7 @@ const Enroll = () => {
       <div className="min-h-screen bg-background">
         <Header role="public" />
         <div className="container px-6 py-12">
-          <p className="text-center">Loading...</p>
+          <BakeryLoader message="Loading..." className="py-24" />
         </div>
       </div>
     );

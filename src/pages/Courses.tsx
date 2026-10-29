@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 interface Course {
   id: string;
@@ -158,7 +159,7 @@ const Courses = () => {
       <div className="min-h-screen bg-background">
         <Header role="public" />
         <div className="container px-6 py-12">
-          <p className="text-center">Loading courses...</p>
+          <BakeryLoader message="Loading courses..." className="py-24" />
         </div>
       </div>
     );

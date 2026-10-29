@@ -7,6 +7,7 @@ import { ChefHat, Award, Users, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCourseImage } from "@/lib/courseImages";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const stats = [
   { icon: Users, value: "500+", label: "Students Trained" },
@@ -101,7 +102,7 @@ const Home = () => {
         
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           {loading ? (
-            <p className="col-span-full text-center text-muted-foreground">Loading courses...</p>
+            <div className="col-span-full"><BakeryLoader message="Loading courses..." className="py-12" /></div>
           ) : (
             courses.map((course) => (
               <CourseCard 

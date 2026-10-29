@@ -198,7 +198,7 @@ export const batchesImport = {
         batch_name: r[B.name].trim(),
         time_slot: `${parseTime(r[B.start])} - ${parseTime(r[B.end])}`,
         days_of_week: parseDays(r[B.week]),
-        days: parseDays(r[B.week]).join(", "),
+        days: null,
         total_seats: seats,
         available_seats: seats,
         start_date: parseDate(r[B.from]) || null,

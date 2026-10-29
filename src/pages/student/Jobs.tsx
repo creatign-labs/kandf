@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const Jobs = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,7 +113,7 @@ const Jobs = () => {
 
           {isLoading || eligibilityLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <BakeryLoader />
             </div>
           ) : filteredJobs && filteredJobs.length > 0 ? (
             <div className="space-y-4">

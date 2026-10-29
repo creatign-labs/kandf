@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { QuizResults } from "./QuizResults";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 interface QuizEngineProps {
   studentAssessmentId: string;
@@ -257,7 +258,7 @@ export const QuizEngine = ({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <BakeryLoader />
       </div>
     );
   }

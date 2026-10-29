@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CreditCard, Shield, Loader2, CheckCircle2, Calendar, User, BookOpen, IndianRupee, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 declare global {
   interface Window {
@@ -261,7 +262,7 @@ const PublicPayment = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-amber-50 to-background flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+          <BakeryLoader />
           <p className="text-muted-foreground">Loading payment details...</p>
         </div>
       </div>

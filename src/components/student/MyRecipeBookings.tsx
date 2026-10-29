@@ -19,6 +19,7 @@ import { format, parseISO, isAfter, startOfDay, addDays } from "date-fns";
 import { useMyRecipeBookings, useCancelRecipeBooking } from "@/hooks/useRecipeBooking";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 export function MyRecipeBookings() {
   const { data: bookings, isLoading } = useMyRecipeBookings();
@@ -152,7 +153,7 @@ export function MyRecipeBookings() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <BakeryLoader />
       </div>
     );
   }

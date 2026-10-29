@@ -6,6 +6,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon, Clock, AlertCircle, Loader2, CheckCircle, Lock, ChefHat } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { 
+import { BakeryLoader } from "@/components/BakeryLoader";
   useBookingEligibility, 
   useAvailableRecipeSlots, 
   useBookRecipeSlot
@@ -69,7 +70,7 @@ export function RecipeSlotBooking({ courseId, onBooked }: RecipeSlotBookingProps
     return (
       <Card className="p-8">
         <div className="flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <BakeryLoader />
         </div>
       </Card>
     );

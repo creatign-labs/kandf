@@ -20,6 +20,7 @@ import { Search, ChefHat, Clock, BookOpen, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const ChefRecipes = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,7 +85,7 @@ const ChefRecipes = () => {
       <div className="min-h-screen bg-background">
         <Header role="chef" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

@@ -22,6 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 interface IngredientRequirement {
   ingredientName: string;
@@ -241,7 +242,7 @@ const DailyIngredients = () => {
       <div className="min-h-screen bg-background">
         <Header role="chef" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

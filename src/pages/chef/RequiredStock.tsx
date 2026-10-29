@@ -21,6 +21,7 @@ import { Package, Loader2, AlertTriangle, Search, Eye } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const RequiredStock = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,7 +75,7 @@ const RequiredStock = () => {
       <div className="min-h-screen bg-background">
         <Header role="chef" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

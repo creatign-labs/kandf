@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isPast, differenceInDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 interface PaymentSchedule {
   id: string;
@@ -95,7 +96,7 @@ const CoursePayment = () => {
       <div className="min-h-screen bg-background">
         <Header role="student" />
         <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <BakeryLoader />
         </div>
       </div>
     );

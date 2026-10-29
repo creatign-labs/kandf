@@ -45,6 +45,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
+import { BakeryLoader } from "@/components/BakeryLoader";
   useRecipeBatches,
   useRecipeBatchMembers,
   useMoveStudentBatch,
@@ -300,7 +301,7 @@ const RecipeBatchManagement = () => {
 
                     {membersLoading ? (
                       <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin" />
+                        <BakeryLoader />
                       </div>
                     ) : members && members.length > 0 ? (
                       <Table>
@@ -391,7 +392,7 @@ const RecipeBatchManagement = () => {
 
               {auditLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <BakeryLoader />
                 </div>
               ) : auditLogs && auditLogs.length > 0 ? (
                 <Table>

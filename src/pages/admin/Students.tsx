@@ -49,6 +49,7 @@ import { OnlineClassManager } from "@/components/admin/OnlineClassManager";
 import { StudentViewDialog } from "@/components/admin/StudentViewDialog";
 import { useSearchParams } from "react-router-dom";
 import { ExportButton } from "@/components/ExportButton";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const Students = () => {
   const [searchParams] = useSearchParams();
@@ -374,7 +375,7 @@ const Students = () => {
       <div className="min-h-screen bg-background">
         <Header role="admin" userName="Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );
@@ -637,7 +638,7 @@ const Students = () => {
 
               {approvalsLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <BakeryLoader />
                 </div>
               ) : (
                 <Table>

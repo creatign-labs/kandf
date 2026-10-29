@@ -37,6 +37,7 @@ import { format } from "date-fns";
 import { ImportButton } from "@/components/ImportButton";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { batchesImport } from "@/lib/importConfigs";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const TIME_OPTIONS = [
   "12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM",
@@ -399,7 +400,7 @@ const Batches = () => {
       <div className="min-h-screen bg-background">
         <Header role="admin" userName="Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

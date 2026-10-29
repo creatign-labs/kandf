@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameMonth, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
+import { BakeryLoader } from "@/components/BakeryLoader";
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 
@@ -105,7 +106,7 @@ const BatchCalendar = () => {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
+          <div className="flex justify-center py-12"><BakeryLoader /></div>
         ) : (
           <Card className="p-2">
             {/* Weekday headers */}

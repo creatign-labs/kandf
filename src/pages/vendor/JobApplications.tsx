@@ -15,6 +15,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const JobApplications = () => {
   const { id: jobId } = useParams();
@@ -172,7 +173,7 @@ const JobApplications = () => {
 
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <BakeryLoader />
               </div>
             ) : releasedApplications && releasedApplications.length > 0 ? (
               <Table>

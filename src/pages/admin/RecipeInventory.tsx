@@ -30,6 +30,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Link } from "react-router-dom";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const RecipeInventory = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -135,7 +136,7 @@ const RecipeInventory = () => {
       <div className="min-h-screen bg-background">
         <Header role="admin" userName="Super Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

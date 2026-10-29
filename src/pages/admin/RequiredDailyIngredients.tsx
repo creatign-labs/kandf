@@ -28,6 +28,7 @@ import { format, addDays, formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { ExportButton } from "@/components/ExportButton";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 interface IngredientRequirement {
   inventory_id: string;
@@ -430,7 +431,7 @@ const RequiredDailyIngredients = () => {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <BakeryLoader />
           </div>
         ) : chefGroups.length === 0 ? (
           <Card className="p-8 text-center">

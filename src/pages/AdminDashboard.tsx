@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import TomorrowIngredientShortageWidget from "@/components/admin/TomorrowIngredientShortageWidget";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const AdminDashboard = () => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -233,7 +234,7 @@ const AdminDashboard = () => {
       <div className="min-h-screen bg-background">
         <Header role={isSuperAdmin ? "super_admin" : "admin"} userName={isSuperAdmin ? "Super Admin" : "Admin"} />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

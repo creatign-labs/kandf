@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const vendorProfileSchema = z.object({
   company_name: z.string().trim().min(2, "Company name is required"),
@@ -123,7 +124,7 @@ const VendorProfile = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <BakeryLoader />
       </div>
     );
   }

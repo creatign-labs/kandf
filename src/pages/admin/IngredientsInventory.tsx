@@ -38,6 +38,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { getDetailedErrorMessage } from "@/lib/errors";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 
 const IngredientsInventory = () => {
@@ -320,7 +321,7 @@ const IngredientsInventory = () => {
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <BakeryLoader />
             </div>
           ) : (
             <div className="rounded-md border">

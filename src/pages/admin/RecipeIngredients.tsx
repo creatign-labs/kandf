@@ -44,6 +44,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { ImportButton } from "@/components/ImportButton";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { recipeIngredientsImport } from "@/lib/importConfigs";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const RecipeIngredients = () => {
   const { data: roles } = useUserRoles();
@@ -404,7 +405,7 @@ const RecipeIngredients = () => {
         {/* Grouped Display */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <BakeryLoader />
           </div>
         ) : (
           <div className="space-y-6">

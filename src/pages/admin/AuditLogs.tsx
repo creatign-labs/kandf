@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useState } from "react";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const AuditLogs = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,7 +50,7 @@ const AuditLogs = () => {
       <div className="min-h-screen bg-background">
         <Header role="super_admin" userName="Super Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

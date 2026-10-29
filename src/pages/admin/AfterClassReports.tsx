@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format, subDays } from "date-fns";
 import { getDetailedErrorMessage } from "@/lib/errors";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 interface SessionReport {
   key: string;
@@ -267,7 +268,7 @@ const AfterClassReports = () => {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <BakeryLoader />
           </div>
         ) : error ? (
           <Card className="p-6">

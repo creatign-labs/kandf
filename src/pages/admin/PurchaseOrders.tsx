@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ExportButton } from "@/components/ExportButton";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const PurchaseOrders = () => {
   const [createOpen, setCreateOpen] = useState(false);
@@ -221,7 +222,7 @@ const PurchaseOrders = () => {
 
         <Card className="p-6">
           {isLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            <div className="flex justify-center py-12"><BakeryLoader /></div>
           ) : (
             <Table>
               <TableHeader>

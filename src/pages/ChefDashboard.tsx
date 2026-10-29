@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { format, addDays, parseISO } from "date-fns";
 import { useState } from "react";
 import {
+import { BakeryLoader } from "@/components/BakeryLoader";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -311,7 +312,7 @@ const ChefDashboard = () => {
       <div className="min-h-screen bg-background">
         <Header role="chef" userName={firstName} />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

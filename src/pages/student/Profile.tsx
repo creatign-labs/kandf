@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { User, Mail, Phone, Upload, FileText, Trash2, Loader2, Camera, IdCard, Eye } from 'lucide-react';
+import { BakeryLoader } from "@/components/BakeryLoader";
 interface KYCDocument {
   name: string;
   url: string;
@@ -499,7 +500,7 @@ const Profile = () => {
                 <input type="file" id="kyc-upload" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileUpload} disabled={uploading} />
                 <label htmlFor="kyc-upload" className="cursor-pointer">
                   {uploading ? <div className="flex flex-col items-center gap-2">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      <BakeryLoader />
                       <span className="text-sm text-muted-foreground">Uploading...</span>
                     </div> : <div className="flex flex-col items-center gap-2">
                       <Upload className="h-8 w-8 text-muted-foreground" />

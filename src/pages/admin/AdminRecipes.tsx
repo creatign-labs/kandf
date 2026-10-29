@@ -103,6 +103,19 @@ const AdminRecipes = () => {
     },
   });
 
+  // Export rows mirror the bulk-import template exactly: one row per ingredient.
+  const { data: recipeExportRows } = useQuery({
+    queryKey: ["admin-recipes-export"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recipe_ingredients")
+        .select("quantity_per_student, unit, recipes(title, recipe_code, video_url), inventory(name)")
+        .order("recipe_id");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: courses } = useQuery({
     queryKey: ["courses-list"],
     queryFn: async () => {

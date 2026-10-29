@@ -686,6 +686,10 @@ const Courses = () => {
                 templateColumns={coursesImport.templateColumns}
                 requiredColumns={coursesImport.requiredColumns}
                 buildPayload={coursesImport.buildPayload}
+                  validateRow={coursesImport.validateRow}
+                  templateSample={coursesImport.templateSample}
+                  templateHint={coursesImport.templateHint}
+                  insertRows={coursesImport.insertRows}
                 invalidateKeys={[["courses"]]}
               />
             )}

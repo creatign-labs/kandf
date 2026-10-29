@@ -521,6 +521,9 @@ const Batches = () => {
                   templateColumns={batchesImport.templateColumns}
                   requiredColumns={batchesImport.requiredColumns}
                   buildPayload={batchesImport.buildPayload}
+                  validateRow={batchesImport.validateRow}
+                  templateSample={batchesImport.templateSample}
+                  templateHint={batchesImport.templateHint}
                   invalidateKeys={[["batches"]]}
                 />
               )}

@@ -323,6 +323,14 @@ const AdminRecipes = () => {
             {roles?.isSuperAdmin && (
               <ExportButton
                 filename="recipes"
+                columns={[
+                  { key: "Recipe Title", label: "Recipe Title" },
+                  { key: "Recipe Code", label: "Recipe Code" },
+                  { key: "YouTube Video URL", label: "YouTube Video URL" },
+                  { key: "Ingredient Name", label: "Ingredient Name" },
+                  { key: "Quantity per Student", label: "Quantity per Student" },
+                  { key: "Unit", label: "Unit" },
+                ]}
                 data={(recipes || []).flatMap((r: any) => {
                   const ings = (recipeExportRows || []).filter((ri: any) => ri.recipes?.title === r.title);
                   const base = {

@@ -12,6 +12,7 @@ import { Loader2, Search, Send, ExternalLink, FileText, Building2, CheckCircle2 
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format } from "date-fns";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const JobApplicationsReview = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -115,7 +116,7 @@ const JobApplicationsReview = () => {
       <div className="min-h-screen bg-background">
         <Header role={isSuperAdmin ? "super_admin" : "admin"} userName={isSuperAdmin ? "Super Admin" : "Admin"} />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

@@ -44,6 +44,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { RecipientSelector } from "@/components/admin/RecipientSelector";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const Notifications = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -277,7 +278,7 @@ const Notifications = () => {
       <div className="min-h-screen bg-background">
         <Header role="admin" userName="Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

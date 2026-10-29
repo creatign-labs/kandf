@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { countRecipesForCourse, fetchRecipeIdsForCourse } from "@/lib/courseRecipes";
 import { format, isPast, parseISO } from "date-fns";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const StudentDashboard = () => {
   // Fetch user profile
@@ -167,7 +168,7 @@ const StudentDashboard = () => {
       <div className="min-h-screen bg-background">
         <Header role="student" userName={firstName} />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

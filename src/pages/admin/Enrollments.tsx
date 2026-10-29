@@ -44,6 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Search, UserPlus, Phone, Calendar, CheckCircle, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { ExportButton } from "@/components/ExportButton";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const AdminEnrollments = () => {
   const { toast } = useToast();
@@ -353,7 +354,7 @@ const AdminEnrollments = () => {
       <div className="min-h-screen bg-background">
         <Header role="admin" userName="Admin" />
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <BakeryLoader />
         </div>
       </div>
     );

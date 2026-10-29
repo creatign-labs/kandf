@@ -41,6 +41,7 @@ import { LeadsKanban } from "@/components/admin/LeadsKanban";
 import { useNavigate } from "react-router-dom";
 import { ExportButton } from "@/components/ExportButton";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const Leads = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -289,7 +290,7 @@ const Leads = () => {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <BakeryLoader />
           </div>
         ) : viewMode === "kanban" ? (
           <LeadsKanban 

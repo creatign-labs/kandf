@@ -26,6 +26,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format, addDays } from "date-fns";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const InventoryChecklist = () => {
   const [selectedDate, setSelectedDate] = useState(format(addDays(new Date(), 1), "yyyy-MM-dd"));
@@ -358,7 +359,7 @@ const InventoryChecklist = () => {
         <Card className="p-6">
           {checklistLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
+              <BakeryLoader />
             </div>
           ) : checklist ? (
             <Table>

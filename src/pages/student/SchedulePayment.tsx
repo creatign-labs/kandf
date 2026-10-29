@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CreditCard, Shield, ArrowLeft, Loader2 } from "lucide-react";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 declare global {
   interface Window {
@@ -252,7 +253,7 @@ const SchedulePayment = () => {
       <div className="min-h-screen bg-background">
         <Header role="student" />
         <div className="container px-6 py-12 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <BakeryLoader />
         </div>
       </div>
     );

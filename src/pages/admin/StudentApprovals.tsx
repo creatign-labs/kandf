@@ -45,6 +45,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const StudentApprovals = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -366,7 +367,7 @@ const StudentApprovals = () => {
         <Card className="p-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
+              <BakeryLoader />
             </div>
           ) : (
             <Table>

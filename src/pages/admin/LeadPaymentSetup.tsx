@@ -31,6 +31,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addDays } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 interface Installment {
   id?: string;
@@ -426,7 +427,7 @@ const LeadPaymentSetup = () => {
       <div className="min-h-screen bg-background">
         <Header role="admin" userName="Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

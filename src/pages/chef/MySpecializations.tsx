@@ -21,6 +21,7 @@ import { Search, ChefHat, Clock, Loader2, Star, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const MySpecializations = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -130,7 +131,7 @@ const MySpecializations = () => {
       <div className="min-h-screen bg-background">
         <Header role="chef" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

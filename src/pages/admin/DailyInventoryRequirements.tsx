@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const DailyInventoryRequirements = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(addDays(new Date(), 1));
@@ -280,7 +281,7 @@ const DailyInventoryRequirements = () => {
         <Card className="p-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
+              <BakeryLoader />
             </div>
           ) : !requirement ? (
             <div className="text-center py-12 text-muted-foreground">

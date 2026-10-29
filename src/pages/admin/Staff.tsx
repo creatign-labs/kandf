@@ -43,6 +43,7 @@ import { toast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { invokeEdgeFunction } from "@/lib/errors";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 
 type AppRole = "admin" | "student" | "chef" | "inventory_manager";
@@ -488,7 +489,7 @@ const Staff = () => {
       <div className="min-h-screen bg-background">
         <Header role="admin" userName="Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

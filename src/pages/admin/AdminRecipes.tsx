@@ -30,6 +30,7 @@ import { ImportButton } from "@/components/ImportButton";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { recipesImport } from "@/lib/importConfigs";
 import { getDetailedErrorMessage } from "@/lib/errors";
+import { BakeryLoader } from "@/components/BakeryLoader";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -281,7 +282,7 @@ const AdminRecipes = () => {
       <div className="min-h-screen bg-background">
         <Header role="admin" userName="Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

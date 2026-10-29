@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const VENDOR_STATUSES = [
   { value: "shortlisted", label: "Shortlisted" },
@@ -211,7 +212,7 @@ const ReleasedApplications = () => {
 
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <BakeryLoader />
               </div>
             ) : filteredApplications && filteredApplications.length > 0 ? (
               <Table>

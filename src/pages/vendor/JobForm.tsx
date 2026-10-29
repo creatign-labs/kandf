@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const jobSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters").max(100),
@@ -161,7 +162,7 @@ const JobForm = () => {
   if (isEditing && loadingJob) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <BakeryLoader />
       </div>
     );
   }

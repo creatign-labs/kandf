@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 // Generic multi-select with checkbox rows inside a popover.
 function MultiSelectCheckbox({
@@ -730,7 +731,7 @@ const BookingRecipeAssignment = () => {
             
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <BakeryLoader />
               </div>
             ) : bookings && bookings.length > 0 ? (
               <Table>

@@ -35,6 +35,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { ImportButton } from "@/components/ImportButton";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { coursesImport } from "@/lib/importConfigs";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -413,7 +414,7 @@ const Courses = () => {
       <div className="min-h-screen bg-background">
         <Header role="admin" userName="Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

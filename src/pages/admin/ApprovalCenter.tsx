@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 const ApprovalCenter = () => {
   const queryClient = useQueryClient();
@@ -154,7 +155,7 @@ const ApprovalCenter = () => {
       <div className="min-h-screen bg-background">
         <Header role="super_admin" userName="Super Admin" />
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <BakeryLoader />
         </div>
       </div>
     );

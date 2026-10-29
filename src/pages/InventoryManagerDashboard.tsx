@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Package, Search, Plus, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { BakeryLoader } from "@/components/BakeryLoader";
 
 type Item = {
   id: string;
@@ -108,7 +109,7 @@ const InventoryManagerDashboard = () => {
         </div>
 
         {isLoading ? (
-          <p className="text-muted-foreground">Loading...</p>
+          <BakeryLoader message="Loading inventory..." className="py-16" />
         ) : filtered.length === 0 ? (
           <Card className="p-8 text-center text-muted-foreground">No items found.</Card>
         ) : (
